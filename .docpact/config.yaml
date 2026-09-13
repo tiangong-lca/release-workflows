@@ -1,13 +1,14 @@
 version: 1
 layout: repo
-lastReviewedAt: "2026-08-30"
-lastReviewedCommit: "a45cd93413f2459fd5eaacf6b24643859b033206"
+lastReviewedAt: "2026-09-13"
+lastReviewedCommit: "ba2c97947a9be5d9e99e473963e7fbf6efbdf8b1"
+lastReviewedNote: "Release #72: canonicalRepo migrated to tiangong-lca/release-workflows and AGENTS branch facts corrected against live GitHub evidence (feature/issue-59 deleted, tracking issue closed); public visibility and workflow contracts unchanged."
 
 catalog:
   repos:
     - id: release
       path: .
-      canonicalRepo: chukeaa/tiangong-lca-release
+      canonicalRepo: tiangong-lca/release-workflows
       entryDoc: AGENTS.md
       workflowDocs:
         - README.md

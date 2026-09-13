@@ -17,9 +17,9 @@ checkPaths:
   - README.md
   - .docpact/config.yaml
   - workflows/**
-lastReviewedAt: 2026-08-30
-lastReviewedCommit: a45cd93413f2459fd5eaacf6b24643859b033206
-lastReviewedNote: "Reviewed for Release #59: Portal LCIA keeps Database authority, two F4 plans, and one append-only event representation."
+lastReviewedAt: 2026-09-13
+lastReviewedCommit: ba2c97947a9be5d9e99e473963e7fbf6efbdf8b1
+lastReviewedNote: "Release #72: reviewed canonical repository identity migration to tiangong-lca/release-workflows; architecture, Workflow boundaries, and publication semantics unchanged."
 related:
   - ../AGENTS.md
   - ../README.md
