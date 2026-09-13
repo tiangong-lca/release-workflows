@@ -12,9 +12,9 @@ whenToUpdate:
   - 当顶层 Workflow 新增、删除、重命名或重新划分时
 checkPaths:
   - workflows/**
-lastReviewedAt: 2026-08-30
-lastReviewedCommit: a45cd93413f2459fd5eaacf6b24643859b033206
-lastReviewedNote: "Reviewed for Release #59: Publication exposes Portal LCIA Plans and one Lifecycle Event contract without changing the five Workflow routes."
+lastReviewedAt: 2026-09-13
+lastReviewedCommit: ba2c97947a9be5d9e99e473963e7fbf6efbdf8b1
+lastReviewedNote: "Release #72: reviewed canonical repository identity migration to tiangong-lca/release-workflows; Workflow navigation unchanged."
 related:
   - ../README.md
   - AGENTS.md

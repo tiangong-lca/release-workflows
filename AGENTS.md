@@ -25,9 +25,9 @@ checkPaths:
   - pnpm-lock.yaml
   - .node-version
   - .github/workflows/ci.yml
-lastReviewedAt: 2026-08-30
-lastReviewedCommit: a45cd93413f2459fd5eaacf6b24643859b033206
-lastReviewedNote: "Reviewed for Release #59: Portal LCIA keeps two exact authorization plans while local recovery/readback evidence uses one minimal lifecycle-event contract."
+lastReviewedAt: 2026-09-13
+lastReviewedCommit: ba2c97947a9be5d9e99e473963e7fbf6efbdf8b1
+lastReviewedNote: "Release #72: reviewed canonical repository identity migration to tiangong-lca/release-workflows; stale feature/issue-59 branch and closed tracking-issue branch facts removed per live GitHub evidence; repo contract and hard boundaries unchanged."
 related:
   - README.md
   - .docpact/config.yaml
@@ -116,8 +116,6 @@ related:
 - CI：使用不可变提交的 `pnpm/setup` 一次安装精确 Node/pnpm，随后显式执行 frozen install；生产图审计只通过当前 pnpm JavaScript entry 和 `shell:false` 运行
 - branch model：M1
 - daily trunk / routine PR base：`main`
-- 当前工作分支：`feature/issue-59`
-- 跟踪 Issue：`chukeaa/tiangong-lca-release#59`
 - 本地运行产物根目录：`.release/`，必须 gitignored
 - 当前仓库验证门：`pnpm run prepush:gate`
 
