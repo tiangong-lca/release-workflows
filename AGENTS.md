@@ -25,9 +25,9 @@ checkPaths:
   - pnpm-lock.yaml
   - .node-version
   - .github/workflows/ci.yml
-lastReviewedAt: 2026-09-13
-lastReviewedCommit: ba2c97947a9be5d9e99e473963e7fbf6efbdf8b1
-lastReviewedNote: "Release #72: reviewed canonical repository identity migration to tiangong-lca/release-workflows; stale feature/issue-59 branch and closed tracking-issue branch facts removed per live GitHub evidence; repo contract and hard boundaries unchanged."
+lastReviewedAt: 2026-09-15
+lastReviewedCommit: c7f62de
+lastReviewedNote: "Reviewed for Release #74: Publication workstream description and completion condition only. Ownership, hard boundaries, runtime pins and branch facts unchanged."
 related:
   - README.md
   - .docpact/config.yaml
@@ -63,7 +63,7 @@ related:
 - `workflows/result-materialization`：Result Process、LifecycleModel、identity/version 和 canonical dataset collection；
 - `workflows/release-candidate`：Release Intake、Package Plan、validation、失败修复范围决定和不可变 Candidate v2 handoff；
 - `workflows/dataset-transformation`：Candidate-bound DSL v0、Unit/Result aggregation-target 决策、业务字段冲突、确定性加权执行、验证和条件 handoff；
-- `workflows/publication`：Candidate-bound 范围解析、精确 payload、target inspection、hash-bound Approval、可恢复平台写入、状态转换和独立回读；另有显式 opt-in 的 Portal LCIA V3 package plan/publish 与 projection finalize/verify/revoke 编排，只调用 Database-owned actor RPC，不读取 private artifact；Candidate adapter 继续发布到 state code `100`。
+- `workflows/publication`：Candidate-bound 范围解析、精确 payload、target inspection、hash-bound Approval、可恢复平台写入、状态转换和独立回读；发布目标状态按 dataset role 逐 operation 派生，Result Process 为 `120`，普通 Unit Process/LifecycleModel/support 保持平台既有 `100`；另有显式 opt-in 的 Portal LCIA V3 package plan/publish 与 projection finalize/verify/revoke 编排，只调用 Database-owned actor RPC，不读取 private artifact。Result Process 的 120 远程写入使用 Database-owned manager-attested prepare/publish/readback 契约，直接创建 120 而不经过平台 `0`/`100` 命令，并在共享 event 的 canonical 字段与 Result 专属 event 的 stored-byte 字段之间保持 hash domain 分离。
 
 完整性验证属于 Calculation；LCI/LCIA Result Process 生成和 LifecycleModel 组合属于 Result Materialization；Packaging 和 Candidate qualification 属于 Release Candidate。它们可以作为独立恢复节点或 recipe，但不是额外顶层 Workflow。Publication 不得在远程执行期间改变 Candidate 内容。
 
@@ -140,6 +140,6 @@ related:
 - Release Candidate 显式保持 `publicationAuthorized=false`，本地 package build 不构成审批或发布授权；
 - preserved failed build 可生成完整 exclusion impact report；范围排除必须由 hash-bound decision 明确确认，并通过新的 Package Plan 重跑全部 validator，不能绕过错误或修改失败 Candidate；
 - Dataset Transformation 的 aggregation-target recommendation/confirmation、inspect、`needs_decision`、Frozen DSL、加权 Unit/Result Process、validation receipt 和条件 handoff 真实可执行；Unit Process 路线不得复用旧 Result evidence，Result Process 路线只组合 hash-bound 兼容 Result；
-- Publication 的范围规划、payload、target inspection、Approval、可恢复远程执行和 independent readback 真实可执行；没有 Readback Receipt 不得声称完成；
+- Publication 的范围规划、payload、target inspection、按 dataset role 派生的逐 operation 混合状态映射、hash-bound Approval、可恢复远程执行和 independent readback 真实可执行；没有 Readback Receipt 不得声称完成；Result Process 的 120 远程写入使用 Database-owned manager-attested prepare/publish/readback 契约，直接创建 120、从不经过平台 `0`/`100` 命令，并以 exact receipt 调和丢失响应和完成独立回读；旧 Result `100` plan 不得授权 Result 写入；
 - 当前变更通过仓库门禁并形成独立 Git commit。
 - Portal LCIA projection 在 exact Package Publication/Projection Plan 两次 confirmation、幂等远程写入和独立 current + publicly-visible readback 后才完成；中间和终态只追加统一 lifecycle event，revoke 绑定 exact finalized event 并以 revoked readback 完成，既有 Candidate Publication 回归保持全绿。

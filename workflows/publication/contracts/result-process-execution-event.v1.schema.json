@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lca.tiangong.earth/release/result-process-execution-event.v1.schema.json",
+  "title": "Result Process Execution Event (append-only, hash-linked)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "recordedAt",
+    "key",
+    "role",
+    "targetStateCode",
+    "outcome",
+    "disposition",
+    "remoteReceiptId",
+    "stateCode",
+    "contentSha256",
+    "remoteCommands",
+    "error",
+    "sequence",
+    "previousEventSha256"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "tiangong.release.result-process-execution-event.v1"
+    },
+    "recordedAt": { "type": "string", "format": "date-time" },
+    "key": { "type": "string", "minLength": 1 },
+    "role": { "const": "result_process" },
+    "targetStateCode": { "const": 120 },
+    "outcome": {
+      "enum": ["started", "published", "already_published", "failed"]
+    },
+    "disposition": {
+      "oneOf": [
+        {
+          "enum": [
+            "published",
+            "reused_identical_receipt",
+            "reconciled_after_transport_loss"
+          ]
+        },
+        { "type": "null" }
+      ]
+    },
+    "remoteReceiptId": {
+      "oneOf": [{ "type": "string", "format": "uuid" }, { "type": "null" }]
+    },
+    "stateCode": { "type": ["integer", "null"] },
+    "contentSha256": {
+      "oneOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }]
+    },
+    "remoteCommands": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "error": { "type": ["object", "null"] },
+    "sequence": { "type": "integer", "minimum": 1 },
+    "previousEventSha256": {
+      "oneOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }]
+    }
+  },
+  "$defs": { "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" } }
+}

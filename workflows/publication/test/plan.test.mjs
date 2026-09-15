@@ -461,6 +461,14 @@ async function createCandidateFixture() {
     },
     scopeDecisionSha256: null,
   };
+  // The canonical dataset collection the Publication catalog binds to. Payload
+  // materialization recomputes each canonical content hash from these files, so
+  // the attested 120 content is anchored to frozen Candidate bytes.
+  for (const entry of datasets) {
+    const file = path.join(candidate, "canonical", entry.path);
+    await mkdir(path.dirname(file), { recursive: true });
+    await writeFile(file, canonicalJson({ content: entry.key }));
+  }
   await writeFile(
     path.join(candidate, "package-plan.json"),
     canonicalJson(packagePlan),

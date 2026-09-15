@@ -12,11 +12,24 @@ import {
   invokeLifecycleModelBundleCreate,
   resolvePublicationRuntime,
 } from "./remote.mjs";
+import {
+  executePreparedResultOperation,
+  loadResultProcessExecution,
+} from "./result-process.mjs";
+import {
+  assertNotPlatformRoute,
+  isResultProcessRole,
+  targetStateCodeForRole,
+} from "./publication-state.mjs";
+
+const EXECUTION_RECEIPT_SCHEMA =
+  "tiangong.release.publication-execution-receipt.v2";
 
 export async function executePublication({
   approvalDir,
   payloadDir,
   outDir,
+  resultPreparationDir = null,
   env = process.env,
   fetchImpl = globalThis.fetch,
   now = () => new Date(),
@@ -26,17 +39,24 @@ export async function executePublication({
     payloadDir,
     evidence.approval.payloadManifestSha256,
   );
-  if (new Date(evidence.approval.expiresAt).getTime() <= now().getTime())
-    fail("publication_approval_expired", "Publication Approval has expired");
-  if (evidence.approval.publishedState?.code !== 100)
-    fail(
-      "publication_state_adapter_unsupported",
-      "The current platform dataset command adapter publishes only to state code 100",
-      {
-        requested: evidence.approval.publishedState?.code ?? null,
-        supported: 100,
-      },
-    );
+  // `loadApprovalArtifacts` has already rejected malformed timestamps, so this
+  // comparison cannot be defeated by a NaN.
+  if (Date.parse(evidence.approval.expiresAt) <= now().getTime())
+    fail("publication_approval_expired", "Publication Approval has expired", {
+      expiresAt: evidence.approval.expiresAt,
+    });
+  const executableOperations = evidence.executablePlan.operations;
+  for (const operation of executableOperations)
+    if (operation.targetStateCode !== targetStateCodeForRole(operation.role))
+      fail(
+        "publication_operation_target_state_mismatch",
+        `Approved operation target state does not follow its dataset role: ${operation.key}`,
+        {
+          role: operation.role,
+          expected: targetStateCodeForRole(operation.role),
+          targetStateCode: operation.targetStateCode,
+        },
+      );
   const runtime = await resolvePublicationRuntime({ env, fetchImpl });
   if (
     runtime.actorUserId !== evidence.snapshot.actorUserId ||
@@ -46,6 +66,60 @@ export async function executePublication({
     fail(
       "publication_execution_actor_or_target_mismatch",
       "Execution actor and target must match the approved target snapshot",
+    );
+  // The attesting manager must be the executing actor. This is checked before the
+  // Result preparation is required: an actor mismatch is a complete local decision.
+  const attestationActor =
+    evidence.approval.managerAttestation?.attestedByUserId;
+  if (attestationActor && attestationActor !== runtime.actorUserId)
+    fail(
+      "publication_execution_attestation_actor_mismatch",
+      "Executing actor must be the Data Product Manager recorded in the manager attestation",
+      { attestedByUserId: attestationActor },
+    );
+  // Any Result Process write needs its remote-prepared request before the first
+  // mutation. The Result route never creates a 0 or 100 row, so a missing
+  // preparation fails closed here rather than falling back to the platform
+  // dataset commands.
+  const resultOperations = executableOperations.filter(
+    (operation) =>
+      isResultProcessRole(operation.role) && operation.remoteWrites,
+  );
+  const resultPreparation = resultOperations.length
+    ? await loadResultProcessExecution({
+        preparationDir:
+          resultPreparationDir ??
+          fail(
+            "result_process_preparation_required",
+            "Publishing a Result Process write requires the remote-prepared Result Process request",
+            {
+              requiredOption: "--result-preparation-dir",
+              resultProcessKeys: resultOperations.map(({ key }) => key),
+            },
+          ),
+        payloadDir,
+        now,
+        // Freshness is checked here, before any remote call. The preparation is
+        // deliberately NOT phase-gated, so a failed or historical preparation
+        // still produces a truthful diagnostic instead of hiding behind the
+        // approval binding.
+        phase: "execute",
+        expectedEvidence: {
+          approvalSha256: evidence.approvalSha256,
+          executablePlanSha256: evidence.approval.executablePlanSha256,
+          payloadManifestSha256: payload.manifestSha256,
+        },
+      })
+    : null;
+  if (
+    resultPreparation &&
+    (resultPreparation.preparation.actorUserId !== runtime.actorUserId ||
+      resultPreparation.preparation.targetEndpointFingerprint !==
+        runtime.targetEndpointFingerprint)
+  )
+    fail(
+      "publication_execution_actor_or_target_mismatch",
+      "Result Process preparation actor and target must match this execution",
     );
 
   const target = path.resolve(outDir);
@@ -66,9 +140,10 @@ export async function executePublication({
         "executablePlanSha256",
         "payloadManifestSha256",
         "targetId",
-        "publishedState",
+        "stateMapping",
         "completedAt",
         "datasetCount",
+        "resultProcessDatasetCount",
         "completedKeys",
         "eventCount",
         "eventLogHash",
@@ -79,7 +154,7 @@ export async function executePublication({
     );
     if (
       existingReceipt.schemaVersion !==
-        "tiangong.release.publication-execution-receipt.v1" ||
+        "tiangong.release.publication-execution-receipt.v2" ||
       existingReceipt.approvalSha256 !== evidence.approvalSha256 ||
       existingReceipt.payloadManifestSha256 !== payload.manifestSha256
     )
@@ -118,7 +193,7 @@ export async function executePublication({
   const datasetByKey = new Map(
     payload.datasets.map((dataset) => [dataset.key, dataset]),
   );
-  for (const operation of evidence.executablePlan.operations) {
+  for (const operation of executableOperations) {
     if (completedKeys.has(operation.key)) continue;
     const dataset = datasetByKey.get(operation.key);
     if (!dataset)
@@ -127,29 +202,43 @@ export async function executePublication({
         `Approved operation has no verified payload dataset: ${operation.key}`,
       );
     await appendEvent(target, history, {
-      schemaVersion: "tiangong.release.publication-execution-event.v1",
+      schemaVersion: "tiangong.release.publication-execution-event.v2",
       recordedAt: now().toISOString(),
       key: dataset.key,
+      role: operation.role,
+      targetStateCode: operation.targetStateCode,
       action: operation.action,
       outcome: "started",
+      disposition: null,
+      remoteReceiptId: null,
       stateCode: null,
       canonicalContentHash: null,
       remoteCommands: [],
       error: null,
     });
     try {
-      const outcome = await executeDataset({
-        dataset,
-        runtime,
-        publishedStateCode: evidence.approval.publishedState.code,
-        fetchImpl,
-      });
+      const outcome = isResultProcessRole(operation.role)
+        ? await executePreparedResultOperation({
+            runtime,
+            operation: resultPreparation.operations.get(operation.key),
+            fetchImpl,
+          })
+        : await executeDataset({
+            dataset,
+            runtime,
+            publishedStateCode: operation.targetStateCode,
+            fetchImpl,
+          });
       await appendEvent(target, history, {
-        schemaVersion: "tiangong.release.publication-execution-event.v1",
+        schemaVersion: "tiangong.release.publication-execution-event.v2",
         recordedAt: now().toISOString(),
         key: dataset.key,
+        role: operation.role,
+        targetStateCode: operation.targetStateCode,
         action: operation.action,
         outcome: outcome.outcome,
+        disposition: outcome.disposition ?? null,
+        remoteReceiptId: outcome.receiptId ?? null,
         stateCode: outcome.stateCode,
         canonicalContentHash: outcome.canonicalContentHash,
         remoteCommands: outcome.remoteCommands,
@@ -158,11 +247,15 @@ export async function executePublication({
       completedKeys.add(dataset.key);
     } catch (error) {
       await appendEvent(target, history, {
-        schemaVersion: "tiangong.release.publication-execution-event.v1",
+        schemaVersion: "tiangong.release.publication-execution-event.v2",
         recordedAt: now().toISOString(),
         key: dataset.key,
+        role: operation.role,
+        targetStateCode: operation.targetStateCode,
         action: operation.action,
         outcome: "failed",
+        disposition: null,
+        remoteReceiptId: null,
         stateCode: null,
         canonicalContentHash: null,
         remoteCommands: [],
@@ -184,15 +277,17 @@ export async function executePublication({
   }
   const eventHashes = history.events.map((event) => hashJson(event));
   const receipt = {
-    schemaVersion: "tiangong.release.publication-execution-receipt.v1",
+    schemaVersion: "tiangong.release.publication-execution-receipt.v2",
     status: "published",
     approvalSha256: evidence.approvalSha256,
     executablePlanSha256: evidence.approval.executablePlanSha256,
     payloadManifestSha256: payload.manifestSha256,
     targetId: evidence.approval.targetId,
-    publishedState: evidence.approval.publishedState,
+    stateMapping: evidence.approval.stateMapping,
     completedAt: now().toISOString(),
     datasetCount: evidence.executablePlan.operationCount,
+    resultProcessDatasetCount:
+      evidence.executablePlan.resultProcessOperationCount,
     completedKeys: [...completedKeys].sort(),
     eventCount: history.events.length,
     eventLogHash: hashJson(eventHashes),
@@ -213,6 +308,10 @@ async function executeDataset({
   publishedStateCode,
   fetchImpl,
 }) {
+  // The 120 route is the manager-attested Result Process command only. A Result
+  // Process dataset must never be created or published through the platform
+  // dataset commands, which would leave an intermediate 0 or 100 row.
+  assertNotPlatformRoute(dataset.role, dataset.key);
   let row = await inspectDataset({ runtime, dataset, fetchImpl });
   let observed = classifyRow({
     dataset,
@@ -295,14 +394,25 @@ async function assertLivePreconditions({
   const approvedRows = new Map(
     evidence.snapshot.rows.map((row) => [row.key, row]),
   );
+  const operationByKey = new Map(
+    evidence.executablePlan.operations.map((operation) => [
+      operation.key,
+      operation,
+    ]),
+  );
   const blockers = [];
   for (const dataset of payload.datasets) {
+    const role = operationByKey.get(dataset.key)?.role;
+    // Result Process rows are not readable through the actor-scoped REST
+    // surface once they are at 120, so their precondition is enforced by the
+    // manager-only RPC path instead of this generic inspection.
+    if (isResultProcessRole(role)) continue;
     const row = await inspectDataset({ runtime, dataset, fetchImpl });
     const current = classifyRow({
       dataset,
       row,
       actorUserId: runtime.actorUserId,
-      publishedStateCode: evidence.approval.publishedState.code,
+      publishedStateCode: targetStateCodeForRole(dataset.role),
     });
     const approved = approvedRows.get(dataset.key);
     if (completedKeys.has(dataset.key)) {
@@ -325,6 +435,9 @@ async function assertLivePreconditions({
     )
       blockers.push({
         key: dataset.key,
+        role: dataset.role,
+        targetStateCode:
+          operationByKey.get(dataset.key)?.targetStateCode ?? null,
         code: "target_snapshot_drift",
         approved: approved
           ? {
@@ -352,12 +465,14 @@ async function ensureExecutionDirectory({ target, evidence }) {
   await mkdir(target, { recursive: true });
   await mkdir(path.join(target, "events"), { recursive: true });
   const intent = {
-    schemaVersion: "tiangong.release.publication-execution-intent.v1",
+    schemaVersion: "tiangong.release.publication-execution-intent.v2",
     approvalSha256: evidence.approvalSha256,
     executablePlanSha256: evidence.approval.executablePlanSha256,
     payloadManifestSha256: evidence.approval.payloadManifestSha256,
     targetId: evidence.approval.targetId,
-    publishedState: evidence.approval.publishedState,
+    stateMapping: evidence.approval.stateMapping,
+    managerAttestationRowsHash:
+      evidence.approval.managerAttestation?.rowsHash ?? null,
   };
   const intentPath = path.join(target, "publication-execution-intent.json");
   try {
@@ -405,8 +520,12 @@ async function loadEventHistory(target) {
         "schemaVersion",
         "recordedAt",
         "key",
+        "role",
+        "targetStateCode",
         "action",
         "outcome",
+        "disposition",
+        "remoteReceiptId",
         "stateCode",
         "canonicalContentHash",
         "remoteCommands",
@@ -418,6 +537,8 @@ async function loadEventHistory(target) {
       "Publication execution event",
     );
     if (
+      event.schemaVersion !==
+        "tiangong.release.publication-execution-event.v2" ||
       event.sequence !== index + 1 ||
       event.previousEventSha256 !== previous ||
       file !== `${String(index + 1).padStart(6, "0")}.json`

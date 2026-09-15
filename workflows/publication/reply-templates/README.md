@@ -27,10 +27,12 @@ related:
 - 模板只要求 `command`、`outcome`、`completeness`、`artifacts`、`nextActions` 等共同上下文；exact identity/hash 按当前结果择要呈现，不在模板中重复枚举所有 evidence；
 - Draft Plan 或 Executable Plan 准备成功不表示已经审批、写入或发布；
 - 回复必须披露自动补齐的依赖和因排除而递归剪枝的数据数量；
+- 回复必须披露 mixed-state 目标：Result Process 目标是 120，普通 Unit/Model/support 保持 100；dependency member 不跟随选中组件；
 - 不输出 credential、内部 locator 或未确认的远程状态；
-- Approval 回复必须展示 exact Executable Plan 和 Approval SHA-256；
+- Approval 回复必须展示 exact Executable Plan 和 Approval SHA-256；含 Result Process operation 时还必须说明 manager attestation 是 manager 断言而非机器验证血缘；
 - Execution 回复必须披露独立回读仍待完成，并给出 Receipt/events；
 - 只有 Readback Receipt `status=verified` 时才能回复 Publication 已完成；
+- Result Process 准备回复必须披露 `prepare` 只做只读远程准备：`candidate_content_matches_existing` 仅是内容候选观察，不是授权也不是 no-op 证据；不得声称已写入。Result execute 必须披露没有中间 `0`/`100` row，Result verify 必须披露 Release 自己重算了 byte hash 与 canonical content identity；
 - Portal LCIA Plan 只是未授权计划，只有 exact Plan SHA-256 确认后才能执行相应写入；
 - Portal LCIA V3 package publish 与 projection finalize 是两个独立 exact-confirmation 边界；package-published Event 必须披露 projection 仍 pending 和可能的 unavailable 间隔；
 - Projection-finalized Event 明确保留 `independentReadbackVerified=false`，只有独立回读生成 verified Event 后才能声称公开投影闭环完成；

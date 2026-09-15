@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lca.tiangong.earth/release/publication-execution-event.v2.schema.json",
+  "title": "Publication Execution Event v2 (mixed-state, hash-linked)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "recordedAt",
+    "key",
+    "role",
+    "targetStateCode",
+    "action",
+    "outcome",
+    "stateCode",
+    "canonicalContentHash",
+    "remoteCommands",
+    "error",
+    "sequence",
+    "previousEventSha256",
+    "disposition",
+    "remoteReceiptId"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "tiangong.release.publication-execution-event.v2"
+    },
+    "recordedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "key": {
+      "type": "string",
+      "minLength": 1
+    },
+    "role": {
+      "enum": ["result_process", "unit_process", "lifecycle_model", "support"]
+    },
+    "targetStateCode": {
+      "enum": [100, 120]
+    },
+    "action": {
+      "enum": [
+        "create_then_publish",
+        "publish_existing",
+        "already_published_noop",
+        "reconcile_via_manager_command"
+      ]
+    },
+    "outcome": {
+      "enum": ["started", "published", "already_published", "failed"]
+    },
+    "stateCode": {
+      "type": ["integer", "null"]
+    },
+    "canonicalContentHash": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/hash"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "remoteCommands": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "error": {
+      "type": ["object", "null"]
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "previousEventSha256": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/hash"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "disposition": {
+      "oneOf": [
+        {
+          "enum": [
+            "published",
+            "reused_identical_receipt",
+            "reconciled_after_transport_loss"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "remoteReceiptId": {
+      "oneOf": [
+        {
+          "type": "string",
+          "format": "uuid"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

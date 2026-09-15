@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lca.tiangong.earth/release/result-process-preparation.v2.schema.json",
+  "title": "Result Process Publication Preparation (remote-prepared, per operation)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "status",
+    "publicationAuthorized",
+    "resultPublicationAuthorized",
+    "targetId",
+    "contractVersion",
+    "actorUserId",
+    "targetEndpointFingerprint",
+    "approvalSha256",
+    "executablePlanSha256",
+    "payloadManifestSha256",
+    "sourceKind",
+    "candidateSetHash",
+    "sourceManifestHash",
+    "operationCount",
+    "operationSetHash",
+    "preparedAt",
+    "operations"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "tiangong.release.result-process-preparation.v2"
+    },
+    "status": { "const": "prepared_remote" },
+    "publicationAuthorized": { "const": false },
+    "resultPublicationAuthorized": { "const": false },
+    "targetId": { "type": "string", "minLength": 1 },
+    "contractVersion": { "const": 2 },
+    "actorUserId": { "type": "string", "format": "uuid" },
+    "targetEndpointFingerprint": { "$ref": "#/$defs/hash" },
+    "approvalSha256": { "$ref": "#/$defs/hash" },
+    "executablePlanSha256": { "$ref": "#/$defs/hash" },
+    "payloadManifestSha256": { "$ref": "#/$defs/hash" },
+    "sourceKind": { "const": "manager_attestation" },
+    "candidateSetHash": { "$ref": "#/$defs/hash" },
+    "sourceManifestHash": { "$ref": "#/$defs/hash" },
+    "operationCount": { "type": "integer", "minimum": 1 },
+    "operationSetHash": { "$ref": "#/$defs/hash" },
+    "preparedAt": { "type": "string", "format": "date-time" },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/operation" }
+    }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "operation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "role",
+        "contentType",
+        "table",
+        "uuid",
+        "version",
+        "targetStateCode",
+        "contentText",
+        "contentSha256",
+        "contentHashDomain",
+        "contentByteSize",
+        "candidateContentPath",
+        "candidateSha256",
+        "candidateCanonicalContentHash",
+        "expectedCanonicalContentHash",
+        "candidateSetHash",
+        "sourceManifestHash",
+        "executablePlanHash",
+        "approvalHash",
+        "idempotencyKey",
+        "reason",
+        "managerAttestation",
+        "attestationRowHash",
+        "preparationHash",
+        "preparationClassification",
+        "preparationExistingState"
+      ],
+      "properties": {
+        "key": { "type": "string", "minLength": 1 },
+        "role": { "const": "result_process" },
+        "contentType": { "const": "result-process" },
+        "table": { "const": "processes" },
+        "uuid": { "type": "string", "format": "uuid" },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]{2}\\.[0-9]{2}\\.[0-9]{3}$"
+        },
+        "targetStateCode": { "const": 120 },
+        "contentText": { "type": "string", "minLength": 2 },
+        "contentSha256": { "$ref": "#/$defs/hash" },
+        "contentHashDomain": { "const": "result-process-content.v1" },
+        "contentByteSize": { "type": "integer", "minimum": 2 },
+        "candidateContentPath": { "type": "string", "minLength": 1 },
+        "candidateSha256": { "$ref": "#/$defs/hash" },
+        "candidateCanonicalContentHash": { "$ref": "#/$defs/hash" },
+        "expectedCanonicalContentHash": { "$ref": "#/$defs/hash" },
+        "candidateSetHash": { "$ref": "#/$defs/hash" },
+        "sourceManifestHash": { "$ref": "#/$defs/hash" },
+        "executablePlanHash": { "$ref": "#/$defs/hash" },
+        "approvalHash": { "$ref": "#/$defs/hash" },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "managerAttestation": { "$ref": "#/$defs/hash" },
+        "attestationRowHash": { "$ref": "#/$defs/hash" },
+        "preparationHash": { "$ref": "#/$defs/hash" },
+        "preparationClassification": {
+          "enum": ["absent", "candidate_content_matches_existing", "conflict"]
+        },
+        "preparationExistingState": { "type": ["integer", "null"] }
+      }
+    }
+  }
+}

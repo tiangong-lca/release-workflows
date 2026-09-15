@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lca.tiangong.earth/release/publication-target-snapshot.v2.schema.json",
+  "title": "Publication Target Snapshot v2 (mixed-state)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "targetId",
+    "targetEndpointFingerprint",
+    "actorUserId",
+    "observedAt",
+    "stateMapping",
+    "datasetCount",
+    "resultProcessDatasetCount",
+    "ordinaryDatasetCount",
+    "rows",
+    "fingerprint"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "tiangong.release.publication-target-snapshot.v2"
+    },
+    "targetId": { "type": "string", "minLength": 1 },
+    "targetEndpointFingerprint": { "$ref": "#/$defs/hash" },
+    "actorUserId": { "type": "string", "format": "uuid" },
+    "observedAt": { "type": "string", "format": "date-time" },
+    "stateMapping": { "$ref": "#/$defs/stateMapping" },
+    "datasetCount": { "type": "integer", "minimum": 1 },
+    "resultProcessDatasetCount": { "type": "integer", "minimum": 0 },
+    "ordinaryDatasetCount": { "type": "integer", "minimum": 0 },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/row" }
+    },
+    "fingerprint": { "$ref": "#/$defs/hash" }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "stateMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["roleTargets", "singleGlobalState"],
+      "properties": {
+        "roleTargets": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "result_process",
+            "unit_process",
+            "lifecycle_model",
+            "support"
+          ],
+          "properties": {
+            "result_process": { "const": 120 },
+            "unit_process": { "const": 100 },
+            "lifecycle_model": { "const": 100 },
+            "support": { "const": 100 }
+          }
+        },
+        "singleGlobalState": { "const": false }
+      }
+    },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "table",
+        "uuid",
+        "version",
+        "expectedCanonicalContentHash",
+        "classification",
+        "stateCode",
+        "ownerUserId",
+        "observedContentHash",
+        "blocker"
+      ],
+      "properties": {
+        "key": { "type": "string", "minLength": 1 },
+        "table": { "type": "string", "minLength": 1 },
+        "uuid": { "type": "string", "format": "uuid" },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]{2}\\.[0-9]{2}\\.[0-9]{3}$"
+        },
+        "expectedCanonicalContentHash": { "$ref": "#/$defs/hash" },
+        "classification": {
+          "enum": [
+            "absent",
+            "matching_unpublished",
+            "matching_published",
+            "matching_not_publishable",
+            "content_conflict"
+          ]
+        },
+        "stateCode": { "type": ["integer", "null"] },
+        "ownerUserId": { "type": ["string", "null"] },
+        "observedContentHash": {
+          "oneOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }]
+        },
+        "blocker": { "type": ["object", "null"] }
+      }
+    }
+  }
+}
