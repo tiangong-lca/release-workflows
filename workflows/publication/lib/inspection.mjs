@@ -1,6 +1,7 @@
 import path from "node:path";
 import { fail, hashJson } from "./common.mjs";
 import {
+  assertExactObject,
   readJson,
   verifyJsonHash,
   writeCanonical,
@@ -8,12 +9,19 @@ import {
 } from "./io.mjs";
 import { loadVerifiedPayload } from "./payload.mjs";
 import { inspectDataset, resolvePublicationRuntime } from "./remote.mjs";
+import {
+  buildPublicationOperations,
+  isResultProcessRole,
+  ORDINARY_TARGET_STATE,
+  stateMapping,
+  targetStateCodeForRole,
+} from "./publication-state.mjs";
 
 export async function inspectPublicationTarget({
   planDir,
   payloadDir,
   outDir,
-  publishedStateCode = 100,
+  publishedStateCode = ORDINARY_TARGET_STATE,
   env = process.env,
   fetchImpl = globalThis.fetch,
   now = () => new Date(),
@@ -22,6 +30,15 @@ export async function inspectPublicationTarget({
     fail(
       "publication_state_mapping_invalid",
       "Published state code must be a non-negative integer",
+    );
+  if (publishedStateCode !== ORDINARY_TARGET_STATE)
+    fail(
+      "publication_state_mapping_out_of_scope",
+      "Publication derives each operation state from its dataset role; a global published state code cannot be overridden",
+      {
+        requested: publishedStateCode,
+        ordinaryStateCode: ORDINARY_TARGET_STATE,
+      },
     );
   const planningRoot = path.resolve(planDir);
   const { value: draftPlan } = await readJson(
@@ -49,15 +66,17 @@ export async function inspectPublicationTarget({
 
   const rows = [];
   const blockers = [];
+  const observationByKey = new Map();
   for (const dataset of payload.datasets) {
     const row = await inspectDataset({ runtime, dataset, fetchImpl });
     const observed = classifyRow({
       dataset,
       row,
       actorUserId: runtime.actorUserId,
-      publishedStateCode,
+      publishedStateCode: targetStateCodeForRole(dataset.role),
     });
     rows.push(observed);
+    observationByKey.set(dataset.key, observed);
     if (observed.blocker)
       blockers.push({ key: dataset.key, ...observed.blocker });
   }
@@ -67,6 +86,10 @@ export async function inspectPublicationTarget({
       "Target inspection found content, ownership, or state conflicts",
       { blockers },
     );
+  const operations = buildPublicationOperations({
+    datasets: payload.datasets,
+    observationByKey,
+  });
   const fingerprintRows = rows.map(
     ({
       key,
@@ -86,41 +109,47 @@ export async function inspectPublicationTarget({
       observedContentHash,
     }),
   );
+  const operationFingerprintRows = operations.map(
+    ({ key, role, targetStateCode, action, observedStateCode }) => ({
+      key,
+      role,
+      targetStateCode,
+      action,
+      observedStateCode,
+    }),
+  );
   const snapshot = {
-    schemaVersion: "tiangong.release.publication-target-snapshot.v1",
+    schemaVersion: "tiangong.release.publication-target-snapshot.v2",
     targetId: draftPlan.target.id,
     targetEndpointFingerprint: runtime.targetEndpointFingerprint,
     actorUserId: runtime.actorUserId,
     observedAt: now().toISOString(),
-    publishedState: { semantic: "published", code: publishedStateCode },
+    stateMapping: stateMapping(),
     datasetCount: rows.length,
+    resultProcessDatasetCount: operations.filter((op) =>
+      isResultProcessRole(op.role),
+    ).length,
+    ordinaryDatasetCount: operations.filter(
+      (op) => !isResultProcessRole(op.role),
+    ).length,
     rows,
     fingerprint: hashJson(fingerprintRows),
   };
-  const operations = rows.map((row) => ({
-    key: row.key,
-    table: row.table,
-    uuid: row.uuid,
-    version: row.version,
-    expectedCanonicalContentHash: row.expectedCanonicalContentHash,
-    action:
-      row.classification === "absent"
-        ? "create_then_publish"
-        : row.classification === "matching_published"
-          ? "already_published_noop"
-          : "publish_existing",
-  }));
   const executablePlan = {
-    schemaVersion: "tiangong.release.publication-executable-plan.v1",
+    schemaVersion: "tiangong.release.publication-executable-plan.v2",
     status: "ready_for_approval",
     publicationAuthorized: false,
+    resultPublicationAuthorized: false,
     targetId: draftPlan.target.id,
+    contractVersion: 2,
     publicationDraftPlanSha256: hashJson(draftPlan),
     payloadManifestSha256: payload.manifestSha256,
     targetSnapshotSha256: hashJson(snapshot),
     targetFingerprint: snapshot.fingerprint,
-    publishedState: snapshot.publishedState,
+    stateMapping: snapshot.stateMapping,
     operationCount: operations.length,
+    resultProcessOperationCount: snapshot.resultProcessDatasetCount,
+    operationFingerprint: hashJson(operationFingerprintRows),
     operations,
   };
   const target = path.resolve(outDir);

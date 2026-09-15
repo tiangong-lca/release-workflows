@@ -1,8 +1,8 @@
 version: 1
 layout: repo
-lastReviewedAt: "2026-09-13"
-lastReviewedCommit: "ba2c97947a9be5d9e99e473963e7fbf6efbdf8b1"
-lastReviewedNote: "Release #72: canonicalRepo migrated to tiangong-lca/release-workflows and AGENTS branch facts corrected against live GitHub evidence (feature/issue-59 deleted, tracking issue closed); public visibility and workflow contracts unchanged."
+lastReviewedAt: "2026-09-15"
+lastReviewedCommit: "c7f62de"
+lastReviewedNote: "Release #74: reviewed with the Publication mixed-state role-to-state mapping and the manager-attested Result Process 120 transport. Ownership, routing, coverage and rules are unchanged; the new publication contracts and test-support live under the existing publication-workflow domain, so no ownership or coverage entry was added."
 
 catalog:
   repos:

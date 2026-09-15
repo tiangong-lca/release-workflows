@@ -93,3 +93,44 @@ export function assertExactObject(value, allowedKeys, code, label) {
     fail(code, `${label} contains unknown fields`, { unknown: unknown.sort() });
   return value;
 }
+
+/**
+ * Recursively reject unknown fields.
+ *
+ * `shape` mirrors the artifact structure:
+ *   - a nested object recurses into the child object;
+ *   - a one-element array recurses into every element;
+ *   - `undefined` requires the key to be present but does not constrain its
+ *     value type (the CLI validates those values explicitly);
+ *   - `null` requires the key to be present and exactly null.
+ */
+export function deepAssertExactObject(value, shape, code, label = "") {
+  const at = label.trim();
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    fail(code, `${at || "Artifact"} must be an object`);
+  const unknown = Object.keys(value).filter((key) => !(key in shape));
+  if (unknown.length)
+    fail(code, `${at || "Artifact"} contains unknown fields`, {
+      unknown: unknown.sort(),
+      at: at || null,
+    });
+  for (const [key, child] of Object.entries(shape)) {
+    const next = `${at}.${key}`;
+    if (!(key in value)) fail(code, `${next} is missing`, { at: next });
+    const childValue = value[key];
+    if (Array.isArray(child)) {
+      if (!Array.isArray(childValue))
+        fail(code, `${next} must be an array`, { at: next });
+      for (const [index, item] of childValue.entries())
+        deepAssertExactObject(item, child[0], code, `${next}[${index}]`);
+      continue;
+    }
+    if (child && typeof child === "object") {
+      deepAssertExactObject(childValue, child, code, next);
+      continue;
+    }
+    if (child === null && childValue !== null)
+      fail(code, `${next} must be null`, { at: next });
+  }
+  return value;
+}

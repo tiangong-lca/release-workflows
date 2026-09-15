@@ -17,9 +17,9 @@ checkPaths:
   - README.md
   - .docpact/config.yaml
   - workflows/**
-lastReviewedAt: 2026-09-13
-lastReviewedCommit: ba2c97947a9be5d9e99e473963e7fbf6efbdf8b1
-lastReviewedNote: "Release #72: reviewed canonical repository identity migration to tiangong-lca/release-workflows; architecture, Workflow boundaries, and publication semantics unchanged."
+lastReviewedAt: 2026-09-15
+lastReviewedCommit: c7f62de
+lastReviewedNote: "Release #74: reviewed the Publication boundary only - per-operation role-to-state mapping, the Database-owned manager-attested Result Process 120 route, and hash-domain separation. Workflow topology, ownership and other boundaries unchanged."
 related:
   - ../AGENTS.md
   - ../README.md
@@ -132,8 +132,8 @@ Workflow 拥有意图整理、动作选择、本地证据和恢复上下文。�
 - Candidate Publication Catalog：Candidate v2 内 hash-bound 的 exact identity/reference/component handoff；
 - Publication Scope Resolution：Publication 对 request 的确定性闭包与剪枝证据；
 - Publication Draft Plan：绑定 Candidate/scope/target intent、尚未授权且不可原地修改的本地计划；
-- Publication Executable Plan：绑定 payload、Target Snapshot、状态 mapping 和每个 exact operation 的待批准计划；
-- Publication Approval / Execution / Readback：F4 授权、哈希链执行和独立终态证据；
+- Publication Executable Plan v2：绑定 payload、Target Snapshot v2、逐 operation 的 role/contentType/targetStateCode 状态 mapping 和每个 exact operation 的待批准计划；
+- Publication Approval v2 / Manager Attestation / Result Process Preparation / Execution v2 / Readback v2：F4 授权、远程 prepared Result 写入请求、哈希链执行和独立终态证据；
 - Decision Evidence：绑定精确 subject hash、target 和决定人的范围或授权证据。
 
 Remote Resource 的状态由外部系统权威持有。本地 artifact 由内容 hash 标识。Draft 可以修改；Frozen Spec、Candidate 和已执行产物不得原地改写。
@@ -164,7 +164,9 @@ Dataset Transformation 以父 Candidate 和精确 dataset identity/version/hash 
 
 Publication 的 Candidate dataset recipe 只消费不可变 Candidate v2。它支持 Unit Process、Result、Both 和 exact include/exclude，计算 forward closure、transitive reverse pruning 和 reference-complete effective set，并只物化选中 TIDAS payload。
 
-Actor-scoped Target Snapshot 按 UUID + Version、canonical content、owner 和 state 分类；用户只批准 exact Executable Plan hash。执行使用现有平台 dataset commands，对缺失 row 创建、对 matching draft 转换状态、对 matching published 幂等跳过，并用哈希链 event 在部分失败后恢复。平台未提供跨多个 Edge 请求的全局事务，因此该边界明确是 resumable/idempotent，不声称 atomic promotion。只有新一轮 exact remote queries 生成的 Readback Receipt 才证明完成。Publication 不拥有内容变换或包重建。
+Actor-scoped Target Snapshot 按 UUID + Version、canonical content、owner 和 **该 dataset role 的目标状态** 分类；目标状态逐 operation 派生：`result_process` 为 `120`，普通 `unit_process`、`lifecycle_model` 与 `support` 保持 `100`。dependency member 永远跟随自己的 role，不因为被 Result 组件选中而映射到 120，因此计划是 mixed-state 而不是单一全局状态；用户只批准 exact Executable Plan hash。普通数据集的执行使用现有平台 dataset commands，对缺失 row 创建、对 matching draft 转换状态、对 matching published 幂等跳过；Result Process 的 120 写入只能走 Database-owned manager-only prepare/publish/readback RPC：只读 prepare 解析 server preparation digest 与内容候选分类，execute 直接创建 120（无中间 `0`/`100` row）并以 exact receipt 调和丢失响应，readback 只按 exact receipt binding 取回存储内容。验证需要两半同时成立：服务端 `verified` 三个布尔全为 true（本地无法证明 live manager membership），以及 Release 自己重算的 stored-byte hash、canonical content identity 与完整 receipt binding（含 `preparationHash`）。两者都用哈希链 event 在部分失败后恢复。平台未提供跨多个 Edge 请求的全局事务，因此该边界明确是 resumable/idempotent，不声称 atomic promotion。只有新一轮 exact remote queries 生成的 Readback Receipt 才证明完成。Publication 不拥有内容变换或包重建。
+
+Result Process 的 F4 授权是 Data Product Manager 的不可变 attestation：它精确绑定 UUID、version、实际 content hash、`result_process` role、目标 120、candidate/source 证据与 plan SHA-256，并明确标记 `lineage: not_machine_verified`，即 manager 断言而非机器验证的计算血缘。Attestation 不原地更新，冲突发布必须使用新的显式授权 identity/version，既有 120 row 不被降级或改写，legacy 100 也不被自动提升。旧的全部 state `100` 的 Result approval 不能授权 Result 写入，但历史证据保持可读。Database `preparationHash`、Release `executablePlanHash` 与 Release `approvalHash` 保持分离，prepare 不依赖未来的 plan 或 approval。stored-byte hash domain（`result-process-content.v1`）与客户端 RFC 8785 canonicalization 不被假定相等，入站 Candidate bytes 保持原样；两个 domain 在 durable 事件与 receipt 中始终分开记录，byte hash 不会被标记为 canonical。
 
 Publication 内另有独立的 Portal LCIA projection recipe。它从 ready V3 package 和 Worker prepared projection 开始，只调用 Database-owned actor RPC。Package prepare 冻结 package/projection/artifact hash、Process-set 与 current-publication precondition，由 Database 计算 exact `publishPlanHash`；第一个 confirmation 执行幂等 package publish 和独立 projection-prepare readback。第二个 confirmation 执行 projection finalize，新的 readback 必须通过与匿名 RLS 相同的完整 public-visibility predicate。Package Publication Plan 与 Projection Plan 是两个 F4 授权边界；package-published、projection-finalized、projection-verified 和 projection-revoked 使用一个严格 lifecycle-event contract，只记录 immutable parent、主体与该阶段新增观察，不复制完整上游证据，也不保存临时 RPC response hash。Revoke 绑定 exact finalized event 和 projection content hash，并以 revoked readback 收敛。Package publish 与 projection finalize 没有跨 RPC 事务，中间状态由 event 保留且 Portal 数值可以 unavailable。该 recipe 不进入 Candidate dataset payload/create/publish 路径，不访问 private artifact 数据面；Database publication/projection 状态继续是权威真相。
 
@@ -193,7 +195,7 @@ Publication 内另有独立的 Portal LCIA projection recipe。它从 ready V3 p
 - 确定性计算、验证和打包不得由 Agent 模拟；
 - 共享代码只提取已被多个 Workflow 实际复用的机制；
 - 不为目录对称创建空运行时抽象；
-- Dataset Transformation 只实现已确认的 Unit/Result weighted-aggregate operations，不通过通用 patch、隐式 LifecycleModel 聚合或表达式扩大语义；Publication 只实现已确认的 exact-plan-hash、actor-scoped 平台 adapter、状态 mapping，以及 Database-owned Portal LCIA V3 package publish 和 projection finalize/readback/revoke 契约。
+- Dataset Transformation 只实现已确认的 Unit/Result weighted-aggregate operations，不通过通用 patch、隐式 LifecycleModel 聚合或表达式扩大语义；Publication 只实现已确认的 exact-plan-hash、actor-scoped 平台 adapter、按 role 派生的状态 mapping，以及 Database-owned Result Process 120 与 Portal LCIA V3 package publish 和 projection finalize/readback/revoke 契约。
 
 ## 当前实现基线
 
@@ -201,4 +203,4 @@ Publication 内另有独立的 Portal LCIA projection recipe。它从 ready V3 p
 - Result Materialization 已实现 intake、Result Process/LifecycleModel 生成、验证和本地后台 Job。
 - Release Candidate 已实现 Elementary Flow cache、Release Intake、Package build、失败影响分析、人工审核和 Candidate qualification。
 - Dataset Transformation 已实现 aggregation-target recommendation/decision、Draft inspect、conflict/decision、Frozen Spec、加权 Unit/Result Process、validation/conditional handoff、CLI、schemas、测试和真实三 Process 试验。
-- Publication 已实现 Candidate v2 handoff、范围解析、exact payload、Target Snapshot、Approval、可恢复执行、独立回读，以及 opt-in Portal LCIA V3 package plan/publish、projection prepare/finalize/verify/revoke、CLI 和测试。
+- Publication 已实现 Candidate v2 handoff、范围解析、exact payload、Target Snapshot v2、按 dataset role 派生的逐 operation 混合状态计划、Approval v2 + manager attestation、可恢复执行、独立回读，Result Process 的 120 prepare/execute/readback，以及 opt-in Portal LCIA V3 package plan/publish、projection prepare/finalize/verify/revoke、CLI 和测试。已知限制：旧 Result `100` plan 不再被接受为授权；`sourceKind` 是 manager attestation 而非 machine-verified 血缘；不声称跨 RPC 原子性，也不做历史迁移。

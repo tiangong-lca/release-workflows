@@ -12,9 +12,9 @@ whenToUpdate:
   - 当所有 Workflow 共享的证据、权限、恢复或文档规则变化时
 checkPaths:
   - workflows/**
-lastReviewedAt: 2026-09-13
-lastReviewedCommit: ba2c97947a9be5d9e99e473963e7fbf6efbdf8b1
-lastReviewedNote: "Release #72: reviewed canonical repository identity migration to tiangong-lca/release-workflows; shared Workflow rules unchanged."
+lastReviewedAt: 2026-09-15
+lastReviewedCommit: c7f62de
+lastReviewedNote: "Reviewed for Release #74: the shared Publication rule only. Other shared evidence, authorization and recovery rules unchanged."
 related:
   - ../AGENTS.md
   - ../README.md
@@ -47,7 +47,7 @@ related:
 - 大型产物写入文件或对象存储；stdout 只返回有界摘要和引用。
 - 远程状态由外部系统权威持有；本地只保存观察、引用和证据。
 - Release Candidate 一经成功冻结即不可原地修改；Publication 可以通过新 plan 选择引用完整的子集，数据再加工或 Candidate bytes 变化必须生成绑定父 Candidate hash 的新 Candidate。
-- Publication 的 Candidate dataset recipe 只消费已经冻结并验证的 Candidate，不得改变数据内容；范围解析、payload、target snapshot、Approval、execution events/receipt 和 independent readback 都产生独立 hash-bound artifacts。
+- Publication 的 Candidate dataset recipe 只消费已经冻结并验证的 Candidate，不得改变数据内容；范围解析、payload、target snapshot、Approval、execution events/receipt 和 independent readback 都产生独立 hash-bound artifacts。发布目标状态按 dataset role 逐 operation 派生：Result Process 为 `120`，普通 Unit Process、LifecycleModel 和 support 保持 `100`；dependency member 永远跟随自己的 role，不跟随选中组件；Result Process 的 `120` 写入走 Database-owned manager-attested prepare/publish/readback，直接创建 120，不经过平台 `0`/`100` 命令，且其独立回读只使用 exact receipt binding。
 - Publication 的 Portal LCIA projection recipe 只消费 Database 已确认的 ready V3 package 和 Worker prepared projection；它先用 Database-computed exact plan hash 发布 package，再 finalize/verify/revoke projection，不读取 private artifact；两个待确认 Plan 是 F4 授权边界，中间和终态观察使用统一、严格、只追加的 lifecycle event，Database 继续拥有远程真相。
 
 ## 人工决定

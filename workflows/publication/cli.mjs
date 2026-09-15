@@ -15,6 +15,11 @@ import {
   verifyPortalLciaProjectionPublication,
 } from "./lib/portal-lcia-projection.mjs";
 import { verifyPublicationReadback } from "./lib/readback.mjs";
+import {
+  executeResultProcessPublication,
+  prepareResultProcessPublication,
+  verifyResultProcessReadback,
+} from "./lib/result-process.mjs";
 import { replyTemplateFor } from "./reply-template-registry.mjs";
 
 const CLI_PATH = fileURLToPath(new URL("./cli.mjs", import.meta.url));
@@ -33,11 +38,13 @@ const VALUE_OPTIONS = new Set([
   "finalization-dir",
   "package-plan-dir",
   "package-publication-dir",
+  "result-preparation-dir",
   "package-id",
   "default-impact-category",
   "published-state-code",
   "confirm",
   "approved-by",
+  "attested-by-user-id",
   "expires-at",
   "reason",
   "out-dir",
@@ -49,11 +56,19 @@ const HELP = `release-publication <command> [options]
 
 Candidate-bound dataset Publication plus an opt-in Portal LCIA package/projection workflow. Remote reads and writes always use an actor-scoped session; service-role secrets are not accepted.
 
+Dataset publication target state follows the dataset role, per operation: Result Process
+datasets target state 120 through the manager-attested Database command, and ordinary Unit
+Process, LifecycleModel and support datasets keep the existing state 100 platform commands.
+A plan is therefore mixed-state, not a single global state.
+
 Commands:
   plan prepare          Resolve dependency-safe scope into an unapproved Draft Plan
   payload materialize  Extract only the resolved TIDAS datasets from the Candidate
   target inspect        Compare exact UUID + Version + content against the platform
   approval create       Approve the exact executable-plan SHA-256
+  result-process prepare  Remotely prepare the manager-attested Result Process writes
+  result-process execute  Publish the prepared Result Process identities at state 120
+  result-process verify   Independently read back each Result Process publication
   publish execute       Recheck the target, create missing rows, and publish exact rows
   readback verify       Independently re-read every approved row and emit a receipt
   projection package-plan     Prepare an exact V3 LCIA package publication plan
@@ -73,8 +88,8 @@ Core options:
   --finalization-dir <path>       Portal LCIA projection finalization directory
   --package-plan-dir <path>       Portal LCIA package publication plan directory
   --package-publication-dir <path>  Verified package publication directory
+  --result-preparation-dir <path>   Prepared Result Process request directory
   --out-dir <path>                New output directory (execution reuses it for resume)
-  --published-state-code <int>    Semantic published-state mapping (default: 100)
   --json                          Emit one bounded JSON object
 
 plan prepare:
@@ -85,17 +100,29 @@ payload materialize:
   --candidate <path> --plan-dir <path> --out-dir <path>
 
 target inspect:
-  --plan-dir <path> --payload-dir <path> [--published-state-code 100] --out-dir <path>
+  --plan-dir <path> --payload-dir <path> --out-dir <path>
 
 approval create:
   --inspection-dir <path> --confirm <executable-plan-sha256>
-  --approved-by <stable-actor-id> [--expires-at <ISO-8601>] [--reason <text>] --out-dir <path>
+  --approved-by <stable-actor-id> [--attested-by-user-id <manager-uuid>]
+  [--expires-at <ISO-8601>] [--reason <text>] --out-dir <path>
+
+result-process prepare:
+  --approval-dir <path> --payload-dir <path> --out-dir <path>
+
+result-process execute:
+  --result-preparation-dir <path> --payload-dir <path> --out-dir <path>
+
+result-process verify:
+  --execution-dir <path> --payload-dir <path> --out-dir <path>
 
 publish execute:
   --approval-dir <path> --payload-dir <path> --out-dir <path>
+  [--result-preparation-dir <path>]   required when the plan writes a Result Process
 
 readback verify:
   --execution-dir <path> --payload-dir <path> --out-dir <path>
+  [--result-preparation-dir <path>]   required when the plan writes a Result Process
 
 projection package-plan:
   --package-id <uuid> --default-impact-category <id> --reason <text> --out-dir <path>
@@ -116,6 +143,13 @@ projection revoke:
   --finalization-dir <path> --confirm <finalized-event-sha256>
   --reason <text> --out-dir <path>
 
+Notes:
+  --published-state-code is retained only as a fail-closed guard. Any value other than the
+  ordinary state 100 is out of scope, because role-to-state mapping is per operation.
+  Result Process writes go to state 120 only through the Database-owned manager-attested
+  prepare/publish/readback RPCs; the platform dataset commands are never used for them and
+  no intermediate 0 or 100 row is ever created.
+
 Required remote environment:
   TIANGONG_LCA_API_BASE_URL
   TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY
@@ -134,6 +168,9 @@ async function main() {
     "payload materialize": payloadMaterialize,
     "target inspect": targetInspect,
     "approval create": approvalCreate,
+    "result-process prepare": resultProcessPrepare,
+    "result-process execute": resultProcessExecute,
+    "result-process verify": resultProcessVerify,
     "publish execute": publishExecute,
     "readback verify": readbackVerify,
     "projection package-plan": projectionPackagePlan,
@@ -250,10 +287,13 @@ async function targetInspect(options) {
   return success("target inspect", "publication_target_inspected", {
     completeness: "executable_plan_ready_for_approval",
     datasetCount: result.snapshot.datasetCount,
+    resultProcessDatasetCount: result.snapshot.resultProcessDatasetCount,
+    ordinaryDatasetCount: result.snapshot.ordinaryDatasetCount,
+    stateMapping: result.snapshot.stateMapping,
     targetFingerprint: result.snapshot.fingerprint,
-    publishedState: result.snapshot.publishedState,
     executablePlanSha256: result.executablePlanSha256,
     publicationAuthorized: false,
+    resultPublicationAuthorized: false,
     artifacts: {
       targetSnapshot: path.join(
         result.path,
@@ -274,6 +314,9 @@ async function targetInspect(options) {
         result.executablePlanSha256,
         "--approved-by",
         "<actor-id>",
+        ...(result.snapshot.resultProcessDatasetCount
+          ? ["--attested-by-user-id", "<data-product-manager-uuid>"]
+          : []),
         "--out-dir",
         `${result.path}-approval`,
         "--json",
@@ -294,32 +337,149 @@ async function approvalCreate(options) {
     outDir: path.resolve(options["out-dir"]),
     confirmPlanSha256: options.confirm,
     approvedBy: options["approved-by"],
+    attestedByUserId: options["attested-by-user-id"] ?? null,
     expiresAt: options["expires-at"],
     reason: options.reason ?? null,
   });
   return success("approval create", "publication_approved", {
-    completeness: "approved_execution_pending",
+    completeness: result.approval.resultPublicationAuthorized
+      ? "approved_result_process_write_pending"
+      : "approved_execution_pending",
     executablePlanSha256: result.executablePlanSha256,
     approvalSha256: result.approvalSha256,
     approvedBy: result.approval.approvedBy,
+    attestedByUserId:
+      result.approval.managerAttestation?.attestedByUserId ?? null,
+    resultPublicationAuthorized: result.approval.resultPublicationAuthorized,
     expiresAt: result.approval.expiresAt,
     publicationAuthorized: true,
     artifacts: {
       approval: path.join(result.path, "publication-approval.json"),
     },
+    nextActions: result.approval.resultPublicationAuthorized
+      ? [
+          nextAction("prepare_result_process_write", [
+            "result-process",
+            "prepare",
+            "--approval-dir",
+            result.path,
+            "--payload-dir",
+            "<payload-dir>",
+            "--out-dir",
+            `${result.path}-result-preparation`,
+            "--json",
+          ]),
+        ]
+      : [
+          nextAction("execute_publication", [
+            "publish",
+            "execute",
+            "--approval-dir",
+            result.path,
+            "--payload-dir",
+            "<payload-dir>",
+            "--out-dir",
+            `${result.path}-execution`,
+            "--json",
+          ]),
+        ],
+  });
+}
+
+async function resultProcessPrepare(options) {
+  requireOptions(options, ["approval-dir", "payload-dir", "out-dir"]);
+  const result = await prepareResultProcessPublication({
+    approvalDir: path.resolve(options["approval-dir"]),
+    payloadDir: path.resolve(options["payload-dir"]),
+    outDir: path.resolve(options["out-dir"]),
+  });
+  const [first] = result.preparation.operations;
+  return success("result-process prepare", "result_process_write_prepared", {
+    completeness: "remote_preparation_registered_write_pending",
+    operationCount: result.preparation.operationCount,
+    targetStateCode: first.targetStateCode,
+    sourceKind: result.preparation.sourceKind,
+    operationSetHash: result.preparation.operationSetHash,
+    preparationSha256: result.preparationSha256,
+    preparationHash: first.preparationHash,
+    preparationClassification: first.preparationClassification,
+    existingState: first.preparationExistingState,
+    resultPublicationAuthorized: true,
+    artifacts: {
+      preparation: path.join(result.path, "result-process-preparation.json"),
+    },
     nextActions: [
-      nextAction("execute_publication", [
-        "publish",
+      nextAction("publish_prepared_result_process", [
+        "result-process",
         "execute",
-        "--approval-dir",
+        "--result-preparation-dir",
         result.path,
         "--payload-dir",
-        "<payload-dir>",
+        path.resolve(options["payload-dir"]),
         "--out-dir",
         `${result.path}-execution`,
         "--json",
       ]),
     ],
+  });
+}
+
+async function resultProcessExecute(options) {
+  requireOptions(options, ["result-preparation-dir", "payload-dir", "out-dir"]);
+  const result = await executeResultProcessPublication({
+    preparationDir: path.resolve(options["result-preparation-dir"]),
+    payloadDir: path.resolve(options["payload-dir"]),
+    outDir: path.resolve(options["out-dir"]),
+  });
+  return success("result-process execute", "result_process_write_executed", {
+    completeness: "remote_write_complete_independent_readback_pending",
+    operationCount: result.receipt.operationCount,
+    completedKeys: result.receipt.completedKeys,
+    executionReceiptSha256: result.receiptSha256,
+    reused: result.reused,
+    artifacts: {
+      executionReceipt: path.join(
+        result.path,
+        "result-process-execution-receipt.json",
+      ),
+      executionEvents: path.join(result.path, "events"),
+    },
+    nextActions: [
+      nextAction("verify_result_process_readback", [
+        "result-process",
+        "verify",
+        "--execution-dir",
+        result.path,
+        "--payload-dir",
+        path.resolve(options["payload-dir"]),
+        "--out-dir",
+        `${result.path}-readback`,
+        "--json",
+      ]),
+    ],
+  });
+}
+
+async function resultProcessVerify(options) {
+  requireOptions(options, ["execution-dir", "payload-dir", "out-dir"]);
+  const result = await verifyResultProcessReadback({
+    executionDir: path.resolve(options["execution-dir"]),
+    payloadDir: path.resolve(options["payload-dir"]),
+    outDir: path.resolve(options["out-dir"]),
+  });
+  return success("result-process verify", "result_process_readback_verified", {
+    completeness: "result_process_publication_complete",
+    operationCount: result.receipt.operationCount,
+    targetStateCode: 120,
+    verifiedSetHash: result.receipt.verifiedSetHash,
+    readbackReceiptSha256: result.receiptSha256,
+    artifacts: {
+      readbackReceipt: path.join(
+        result.path,
+        "result-process-readback-receipt.json",
+      ),
+    },
+    nextActions: [],
   });
 }
 
@@ -329,10 +489,14 @@ async function publishExecute(options) {
     approvalDir: path.resolve(options["approval-dir"]),
     payloadDir: path.resolve(options["payload-dir"]),
     outDir: path.resolve(options["out-dir"]),
+    resultPreparationDir: options["result-preparation-dir"]
+      ? path.resolve(options["result-preparation-dir"])
+      : null,
   });
   return success("publish execute", "publication_executed", {
     completeness: "remote_mutation_complete_independent_readback_pending",
     datasetCount: result.receipt.datasetCount,
+    resultProcessDatasetCount: result.receipt.resultProcessDatasetCount,
     completedKeys: result.receipt.completedKeys,
     executionReceiptSha256: result.receiptSha256,
     reused: result.reused,
@@ -365,10 +529,15 @@ async function readbackVerify(options) {
     executionDir: path.resolve(options["execution-dir"]),
     payloadDir: path.resolve(options["payload-dir"]),
     outDir: path.resolve(options["out-dir"]),
+    resultPreparationDir: options["result-preparation-dir"]
+      ? path.resolve(options["result-preparation-dir"])
+      : null,
   });
   return success("readback verify", "publication_readback_verified", {
     completeness: "publication_complete",
     datasetCount: result.receipt.datasetCount,
+    resultProcessDatasetCount: result.receipt.resultProcessDatasetCount,
+    stateMapping: result.receipt.stateMapping,
     verifiedSetHash: result.receipt.verifiedSetHash,
     readbackReceiptSha256: result.receiptSha256,
     artifacts: {

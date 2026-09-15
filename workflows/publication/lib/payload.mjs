@@ -55,6 +55,7 @@ export async function materializePublicationPayload({
     );
   const catalog = JSON.parse(catalogBytes.toString("utf8"));
   requireDraftBindings({ candidate, draftPlan, resolution, catalogBytes });
+  await requireCanonicalIndexBinding({ candidateRoot, candidate, catalog });
 
   const tidasPackages = (candidate.packages ?? [])
     .filter((artifact) => artifact.path.endsWith(".tidas.zip"))
@@ -340,6 +341,98 @@ function requireDraftBindings({
       "publication_draft_binding_mismatch",
       "Publication Draft Plan bindings do not match Candidate scope evidence",
     );
+}
+
+/**
+ * Bind the Publication catalog to the Candidate's own canonical dataset index.
+ *
+ * The catalog is owned by Release Candidate and carries the exact
+ * `canonicalContentHash` that the 120 write attests. Recomputing those hashes
+ * from the canonical dataset files here means the attested content is anchored
+ * to the frozen Candidate bytes, not to the catalog's own claim about them.
+ */
+async function requireCanonicalIndexBinding({
+  candidateRoot,
+  candidate,
+  catalog,
+}) {
+  const indexPath = path.join(candidateRoot, "canonical-dataset-index.json");
+  const index = await readJson(indexPath, "candidate_dataset_index_missing");
+  verifyJsonHash(
+    index.value,
+    candidate.canonicalDatasetIndexSha256,
+    "candidate_dataset_index_hash_mismatch",
+    "Candidate canonical dataset index",
+  );
+  // The Candidate freezes the index as canonical JSON, so the binding is over
+  // the canonical content hash rather than the on-disk byte layout.
+  const indexDocument = index.value;
+  if (
+    catalog.canonicalDatasetIndexSha256 !==
+    candidate.canonicalDatasetIndexSha256
+  )
+    fail(
+      "candidate_publication_catalog_index_mismatch",
+      "Publication catalog is not bound to this Candidate canonical dataset index",
+    );
+  const indexByKey = new Map();
+  for (const entry of indexDocument.datasets ?? []) {
+    const key = `${entry.datasetType}:${String(entry.uuid).toLowerCase()}@${entry.version}`;
+    if (indexByKey.has(key))
+      fail(
+        "candidate_dataset_index_identity_duplicate",
+        `Candidate canonical dataset index repeats an identity: ${key}`,
+      );
+    indexByKey.set(key, entry);
+  }
+  if (indexByKey.size !== catalog.datasetCount)
+    fail(
+      "candidate_publication_catalog_index_mismatch",
+      "Publication catalog dataset count differs from the canonical dataset index",
+      { catalogCount: catalog.datasetCount, indexCount: indexByKey.size },
+    );
+  const canonicalRoot = path.join(candidateRoot, "canonical");
+  for (const dataset of catalog.datasets ?? []) {
+    const entry = indexByKey.get(dataset.key);
+    if (
+      !entry ||
+      entry.role !== dataset.role ||
+      entry.path !== dataset.path ||
+      entry.sha256 !== dataset.sha256
+    )
+      fail(
+        "candidate_publication_catalog_index_mismatch",
+        `Publication catalog entry does not match the canonical dataset index: ${dataset.key}`,
+      );
+    const file = containedPath(canonicalRoot, entry.path);
+    const bytes = await readFile(file).catch(() => null);
+    if (!bytes)
+      fail(
+        "candidate_canonical_dataset_missing",
+        `Candidate canonical dataset is missing: ${entry.path}`,
+      );
+    verifyBytes(
+      bytes,
+      entry.sha256,
+      "candidate_canonical_dataset_hash_mismatch",
+      entry.path,
+    );
+    let document;
+    try {
+      document = JSON.parse(bytes.toString("utf8"));
+    } catch {
+      fail(
+        "candidate_canonical_dataset_json_invalid",
+        `Candidate canonical dataset is not JSON: ${entry.path}`,
+      );
+    }
+    if (hashJson(document) !== dataset.canonicalContentHash)
+      fail(
+        "candidate_canonical_content_hash_mismatch",
+        `Attested canonical content hash does not match the frozen Candidate bytes: ${dataset.key}`,
+        { attested: dataset.canonicalContentHash },
+      );
+  }
 }
 
 function tableFor(datasetType) {

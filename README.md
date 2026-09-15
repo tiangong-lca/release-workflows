@@ -19,9 +19,9 @@ checkPaths:
   - docs/architecture.md
   - workflows/**
   - .docpact/config.yaml
-lastReviewedAt: 2026-09-13
-lastReviewedCommit: ba2c97947a9be5d9e99e473963e7fbf6efbdf8b1
-lastReviewedNote: "Release #72: reviewed canonical repository identity migration to tiangong-lca/release-workflows; project goals and five Workflow navigation unchanged."
+lastReviewedAt: 2026-09-15
+lastReviewedCommit: c7f62de
+lastReviewedNote: "Reviewed for Release #74: the Publication section and current-status line only. Project goals, five Workflow navigation and the two post-Candidate directions unchanged."
 related:
   - AGENTS.md
   - docs/architecture.md
@@ -143,18 +143,19 @@ Publication 负责消费不可变 Release Candidate，在精确选择和授权�
 - Publication 从 Candidate v2 的 hash-bound catalog 计算 forward closure 和 exclude 的 transitive reverse pruning；
 - request、resolution 和 Draft Plan 原子写入，且明确 `publicationAuthorized=false`；
 - 从 Candidate TIDAS ZIP 只物化 dependency-safe effective set；
-- actor-scoped target inspection 按 UUID + Version + canonical content + state 分类；
-- 用户用 exact Executable Plan SHA-256 形成带过期时间的 Approval；
+- actor-scoped target inspection 按 UUID + Version + canonical content + dataset role 的目标状态分类；
+- 用户用 exact Executable Plan SHA-256 形成带过期时间的 Approval；含 Result Process operation 时还必须形成不可变的 manager attestation；
 - missing row 创建后发布、matching draft 只切状态、matching published 幂等跳过；
 - 执行使用哈希链事件安全恢复，并以独立远程回读生成最终 Receipt。
-- 对具备 Worker prepared projection 的 ready V3 LCIA package，显式 opt-in recipe 先确认 Database-computed exact package publish plan，再确认 projection finalize，并通过独立 public-visibility readback 或精确 revoke 收敛终态。
+- 对具备 Worker prepared projection 的 ready V3 LCIA package，显式 opt-in recipe 先确认 Database-computed exact package publish plan，再确认 projection finalize，并通过独立 public-visibility readback 或精确 revoke 收敛终态；
+- Result Process 的 120 写入经只读 prepare、manager-attested execute 和 exact-receipt readback 三步，直接创建 120，从不经过 `0`/`100` 平台命令。
 
 远程发布规则是：
 
 - 平台已存在精确 UUID + Version 的数据时，发布动作改变其生命周期状态；
 - 平台不存在该主键时，发布动作写入精确 Candidate 数据并进入发布态；
 - 发布计划必须区分用户选择的 roots 与保证引用完整性所需的有效发布集合；
-- 当前 semantic `published` 映射到平台 `state_code=100`；未来切换到例如 `120` 时必须同步升级平台 adapter；
+- 目标状态按 dataset role 逐 operation 派生：Result Process 为 `120`，普通 Unit Process、LifecycleModel 和 support 数据保持 `100`；dependency member 永远跟随自己的 role，不因为被 Result 组件选中而映射到 120；
 - 平台未提供跨多个 Edge Function 请求的全局事务，因此 Workflow 明确采用幂等、可恢复执行，不虚构 atomic promotion。
 
 Publication 不修改 Candidate；纯范围选择生成 hash-bound Draft/Executable Plan 和精确 payload。内容变化必须返回 Release Candidate、Dataset Transformation 或更早上游生成新 Candidate。
@@ -205,4 +206,4 @@ Dataset Transformation 只能读取并验证 Candidate 数据，不能覆盖它�
 - Result Materialization 已实现 intake、Result Process/LifecycleModel 生成、验证和本地后台 Job。
 - Release Candidate 已实现 Elementary Flow cache、Release Intake、Package build、失败影响分析、人工审核工作簿、scope decision 和 Candidate qualification。
 - Dataset Transformation 已实现 DSL v0、Candidate v1/v2 精确读取、Unit/Result aggregation-target 决策、业务字段冲突决策、显式/年产量权重、加权 Unit/Result Process、LCI/LCIA 兼容性验证、条件 handoff、CLI、schemas、回复模板和真实三 Process 试验。
-- Publication 已实现 Candidate v2 catalog、范围解析、精确 payload、目标检查、hash-bound Approval、可恢复远程发布、独立回读，以及显式 opt-in 的 Portal LCIA V3 package plan/publish 和 projection prepare/finalize/verify/revoke；两条路径各自使用严格 schemas、CLI、回复模板和 fail-closed 测试，Candidate 执行 adapter 继续只支持平台发布状态码 `100`。
+- Publication 已实现 Candidate v2 catalog、范围解析、精确 payload、目标检查、按 dataset role 派生的逐 operation 混合状态映射、hash-bound Approval、可恢复远程发布、独立回读，以及显式 opt-in 的 Portal LCIA V3 package plan/publish 和 projection prepare/finalize/verify/revoke；两条路径各自使用严格 schemas、CLI、回复模板和 fail-closed 测试。普通 Unit Process/LifecycleModel/support 的 Candidate 执行 adapter 继续只支持平台发布状态码 `100`；Result Process 的 `120` 路线已实现只读远程 prepare、manager-attested 直接 120 写入、丢失响应恢复、exact-receipt 独立回读，以及全部 v2/Result schemas 和离线契约测试。已知限制：更新后的 Release 拒绝旧的 Result `100` plan；`sourceKind` 始终是 manager attestation，不是 machine-verified 血缘；不声称跨 RPC 全局原子性，也不做历史数据迁移。

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lca.tiangong.earth/release/result-process-execution-intent.v1.schema.json",
+  "title": "Result Process Execution Intent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "approvalSha256",
+    "executablePlanSha256",
+    "payloadManifestSha256",
+    "preparationSha256",
+    "operationSetHash",
+    "actorUserId"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "tiangong.release.result-process-execution-intent.v1"
+    },
+    "approvalSha256": { "$ref": "#/$defs/hash" },
+    "executablePlanSha256": { "$ref": "#/$defs/hash" },
+    "payloadManifestSha256": { "$ref": "#/$defs/hash" },
+    "preparationSha256": { "$ref": "#/$defs/hash" },
+    "operationSetHash": { "$ref": "#/$defs/hash" },
+    "actorUserId": { "type": "string", "format": "uuid" }
+  },
+  "$defs": { "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" } }
+}
