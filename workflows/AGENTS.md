@@ -12,9 +12,9 @@ whenToUpdate:
   - 当所有 Workflow 共享的证据、权限、恢复或文档规则变化时
 checkPaths:
   - workflows/**
-lastReviewedAt: 2026-09-15
-lastReviewedCommit: c7f62de
-lastReviewedNote: "Reviewed for Release #74: the shared Publication rule only. Other shared evidence, authorization and recovery rules unchanged."
+lastReviewedAt: 2026-09-23
+lastReviewedCommit: b79023cd5b2d60f14c2a6ddfd09cfe0fc952d990
+lastReviewedNote: "Reviewed for Release #76: test-only clock repair leaves shared evidence, authorization and recovery rules unchanged."
 related:
   - ../AGENTS.md
   - ../README.md

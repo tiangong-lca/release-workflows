@@ -36,6 +36,7 @@ const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const CLI = path.join(ROOT, "cli.mjs");
 const MANAGER = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const VERSION = "01.00.000";
+const VALID_EXECUTION_NOW = () => new Date("2026-09-15T00:03:00.000Z");
 const ENV = {
   TIANGONG_LCA_API_BASE_URL: "https://project.example.test",
   TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY: "publishable",
@@ -986,6 +987,7 @@ test("Content, source, audit, actor, identity and wire drift are all rejected", 
       outDir: path.join(fixture.root, `drift-${name}`),
       env: ENV,
       fetchImpl,
+      now: VALID_EXECUTION_NOW,
     });
 
   // actor: a different manager than the one recorded in the attestation.
@@ -1106,6 +1108,7 @@ test("The dedicated route re-verifies approval expiry and copied artifacts", asy
       outDir: path.join(fixture.root, "dedicated-copy-execution"),
       env: ENV,
       fetchImpl: run.remote.fetch,
+      now: VALID_EXECUTION_NOW,
     }),
     ({ code }) => code === "result_process_preparation_binding_mismatch",
   );
@@ -1124,6 +1127,7 @@ test("The dedicated route re-verifies approval expiry and copied artifacts", asy
       outDir: path.join(fixture.root, "dedicated-plan-execution"),
       env: ENV,
       fetchImpl: run.remote.fetch,
+      now: VALID_EXECUTION_NOW,
     }),
     ({ code }) => code === "publication_approval_plan_hash_mismatch",
   );
@@ -1147,6 +1151,7 @@ test("The dedicated route re-verifies approval expiry and copied artifacts", asy
       outDir: path.join(fixture.root, "dedicated-resealed-execution"),
       env: ENV,
       fetchImpl: run.remote.fetch,
+      now: VALID_EXECUTION_NOW,
     }),
     ({ code }) => code === "result_process_preparation_binding_mismatch",
   );
@@ -1168,6 +1173,7 @@ test("The dedicated route re-verifies approval expiry and copied artifacts", asy
       outDir: path.join(fixture.root, "dedicated-duplicate-execution"),
       env: ENV,
       fetchImpl: run.remote.fetch,
+      now: VALID_EXECUTION_NOW,
     }),
     ({ code }) =>
       [
@@ -1185,6 +1191,7 @@ test("The dedicated route re-verifies approval expiry and copied artifacts", asy
     outDir: path.join(fixture.root, "dedicated-ok-execution"),
     env: ENV,
     fetchImpl: run.remote.fetch,
+    now: VALID_EXECUTION_NOW,
   });
   assert.equal(execution.receipt.status, "published");
   assert.equal(run.remote.getRow(IDS.result, VERSION).stateCode, 120);
@@ -1414,6 +1421,7 @@ test("Preparation headers must align with the verified copied evidence", async (
         outDir: path.join(fixture.root, `header-${field}`),
         env: ENV,
         fetchImpl: run.remote.fetch,
+        now: VALID_EXECUTION_NOW,
       }),
       ({ code, details }) => {
         assert.equal(
@@ -1556,6 +1564,7 @@ test("A malformed approval timestamp cannot bypass the execute freshness gate", 
           resultPreparationDir: prepared.path,
           env: ENV,
           fetchImpl: run.remote.fetch,
+          now: VALID_EXECUTION_NOW,
         }),
         ({ code }) => {
           // Either the approval is rejected as malformed, or the copy beside the
@@ -1851,6 +1860,7 @@ test("Same-key retry reuses the identical receipt; a different key conflicts", a
       outDir: path.join(fixture.root, "retry-other-key"),
       env: ENV,
       fetchImpl: run.remote.fetch,
+      now: VALID_EXECUTION_NOW,
     }),
     ({ code }) => code === "result_publication_conflict",
   );
@@ -1948,6 +1958,7 @@ test("Role revocation rejects every prepare, execute and readback call", async (
       outDir: path.join(fixture.root, "revoked-execute"),
       env: ENV,
       fetchImpl: run.remote.fetch,
+      now: VALID_EXECUTION_NOW,
     }),
     ({ code }) => code === "not_data_product_manager",
   );
@@ -2337,6 +2348,7 @@ test("The 0/100 platform command refuses a Result Process dataset outright", asy
       outDir: path.join(fixture.root, "route-violation-execution"),
       env: ENV,
       fetchImpl: run.remote.fetch,
+      now: VALID_EXECUTION_NOW,
     }),
     ({ code }) => code === "result_process_preparation_binding_mismatch",
   );

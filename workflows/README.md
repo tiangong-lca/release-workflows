@@ -12,9 +12,9 @@ whenToUpdate:
   - 当顶层 Workflow 新增、删除、重命名或重新划分时
 checkPaths:
   - workflows/**
-lastReviewedAt: 2026-09-15
-lastReviewedCommit: c7f62de
-lastReviewedNote: "Reviewed for Release #74: the Publication navigation row only. Workflow set and default path unchanged."
+lastReviewedAt: 2026-09-23
+lastReviewedCommit: b79023cd5b2d60f14c2a6ddfd09cfe0fc952d990
+lastReviewedNote: "Reviewed for Release #76: test-only clock repair leaves the Workflow set and navigation unchanged."
 related:
   - ../README.md
   - AGENTS.md

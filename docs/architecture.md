@@ -17,9 +17,9 @@ checkPaths:
   - README.md
   - .docpact/config.yaml
   - workflows/**
-lastReviewedAt: 2026-09-15
-lastReviewedCommit: c7f62de
-lastReviewedNote: "Release #74: reviewed the Publication boundary only - per-operation role-to-state mapping, the Database-owned manager-attested Result Process 120 route, and hash-domain separation. Workflow topology, ownership and other boundaries unchanged."
+lastReviewedAt: 2026-09-23
+lastReviewedCommit: b79023cd5b2d60f14c2a6ddfd09cfe0fc952d990
+lastReviewedNote: "Release #76: reviewed the Publication boundary; test-only clock repair leaves topology, authority and artifact contracts unchanged."
 related:
   - ../AGENTS.md
   - ../README.md
