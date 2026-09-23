@@ -13,9 +13,9 @@ whenToUpdate:
   - 当 Publication 的范围、状态、授权、写入、恢复或回读规则变化时
 checkPaths:
   - workflows/publication/**
-lastReviewedAt: 2026-09-15
-lastReviewedCommit: c7f62de
-lastReviewedNote: "Reviewed for Release #74: per-operation role-to-state mapping, no generic no-op for Result Process, the manager-attested transport with exact-receipt recovery, one strict approval/preparation binding and expiry rule on every route, attested real source evidence re-validated by a single validator, strict server verification plus independent recomputation, hash-domain separation, the F4 attestation decision, the legacy all-100 ban, and the no-role-inference / no-migration limits."
+lastReviewedAt: 2026-09-23
+lastReviewedCommit: b79023cd5b2d60f14c2a6ddfd09cfe0fc952d990
+lastReviewedNote: "Reviewed for Release #76: frozen test clocks now cover non-expiry assertions; production expiry, manager authorization and readback contracts are unchanged."
 related:
   - README.md
   - ../AGENTS.md

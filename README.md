@@ -19,9 +19,9 @@ checkPaths:
   - docs/architecture.md
   - workflows/**
   - .docpact/config.yaml
-lastReviewedAt: 2026-09-15
-lastReviewedCommit: c7f62de
-lastReviewedNote: "Reviewed for Release #74: the Publication section and current-status line only. Project goals, five Workflow navigation and the two post-Candidate directions unchanged."
+lastReviewedAt: 2026-09-23
+lastReviewedCommit: b79023cd5b2d60f14c2a6ddfd09cfe0fc952d990
+lastReviewedNote: "Reviewed for Release #76: test-only clock repair leaves project goals, Workflow navigation and Publication behavior unchanged."
 related:
   - AGENTS.md
   - docs/architecture.md

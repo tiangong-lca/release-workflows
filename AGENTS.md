@@ -25,9 +25,9 @@ checkPaths:
   - pnpm-lock.yaml
   - .node-version
   - .github/workflows/ci.yml
-lastReviewedAt: 2026-09-15
-lastReviewedCommit: c7f62de
-lastReviewedNote: "Reviewed for Release #74: Publication workstream description and completion condition only. Ownership, hard boundaries, runtime pins and branch facts unchanged."
+lastReviewedAt: 2026-09-23
+lastReviewedCommit: b79023cd5b2d60f14c2a6ddfd09cfe0fc952d990
+lastReviewedNote: "Reviewed for Release #76: test-only clock repair does not change ownership, hard boundaries, runtime pins or completion conditions."
 related:
   - README.md
   - .docpact/config.yaml

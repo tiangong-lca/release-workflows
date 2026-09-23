@@ -13,9 +13,9 @@ whenToUpdate:
   - 当发布选择、目标差异、状态转换、写入、审批、恢复或回读规则变化时
 checkPaths:
   - workflows/publication/**
-lastReviewedAt: 2026-09-15
-lastReviewedCommit: c7f62de
-lastReviewedNote: "Reviewed for Release #74: mixed-state role mapping, the manager-attested Result Process 120 route (direct 120, no 0/100 row, no generic no-op), one strict approval/plan/preparation/payload binding shared by the dedicated and mixed routes incl. expiry, fully re-validated manager attestation with real source hashes, exact-receipt lost-response recovery, strict server verification plus independent recomputation, and canonical-vs-byte hash-domain separation."
+lastReviewedAt: 2026-09-23
+lastReviewedCommit: b79023cd5b2d60f14c2a6ddfd09cfe0fc952d990
+lastReviewedNote: "Reviewed for Release #76: test-only clock repair does not change Result Process prepare, execute, expiry or readback semantics."
 related:
   - AGENTS.md
   - ../release-candidate/README.md

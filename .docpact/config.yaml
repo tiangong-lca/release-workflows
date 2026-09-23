@@ -1,8 +1,8 @@
 version: 1
 layout: repo
-lastReviewedAt: "2026-09-15"
-lastReviewedCommit: "c7f62de"
-lastReviewedNote: "Release #74: reviewed with the Publication mixed-state role-to-state mapping and the manager-attested Result Process 120 transport. Ownership, routing, coverage and rules are unchanged; the new publication contracts and test-support live under the existing publication-workflow domain, so no ownership or coverage entry was added."
+lastReviewedAt: "2026-09-23"
+lastReviewedCommit: "b79023cd5b2d60f14c2a6ddfd09cfe0fc952d990"
+lastReviewedNote: "Release #76: reviewed for the Publication test-clock repair; ownership, routing, coverage and rules remain unchanged."
 
 catalog:
   repos:
