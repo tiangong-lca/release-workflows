@@ -25,9 +25,9 @@ checkPaths:
   - pnpm-lock.yaml
   - .node-version
   - .github/workflows/ci.yml
-lastReviewedAt: 2026-09-23
-lastReviewedCommit: b79023cd5b2d60f14c2a6ddfd09cfe0fc952d990
-lastReviewedNote: "Reviewed for Release #76: test-only clock repair does not change ownership, hard boundaries, runtime pins or completion conditions."
+lastReviewedAt: 2026-09-30
+lastReviewedCommit: dd87344acad7a131c20d52ce0ea2fd5ed2894d41
+lastReviewedNote: "Reviewed for Release #78: opt-in monitoring prompts preserve Workflow topology, ownership, authorization and external state authority."
 related:
   - README.md
   - .docpact/config.yaml

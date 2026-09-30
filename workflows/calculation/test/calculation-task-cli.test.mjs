@@ -148,6 +148,120 @@ test("closure submission prioritizes exact Closure status before Worker diagnost
   assert.equal(result.replyTemplate.id, "closure-submitted");
 });
 
+for (const family of ["closure", "calculation"]) {
+  for (const status of [
+    "queued",
+    "running",
+    "completed",
+    "failed",
+    "cancelled",
+  ]) {
+    test(`${family} submission offers monitoring only while ${status} needs it`, async () => {
+      const stdout = buffer();
+      let calls = 0;
+      const args =
+        family === "closure"
+          ? ["--result-set-id", uuid, "--idempotency-token", "monitor-closure"]
+          : [
+              "--name",
+              "Monitor calculation",
+              "--closure-check-id",
+              uuid,
+              "--requested-scope-hash",
+              "scope-hash",
+              "--policy-fingerprint",
+              "policy-hash",
+              "--idempotency-key",
+              "monitor-calculation",
+            ];
+      const code = await runCli(
+        [family, "start", ...args, "--confirm-start", "--format", "json"],
+        {
+          stdout: stdout.stream,
+          env,
+          fetchImpl: async () => {
+            calls += 1;
+            return Response.json({
+              ok: true,
+              data: {
+                ...(family === "closure" ? { closureCheckId: uuid } : {}),
+                workerJob: { id: jobId, status },
+                reused: !["queued", "running"].includes(status),
+              },
+            });
+          },
+        },
+      );
+      assert.equal(code, 0);
+      assert.equal(
+        calls,
+        1,
+        "asking about monitoring must not create a monitor",
+      );
+      const result = JSON.parse(stdout.value());
+      assert.match(result.nextActions[0], new RegExp(`${family} get`));
+      assert.match(
+        result.nextActions[0],
+        new RegExp(family === "closure" ? uuid : jobId),
+      );
+      assert.match(result.nextActions[1], /workspace_ops/);
+      if (["queued", "running"].includes(status)) {
+        assert.equal(result.nextDecision.kind, "confirm_task_monitoring");
+        assert.equal(result.nextDecision.requiresConfirmation, true);
+        assert.equal(result.nextActions[2], result.nextDecision.prompt);
+        assert.match(result.nextDecision.prompt, /持续监测的定时任务或进程/);
+        assert.match(
+          result.nextDecision.prompt,
+          /仅在完成、失败、阻塞或需要你处理时通知/,
+        );
+        assert.match(result.nextDecision.prompt, /终态停止监测/);
+        assert.match(
+          result.nextDecision.prompt,
+          new RegExp(family === "closure" ? uuid : jobId),
+        );
+      } else {
+        assert.equal(result.nextDecision, null);
+        assert.equal(result.nextActions.length, 2);
+      }
+    });
+  }
+
+  test(`${family} human submission includes the monitoring question in Next`, async () => {
+    const stdout = buffer();
+    const args =
+      family === "closure"
+        ? ["--idempotency-token", "human-monitor-closure"]
+        : [
+            "--name",
+            "Monitor calculation",
+            "--closure-check-id",
+            uuid,
+            "--requested-scope-hash",
+            "scope-hash",
+            "--policy-fingerprint",
+            "policy-hash",
+            "--idempotency-key",
+            "human-monitor-calculation",
+          ];
+    assert.equal(
+      await runCli([family, "start", ...args, "--confirm-start"], {
+        stdout: stdout.stream,
+        env,
+        fetchImpl: async () =>
+          Response.json({
+            ok: true,
+            data: {
+              ...(family === "closure" ? { closureCheckId: uuid } : {}),
+              workerJob: { id: jobId, status: "queued" },
+            },
+          }),
+      }),
+      0,
+    );
+    assert.match(stdout.value(), /Next:[\s\S]*是否.*持续监测的定时任务或进程/);
+  });
+}
+
 test("closure submission uses and discloses the workflow default profile", async () => {
   const stdout = buffer();
   await runCli(
