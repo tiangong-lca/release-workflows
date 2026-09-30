@@ -68,6 +68,7 @@ related:
 - Worker job 日志必须委托给根 workspace 的 `python -m workspace_ops.cli worker job`；本 Workflow 只输出精确命令，不复制服务器配置、SSH 或 journal 逻辑。
 - Calculation 日常状态观察必须先使用精确 Job ID 的 actor-scoped 数据库 task feed；queued/running 继续轮询该投影，只有 failed/blocked/stale 或 Worker/domain 终态不一致时才把 `workspace_ops` 日志列为优先诊断动作。日志不得覆盖数据库投影的产品状态权威性。
 - Closure/Calculation 提交后的首要后继分别是精确 `closure get` 和 `calculation get`；Worker 日志只作为第二诊断动作。Calculation 成功终态且已有 `resultPackageId` 时必须前进到精确 Calculation Bundle，不得退回 ResultSet。
+- Closure/Calculation 提交后仍为 queued/running 时，必须展示 `nextDecision` 和 `nextActions` 中的持续监测询问：是否创建定时任务或进程，仅在完成、失败、阻塞或需要用户处理时通知，并在任务终态停止监测。询问不代表监测已经创建；只有用户确认后才创建。终态复用任务不询问持续监测。
 - Calculation Bundle list/get 使用 `CONN` 的参数化 read-only SQL；list 必须有 1–200 的显式边界，get 必须使用精确 Package UUID。不得调用会下载 manifest 并逐 artifact 签名的 Edge Bundle read，也不得把连接串、artifact locator 或 credential 投影到 CLI。
 - Calculation Bundle list 只负责展示候选并要求用户选择精确 `packageId`；即使列表非空也不得默认下载第一项。
 - Bundle download 使用数据库中的精确 manifest/download metadata 和 allowlisted `S3_*` 配置直接访问单一配置 bucket；先校验 manifest size/hash/schema/content hash/artifact count，再以 1–32 的有界并发下载并校验每个 artifact。已存在文件只有完整性一致时才可复用，不一致时不得覆盖。

@@ -124,6 +124,12 @@ Closure 和 Calculation 的 `start` 也使用同一个 actor-scoped endpoint，�
 和 policy fingerprint；CLI 不从 mutable 状态推断这些值。返回值只投影任务/资源 ID 和状态，
 忽略 provider 附加字段及 schema 版本。
 
+提交后任务仍为 `queued` 或 `running` 时，CLI 在 `nextActions` 中追加持续监测询问，
+并返回 `nextDecision.kind=confirm_task_monitoring` 和 `requiresConfirmation=true`。
+Agent 必须询问是否创建持续监测的定时任务或进程：状态不变时保持安静，仅在完成、失败、
+阻塞或需要用户处理时通知，并在任务终态停止监测。这个提示不创建监测；用户确认后才通过
+当前环境可用的调度能力创建。已处于终态的复用任务不显示询问，`nextDecision` 为 `null`。
+
 异步 Calculation 提交以 Worker Job ID 作为最低稳定成功身份。Result Package/Build ID 尚未
 materialize 时返回 `resourceId: null` 和 `identityCompleteness: job_only`，不误报
 `remote_outcome_unknown`；资源 ID 出现后为 `complete`。Closure 提交仍必须同时返回 Closure

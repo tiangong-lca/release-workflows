@@ -747,6 +747,13 @@ export async function runCli(
         flags.defaultImpactCategory = defaultImpactCategory;
       }
       const logs = workspaceLogsCommand(task.jobId);
+      const nextDecision = ["queued", "running"].includes(task.status)
+        ? {
+            kind: "confirm_task_monitoring",
+            requiresConfirmation: true,
+            prompt: `是否为${family === "closure" ? ` Closure Check ${task.resourceId}` : ` Worker Job ${task.jobId}`} 创建持续监测的定时任务或进程？仅在完成、失败、阻塞或需要你处理时通知，并在任务终态停止监测。`,
+          }
+        : null;
       const result = {
         schemaVersion: CLI_SCHEMA,
         ok: true,
@@ -763,13 +770,14 @@ export async function runCli(
           },
         },
         completeness: { status: "submitted", terminalStateObserved: false },
-        nextActions:
+        nextDecision,
+        nextActions: [
           family === "closure"
-            ? [
-                `${COMMAND} closure get --closure-check-id ${task.resourceId}`,
-                logs,
-              ]
-            : [`${COMMAND} calculation get --job-id ${task.jobId}`, logs],
+            ? `${COMMAND} closure get --closure-check-id ${task.resourceId}`
+            : `${COMMAND} calculation get --job-id ${task.jobId}`,
+          logs,
+          ...(nextDecision ? [nextDecision.prompt] : []),
+        ],
       };
       result.replyTemplate = replyTemplateFor(command, { ok: true });
       stdout.write(

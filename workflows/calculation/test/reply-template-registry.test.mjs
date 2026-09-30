@@ -40,6 +40,8 @@ test("every successful Calculation command maps to an existing bounded template"
     assert.match(body, /[✅🚀🔎⚠️❌]/u);
     if (template.requiredFacts.includes("nextActions"))
       assert.match(body, /\{\{nextActions(?:\.|\})/u, template.path);
+    if (template.requiredFacts.includes("nextDecision"))
+      assert.match(body, /\{\{nextDecision\./u, template.path);
   }
 });
 

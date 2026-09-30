@@ -19,4 +19,8 @@
 仅在失败、阻塞、陈旧或状态不一致时，再查询 Worker 日志：
 
 `{{nextActions.1}}`
+
+[若 nextDecision 非空] {{nextDecision.prompt}}
+
+[若 nextDecision 非空] 目前尚未创建监测，确认后再创建。
 ```

@@ -12,9 +12,9 @@ whenToUpdate:
   - 当顶层 Workflow 新增、删除、重命名或重新划分时
 checkPaths:
   - workflows/**
-lastReviewedAt: 2026-09-23
-lastReviewedCommit: b79023cd5b2d60f14c2a6ddfd09cfe0fc952d990
-lastReviewedNote: "Reviewed for Release #76: test-only clock repair leaves the Workflow set and navigation unchanged."
+lastReviewedAt: 2026-09-30
+lastReviewedCommit: dd87344acad7a131c20d52ce0ea2fd5ed2894d41
+lastReviewedNote: "Reviewed for Release #78: opt-in monitoring prompts preserve Workflow topology, ownership, authorization and external state authority."
 related:
   - ../README.md
   - AGENTS.md
