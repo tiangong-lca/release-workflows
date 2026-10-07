@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 intake、包的语义、候选构建、scope refinement 或 Candidate 后继路径变化时
 checkPaths:
   - workflows/release-candidate/**
-lastReviewedAt: 2026-08-29
-lastReviewedCommit: 67a61471502eed31af70358f86dd22be0e350d8a
-lastReviewedNote: "Documented portable review and memory recovery under the exact root pnpm 11.24 workspace."
+lastReviewedAt: 2026-10-07
+lastReviewedCommit: 89847052770fede8ebe2eeb8aba32af9b3b71989
+lastReviewedNote: "Reviewed for Release #80: available Transformation help is distinct from unsupported downstream consumption and Result-only packaging; qualification and authorization are unchanged."
 related:
   - AGENTS.md
   - ../../README.md
@@ -50,6 +50,8 @@ Release Candidate Workflow 先从冻结的 Materialization Intake 和 materializ
 
 Materialization evidence 与实际 dataset bytes 不一致时，返回 Result Materialization Workflow 修复。
 
+Candidate 成功后的 `nextDecision` 提供 Publication 与 Transformation 的绝对 CLI help 入口。Transformation 本地 inspect/freeze/execute 已可用，但 handoff 不代表新 Candidate 已生成；Derived Result 消费与 Result-only package 的限制见 [Transformation](../dataset-transformation/README.md#result-evidence-与返回路径)。
+
 ## 包的组织维度
 
 Package 不应由大量互斥枚举硬编码，而是由经过验证的 recipe 组合以下维度：
@@ -60,7 +62,7 @@ Package 不应由大量互斥枚举硬编码，而是由经过验证的 recipe �
 - Format：TIDAS、ILCD；
 - Grouping：合并包或每个 root 独立包。
 
-第一批候选 recipe：
+以下是产品建模维度中的候选 recipe，不是当前 CLI 的支持矩阵；当前仅支持下文明确列出的 full-closure profile：
 
 1. Unit Process + 完整支持闭合，不含计算结果；
 2. LifecycleModel + Unit Process 闭合；

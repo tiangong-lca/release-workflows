@@ -21,6 +21,7 @@ import {
 } from "./lib/flow-cache.mjs";
 import { prepareReleaseIntake } from "./lib/release-intake.mjs";
 import { replyTemplateFor } from "./reply-template-registry.mjs";
+import { candidateNextDecision } from "./lib/next-decision.mjs";
 
 const COMMAND = "package build";
 const RELEASE_CLI_PATH = fileURLToPath(new URL("./cli.mjs", import.meta.url));
@@ -29,10 +30,6 @@ const MATERIALIZATION_CLI_PATH = fileURLToPath(
   new URL("../result-materialization/cli.mjs", import.meta.url),
 );
 const MATERIALIZATION_COMMAND = `node ${shellQuote(MATERIALIZATION_CLI_PATH)}`;
-const PUBLICATION_CLI_PATH = fileURLToPath(
-  new URL("../publication/cli.mjs", import.meta.url),
-);
-const PUBLICATION_COMMAND = `node ${shellQuote(PUBLICATION_CLI_PATH)}`;
 const REPOSITORY_ENV = fileURLToPath(new URL("../../.env", import.meta.url));
 const REPOSITORY_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const DEFAULT_FLOW_CACHE_DIR = path.join(REPOSITORY_ROOT, DEFAULT_FLOW_CACHE);
@@ -296,29 +293,7 @@ async function main() {
         ? path.resolve(options["scope-decision"])
         : undefined,
     },
-    nextDecision: {
-      required: true,
-      prompt: "Choose the next path for this immutable Candidate.",
-      choices: [
-        {
-          id: "plan_publication_scope",
-          label: "Plan Publication",
-          workflow: "publication",
-          availability: "available",
-          description:
-            "Enter Publication to choose Unit Process, Result, Both, or exact datasets and prepare a dependency-closed, unauthorized Publish Plan without changing this Candidate.",
-          command: `${PUBLICATION_COMMAND} plan prepare --help`,
-        },
-        {
-          id: "transform_candidate_data",
-          label: "Transform Candidate data",
-          workflow: "dataset-transformation",
-          availability: "design_required",
-          description:
-            "Send exact Candidate datasets into the deferred Dataset Transformation Workflow and create a new Candidate from the transformed outputs.",
-        },
-      ],
-    },
+    nextDecision: candidateNextDecision(),
     nextActions: [
       {
         kind: "inspect_candidate",

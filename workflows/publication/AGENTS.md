@@ -13,15 +13,19 @@ whenToUpdate:
   - 当 Publication 的范围、状态、授权、写入、恢复或回读规则变化时
 checkPaths:
   - workflows/publication/**
-lastReviewedAt: 2026-09-23
-lastReviewedCommit: b79023cd5b2d60f14c2a6ddfd09cfe0fc952d990
-lastReviewedNote: "Reviewed for Release #76: frozen test clocks now cover non-expiry assertions; production expiry, manager authorization and readback contracts are unchanged."
+lastReviewedAt: 2026-10-07
+lastReviewedCommit: 89847052770fede8ebe2eeb8aba32af9b3b71989
+lastReviewedNote: "Reviewed for Release #80: recipe-scoped reading and consumer authority pointers; authorization, hash domains, remote adapters and live acceptance remain unchanged."
 related:
   - README.md
   - ../AGENTS.md
 ---
 
 # Publication Workflow Agent Contract
+
+## 按 recipe 读取
+
+先读 `workflows/AGENTS.md` 与本文件，再按当前 recipe 展开 README：Candidate dataset planning/execution、Result Process prepare/execute/verify、Portal LCIA package/projection。改 Result RPC 时读取 `contracts/result-process-publication-transport.md` 的 Release 消费备注并核对 Database 权威契约；只有显式 live 验收才读取 `live/README.md`。回复读取 CLI 指定模板，不把所有 recipe 的操作手册作为默认上下文。
 
 ## 职责
 

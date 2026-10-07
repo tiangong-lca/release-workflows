@@ -22,5 +22,10 @@
 1. **{{nextDecision.choices.0.label}}**：{{nextDecision.choices.0.description}}
 2. **{{nextDecision.choices.1.label}}**：{{nextDecision.choices.1.description}}
 
+查看所选路线的真实入口（帮助命令不会执行该路线）：
+
+- Publication：`{{nextDecision.choices.0.command}}`
+- Transformation：`{{nextDecision.choices.1.command}}`
+
 该动作只生成了本地产物，没有上传、批准或发布任何内容。
 ```

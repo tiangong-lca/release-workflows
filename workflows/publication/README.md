@@ -13,9 +13,9 @@ whenToUpdate:
   - 当发布选择、目标差异、状态转换、写入、审批、恢复或回读规则变化时
 checkPaths:
   - workflows/publication/**
-lastReviewedAt: 2026-09-23
-lastReviewedCommit: b79023cd5b2d60f14c2a6ddfd09cfe0fc952d990
-lastReviewedNote: "Reviewed for Release #76: test-only clock repair does not change Result Process prepare, execute, expiry or readback semantics."
+lastReviewedAt: 2026-10-07
+lastReviewedCommit: 89847052770fede8ebe2eeb8aba32af9b3b71989
+lastReviewedNote: "Reviewed for Release #80: recipe-scoped reading and consumer authority pointers; authorization, hash domains, remote adapters and live acceptance remain unchanged."
 related:
   - AGENTS.md
   - ../release-candidate/README.md
@@ -293,7 +293,7 @@ node workflows/publication/cli.mjs approval create \
   --inspection-dir .release/publication/<run>/inspection \
   --confirm <executable-plan-sha256> \
   --approved-by <stable-actor-id> \
-  --expires-at 2026-08-25T10:00:00Z \
+  --expires-at <future-ISO-8601-timestamp> \
   --reason "approved release scope" \
   --out-dir .release/publication/<run>/approval \
   --json

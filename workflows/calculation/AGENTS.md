@@ -12,9 +12,9 @@ whenToUpdate:
   - 当入口解析、远程命令、证据绑定、恢复或确认规则变化时
 checkPaths:
   - workflows/calculation/**
-lastReviewedAt: 2026-08-25
-lastReviewedCommit: 8d9bd8d89aa14ecadab385422ed797e63fc3de44
-lastReviewedNote: "Required provider-compatible ResultSet adapters and a stable Release-owned internal reference."
+lastReviewedAt: 2026-10-07
+lastReviewedCommit: 89847052770fede8ebe2eeb8aba32af9b3b71989
+lastReviewedNote: "Reviewed for Release #80: scoped reading and profile authority; existing task, Bundle and monitoring contracts retain their runtime behavior."
 related:
   - README.md
   - ../AGENTS.md
@@ -24,11 +24,11 @@ related:
 
 ## 加载顺序
 
-1. 仓库根 `README.md`；
-2. `workflows/AGENTS.md`；
-3. 本文件；
-4. 本目录 `README.md`；
-5. 只有在实际调用某个外部能力时，才读取其最小版本契约。
+1. `workflows/AGENTS.md` 与本文件；
+2. 本目录 `README.md` 中对应 ResultSet、任务、Bundle 或环境同步的章节；
+3. CLI 返回 `replyTemplate` 时读取指定模板；调用外部能力时读取其最小版本契约。
+
+只在需要跨 Workflow 选择时读取根导航；默认方法集与展示类别以 `contracts/default-profile.mjs` 为准，修改时核对其契约测试。
 
 ## Agent 必须先做的事
 
@@ -64,7 +64,7 @@ related:
 - Closure/Calculation `start` 必须显式确认并携带幂等 token/key；内部只投影稳定 job/resource identity，不以 provider `schemaVersion` 分支。
 - Closure 完成后使用精确 ID 的 `closure get` 读取生命周期、证书、Worker identity 和 Calculation binding；只有 `passed + complete + valid` 且 `requestedScopeHash`/`policyFingerprint` 齐全时才能提示计算就绪。provider 未返回 method/process identity 时必须披露这一信息并要求沿用原 Closure scope，不得从 `latest` 猜测。
 - Calculation 提交只要有稳定 Worker Job ID 即视为 `submitted`；结果资源未 materialize 时使用 nullable `resourceId` 与 `identityCompleteness=job_only`。Closure 仍要求 Closure/Job 双身份；不得因异步结果 ID 暂缺误报 `remote_outcome_unknown`。
-- 未显式选择时使用当前 Calculation profile：`global_eligible`、完整的 25 个 reviewed LCIA `{id, version}` identities，以及独立的 Climate change/GWP 默认展示类别 `6209b35f-9447-40b5-b68c-a1099e3674a0`；Closure 与 Calculation 必须使用同一完整方法集。输出必须披露 defaulted inputs，显式参数优先。
+- 未显式选择时使用 `contracts/default-profile.mjs` 的 coverage、完整 reviewed LCIA `{id, version}` 集合及独立的默认展示类别；Closure 与 Calculation 必须使用同一完整方法集。输出必须披露 defaulted inputs，显式参数优先。
 - Worker job 日志必须委托给根 workspace 的 `python -m workspace_ops.cli worker job`；本 Workflow 只输出精确命令，不复制服务器配置、SSH 或 journal 逻辑。
 - Calculation 日常状态观察必须先使用精确 Job ID 的 actor-scoped 数据库 task feed；queued/running 继续轮询该投影，只有 failed/blocked/stale 或 Worker/domain 终态不一致时才把 `workspace_ops` 日志列为优先诊断动作。日志不得覆盖数据库投影的产品状态权威性。
 - Closure/Calculation 提交后的首要后继分别是精确 `closure get` 和 `calculation get`；Worker 日志只作为第二诊断动作。Calculation 成功终态且已有 `resultPackageId` 时必须前进到精确 Calculation Bundle，不得退回 ResultSet。

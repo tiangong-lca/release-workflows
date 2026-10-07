@@ -11,14 +11,14 @@ whenToUse:
   - 当设计 intake、materialization 的复用和冲突行为时
   - 当决定 CLI 应自动选择路径还是接受显式覆盖时
 whenToUpdate:
-  - 当本设计被实现并提升为正式路径契约时
+  - 当默认路径、复用或冲突行为变化时
   - 当 artifact identity、manifest 或跨 Workflow handoff 变化时
 checkPaths:
   - workflows/calculation/**
   - workflows/result-materialization/**
-lastReviewedAt: 2026-08-20
-lastReviewedCommit: 9c99249520d5228088d2845b42b78605bf06a524
-lastReviewedNote: "Promoted deterministic default paths, frozen materialization keys, and verified reuse semantics to the active workflow contract."
+lastReviewedAt: 2026-10-07
+lastReviewedCommit: 89847052770fede8ebe2eeb8aba32af9b3b71989
+lastReviewedNote: "Reviewed for Release #80: current Bundle-only intake and unsupported Derived Result handoff are explicit; materialization and path behavior remain unchanged."
 related:
   - ../README.md
   - ../AGENTS.md

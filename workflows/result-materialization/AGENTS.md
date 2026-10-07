@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 recipe、identity/version、metadata、reference、validation 或输出契约变化时
 checkPaths:
   - workflows/result-materialization/**
-lastReviewedAt: 2026-08-29
-lastReviewedCommit: 67a61471502eed31af70358f86dd22be0e350d8a
-lastReviewedNote: "Reconciled Result-only Transformation handoffs with exact pnpm 11.24 and the unmocked SDK 0.2 contract."
+lastReviewedAt: 2026-10-07
+lastReviewedCommit: 89847052770fede8ebe2eeb8aba32af9b3b71989
+lastReviewedNote: "Reviewed for Release #80: current Bundle-only intake and unsupported Derived Result handoff are explicit; materialization and path behavior remain unchanged."
 related:
   - README.md
   - design/result-process-and-lifecycle-model.md
@@ -24,14 +24,18 @@ related:
 
 # Result Materialization Workflow Agent Contract
 
+## 按动作读取
+
+读取 `workflows/AGENTS.md`；运行时读取本目录 README 的对应动作，改 Result/Model 语义时读取 `design/result-process-and-lifecycle-model.md`，改产物定位与复用时读取 `design/local-artifact-path-convention.md`。不为局部修改加载整份根 README/config。
+
 ## 本地验证
 
 从仓库根运行 `pnpm --filter @tiangong-lca/release-result-materialization-workflow test` 验证本 Workflow；`pnpm test` 已包含全部 Workflow case。Process 与 LifeCycleModel 必须由真实 `@tiangong-lca/tidas-sdk@0.2.0` schema 验证，生产依赖图不得带入 TypeScript/compiler/codegen。
 
 ## Agent 的职责
 
-- 识别 Calculation Bundle、Derived Result 或已有 materialization artifact。
-- 消费 Dataset Transformation 的 `ready_for_result_materialization` handoff 时，只使用其 hash-bound Derived Result 和 receipt；默认生成 Result Process，不把缺失的 LifecycleModel 解释为待补齐对象。
+- 识别 Calculation Bundle 或已有 materialization artifact；当前 CLI 只消费已验证的 Calculation Bundle intake。
+- Dataset Transformation 的 `ready_for_result_materialization` 是尚待接通的接收边界，不能直接作为当前 intake 使用。收到该 handoff 时保留 Derived Result/receipt 并报告能力缺口；不得伪装为 Bundle、重用旧 Result evidence 或补造 LifecycleModel。Result-only 输出还受 Release Candidate package profile 限制。
 - 展示可用 recipe、已有证据和必须由用户决定的模型/metadata 问题。
 - 冻结精确 Materialization Request。
 - 冻结 requested roots、最终输出类型、Result Process 内容层、required Result set 和 direct-edge evidence。

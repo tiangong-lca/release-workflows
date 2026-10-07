@@ -19,191 +19,48 @@ checkPaths:
   - docs/architecture.md
   - workflows/**
   - .docpact/config.yaml
-lastReviewedAt: 2026-09-30
-lastReviewedCommit: dd87344acad7a131c20d52ce0ea2fd5ed2894d41
-lastReviewedNote: "Reviewed for Release #78: opt-in monitoring prompts preserve Workflow topology, ownership, authorization and external state authority."
+lastReviewedAt: 2026-10-07
+lastReviewedCommit: 89847052770fede8ebe2eeb8aba32af9b3b71989
+lastReviewedNote: "Reviewed for Release #80: smaller stable context, scoped routing and truthful handoff boundaries; ownership, immutable evidence and authorization constraints are retained."
 related:
   - AGENTS.md
   - docs/architecture.md
   - workflows/README.md
 ---
 
-# TianGong LCA Release
+# TianGong LCA Release Workflows
 
-`tiangong-lca-release` 是一个面向人和 Agent 的本地数据产品工作台。它组织计算、标准数据集生成、Candidate 构建、可选再加工和正式发布，同时保存每一步使用的精确输入、用户决定、验证证据、输出产物和恢复入口。
+本仓库是面向人和 Agent 的本地数据产品工作台，调用外部系统已有能力，保存精确输入、用户决定、验证证据、输出与恢复入口。它不拥有求解器、数据库 schema、鉴权或远程发布事实。
 
-这个项目不是前端、计算引擎或数据库服务。它调用其他系统已经提供的能力，但不修改其他仓库，也不从 mutable `latest` 猜测 identity、version、graph 或 method。
+## 选择 Workflow
 
-## 当前 Workflow 结构
+| Workflow                                                             | 当前职责与入口                                                                                   |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| [Calculation](workflows/calculation/README.md)                       | ResultSet、Closure、计算任务、Calculation Bundle 下载与完整性验证                                |
+| [Result Materialization](workflows/result-materialization/README.md) | 从已验证 Calculation Bundle 生成 Result Process / LifecycleModel 与 canonical dataset collection |
+| [Release Candidate](workflows/release-candidate/README.md)           | 闭合输入、四包验证、失败影响分析与不可变 Candidate                                               |
+| [Dataset Transformation](workflows/dataset-transformation/README.md) | Candidate 中精确 Unit/Result Process 的语义决策、确定性加权、验证与 handoff                      |
+| [Publication](workflows/publication/README.md)                       | Candidate 精确范围、审批、可恢复发布与独立回读；另有 opt-in Portal LCIA recipe                   |
 
-```text
-workflows/
-├── calculation/
-├── result-materialization/
-├── release-candidate/
-├── dataset-transformation/
-└── publication/
-```
-
-当前默认主线是：
+默认路径：
 
 ```text
-Calculation
-  -> Result Materialization
-  -> Release Candidate
+Calculation -> Result Materialization -> Release Candidate -> Publication
+                                              |
+                                              +-> Dataset Transformation
+                                                  -> validated output + handoff
 ```
 
-Release Candidate 完成后提供两个明确方向：
+Candidate 构建不构成发布授权。Publication 可选择引用完整的子集，但不能修改 Candidate；内容变化需要新的 Candidate。
 
-```text
-Release Candidate
-  ├─ Publication -> full/selective dependency-closed Publish Plan
-  └─ data refinement -> Dataset Transformation -> new Candidate
-```
+## 当前交接限制
 
-Candidate 和变换产物都不可原地改写。Publication 可以从 Candidate 选择引用完整的发布子集；任何数据内容变化仍必须产生新 Candidate，并绑定父 Candidate 与变换证据。
+Transformation 的 inspect、freeze、execute 已实现；其 `completed` 只证明本节点产物和 handoff 已生成。Unit 聚合使旧 Result evidence 失效，需要新的计算；Result 聚合产生 Derived Result，不重新求解或补造 LifecycleModel。
 
-## 1. Calculation Workflow
+**后继路线不是现成的自动闭环。** Materialization 当前入口只消费 Calculation Bundle intake，尚未消费 Transformation 的 Derived Result handoff；Release Candidate 当前只支持 LifecycleModel full-closure profile，拒绝 Result-only materialization。进入后继 Workflow 前应核对其真实输入契约；不能通过重命名产物、复用旧证据或补造 Model 绕过限制。具体节点和限制由各 Workflow 文档维护。
 
-Calculation 负责从计算意图或已有远程资源继续工作，直到所需 Calculation Bundle 已可靠下载到本地。
+## 开发与阅读
 
-它负责：
+Agent 从 [AGENTS.md](AGENTS.md) 进入，按路径读取 scoped contract。根 [Workflow 导航](workflows/README.md) 帮助选择动作；跨 Workflow 所有权、证据与交接设计见 [architecture](docs/architecture.md)。操作命令在各 Workflow README 与 CLI help 中维护。
 
-- 创建或接入 ResultSet；
-- 确认 scope 和 LCIA 方法集；
-- 启动、跟踪 Closure Check 和计算任务；
-- 展示报告、阻塞项和可恢复动作；
-- 下载并校验 Calculation Bundle；
-- 绑定远程资源 identity 与本地产物证据。
-
-完整性验证属于 Calculation 内部的可恢复节点，不是独立顶层 Workflow。
-
-详见 [Calculation Workflow](workflows/calculation/README.md)。
-
-## 2. Result Materialization Workflow
-
-Result Materialization 负责把 Calculation Bundle 或其他已经冻结并验证的结果，确定性地组装为标准 LCA 数据集。
-
-它负责：
-
-- 冻结 scope、最终对象和 Result Process 内容层；
-- 生成 LCI 或 LCI + LCIA Result Process；
-- 生成引用精确 Result Process 的 resolved one-hop LifecycleModel；
-- 求解并冻结 identity/version；
-- 验证 TIDAS schema、引用闭合、数值一致性和 Model 重构；
-- 输出 canonical dataset collection、dataset index 和 materialization manifest。
-
-LCI Result Process、LCI + LCIA Result Process 和 LifecycleModel 是本 Workflow 下的 recipe，不是额外顶层 Workflow。
-
-详见 [Result Materialization Workflow](workflows/result-materialization/README.md)。
-
-## 3. Release Candidate Workflow
-
-Release Candidate 负责把已经 materialize 并验证的数据组织为不可变、可审查、尚未授权发布的 Candidate。
-
-它负责：
-
-- 从冻结上游准备 Release Intake；
-- 补齐独立分发所需的精确支持数据；
-- 冻结 Package Plan；
-- 执行 TIDAS/eILCD 验证、转换、语义 round-trip 和确定性打包；
-- 对失败构建生成完整影响报告和人工审核视图；
-- 将范围排除绑定到精确影响报告 hash；
-- 通过新的 Package Plan 重跑全部验证；
-- 冻结 `publicationAuthorized=false` 的 Release Candidate。
-
-Packaging 和 Candidate qualification 都属于本 Workflow。生成 ZIP 不等于 Candidate 已通过资格验证，Candidate 构建成功也不等于已经获得发布授权。
-
-Candidate 完成后必须展示两个后续方向：
-
-1. 进入 Publication，选择 Unit Process、Result、Both 或精确 datasets，生成依赖闭合的 Publish Plan；
-2. 选择精确 Candidate 数据进入 Dataset Transformation，再生成新 Candidate。
-
-Release Candidate v2 额外冻结 `publication-catalog.json`，让 Publication 在不改变 Candidate 的前提下执行确定性的正向依赖补齐和反向剪枝。
-
-详见 [Release Candidate Workflow](workflows/release-candidate/README.md)。
-
-## 4. Dataset Transformation Workflow
-
-Dataset Transformation 是 Candidate 完成后的可选再加工入口。当前 DSL v0 先让 Agent 解释并推荐 Unit Process 或 Result Process 聚合语义，再由用户确认目标；随后从 Candidate v1/v2 选择匹配 role 的精确 Process，以显式权重或 `annualSupplyOrProductionVolume` 证据形成加权聚合。
-
-Workflow 先生成完整业务字段冲突报告。字段差异、年产量缺失或取值不明确进入 `needs_decision`，由 Agent 提出策略并把用户决定写回 DSL；它们不是失败。决定完整后冻结 Candidate/dataset hashes、weights、字段值和 metadata policy，再由确定性执行器归一化参考 amount、聚合 exchanges、生成新 identity、重置 review，并输出 validation receipt 和 lineage。
-
-加权 Unit Process 改变过程清单语义，因此旧 Result evidence 明确失效，完成后返回 `Calculation -> Result Materialization -> Release Candidate`。加权 Result Process 只组合 hash-bound、共同 Calculation lineage、exchange set 和 LCIA method set 兼容的已有 Result，完成后直接返回 `Result Materialization -> Release Candidate`，不重新求解，也不隐式聚合 LifecycleModel。父 Candidate 不被覆盖，Transformation 也不产生发布副作用。
-
-详见 [Dataset Transformation Workflow](workflows/dataset-transformation/README.md)。
-
-## 5. Publication Workflow
-
-Publication 负责消费不可变 Release Candidate，在精确选择和授权后改变 TianGong LCA 平台上的发布状态，并独立确认终态。
-
-当前已经实现完整 Publication 闭环：
-
-- 用户选择发布 Unit Process、Result、Both 或精确 datasets；
-- Publication 从 Candidate v2 的 hash-bound catalog 计算 forward closure 和 exclude 的 transitive reverse pruning；
-- request、resolution 和 Draft Plan 原子写入，且明确 `publicationAuthorized=false`；
-- 从 Candidate TIDAS ZIP 只物化 dependency-safe effective set；
-- actor-scoped target inspection 按 UUID + Version + canonical content + dataset role 的目标状态分类；
-- 用户用 exact Executable Plan SHA-256 形成带过期时间的 Approval；含 Result Process operation 时还必须形成不可变的 manager attestation；
-- missing row 创建后发布、matching draft 只切状态、matching published 幂等跳过；
-- 执行使用哈希链事件安全恢复，并以独立远程回读生成最终 Receipt。
-- 对具备 Worker prepared projection 的 ready V3 LCIA package，显式 opt-in recipe 先确认 Database-computed exact package publish plan，再确认 projection finalize，并通过独立 public-visibility readback 或精确 revoke 收敛终态；
-- Result Process 的 120 写入经只读 prepare、manager-attested execute 和 exact-receipt readback 三步，直接创建 120，从不经过 `0`/`100` 平台命令。
-
-远程发布规则是：
-
-- 平台已存在精确 UUID + Version 的数据时，发布动作改变其生命周期状态；
-- 平台不存在该主键时，发布动作写入精确 Candidate 数据并进入发布态；
-- 发布计划必须区分用户选择的 roots 与保证引用完整性所需的有效发布集合；
-- 目标状态按 dataset role 逐 operation 派生：Result Process 为 `120`，普通 Unit Process、LifecycleModel 和 support 数据保持 `100`；dependency member 永远跟随自己的 role，不因为被 Result 组件选中而映射到 120；
-- 平台未提供跨多个 Edge Function 请求的全局事务，因此 Workflow 明确采用幂等、可恢复执行，不虚构 atomic promotion。
-
-Publication 不修改 Candidate；纯范围选择生成 hash-bound Draft/Executable Plan 和精确 payload。内容变化必须返回 Release Candidate、Dataset Transformation 或更早上游生成新 Candidate。
-
-Portal LCIA projection recipe 与 Candidate dataset publication 相互独立：前者不创建/发布 TIDAS dataset，不读取 private LCIA artifact，只发布 exact V3 LCIA result package，并把 Worker 已准备、Database 重新核对的 typed numeric projection 绑定到该 publication。Package publish 与 projection finalize 是两个独立 Plan confirmation 边界；中间和终态用一个只追加 lifecycle-event contract 记录，Database 仍拥有远程真相。两步之间可能短暂 unavailable，不伪造原子切换。现有 artifact、signed-download 和 Candidate Publication 行为保持不变。
-
-详见 [Publication Workflow](workflows/publication/README.md)。
-
-## Candidate 的两个后续方向
-
-### 直接发布
-
-Publication 以 Candidate v2 为不可变输入。用户确认 component、精确 scope 和 target intent，Workflow 生成未授权 Draft Plan；目标检查后，用户再确认 exact Executable Plan hash。
-
-### 选择性发布
-
-Publication 可以选择 component 或包内具体 dataset：
-
-```text
-Candidate
-  -> scope selection
-  -> forward dependency expansion
-  -> transitive reverse pruning for exclusions
-  -> reference-complete effective set
-  -> exact payload + Target Snapshot
-  -> approved Executable Plan
-  -> resumable execution + independent readback
-```
-
-剔除集合必须递归包含所有因此失去完整性的关联数据。原 Candidate、package 和上游 materialization 均保持不变。
-
-### 再加工
-
-Dataset Transformation 只能读取并验证 Candidate 数据，不能覆盖它。用户先确认 Unit Process 或 Result Process 加权语义：Unit Process 路线返回 Calculation 后重新产生 Result evidence；Result Process 路线产生 Derived Result 并返回 Result Materialization，不隐式聚合 LifecycleModel。两条路线最终都构建新的 Candidate。
-
-## 共享边界
-
-- Workflow 可以从已有精确资源或 artifact 继续，不要求从第一步重跑。
-- 远程副作用、耗时计算、Candidate 范围、变换语义和正式发布都需要明确用户决定。
-- 数值计算、格式验证、hash 和打包必须由确定性实现完成，不能由语言模型直接生成。
-- 大型 artifacts 写入文件或对象存储，stdout 只返回有界摘要和引用。
-- 其他系统能力不存在时报告 `capability_unavailable`，不扩大修改范围。
-- Candidate 构建与 Publication 是不同权限边界；本地验证成功不能替代远程发布授权或独立回读。
-
-## 当前实施状态
-
-- Calculation 已实现 workflow-local ResultSet、Closure、计算任务、Bundle 数据面和 Worker 日志委托入口。
-- Result Materialization 已实现 intake、Result Process/LifecycleModel 生成、验证和本地后台 Job。
-- Release Candidate 已实现 Elementary Flow cache、Release Intake、Package build、失败影响分析、人工审核工作簿、scope decision 和 Candidate qualification。
-- Dataset Transformation 已实现 DSL v0、Candidate v1/v2 精确读取、Unit/Result aggregation-target 决策、业务字段冲突决策、显式/年产量权重、加权 Unit/Result Process、LCI/LCIA 兼容性验证、条件 handoff、CLI、schemas、回复模板和真实三 Process 试验。
-- Publication 已实现 Candidate v2 catalog、范围解析、精确 payload、目标检查、按 dataset role 派生的逐 operation 混合状态映射、hash-bound Approval、可恢复远程发布、独立回读，以及显式 opt-in 的 Portal LCIA V3 package plan/publish 和 projection prepare/finalize/verify/revoke；两条路径各自使用严格 schemas、CLI、回复模板和 fail-closed 测试。普通 Unit Process/LifecycleModel/support 的 Candidate 执行 adapter 继续只支持平台发布状态码 `100`；Result Process 的 `120` 路线已实现只读远程 prepare、manager-attested 直接 120 写入、丢失响应恢复、exact-receipt 独立回读，以及全部 v2/Result schemas 和离线契约测试。已知限制：更新后的 Release 拒绝旧的 Result `100` plan；`sourceKind` 始终是 manager attestation，不是 machine-verified 血缘；不声称跨 RPC 全局原子性，也不做历史数据迁移。
+精确工具链以 `.node-version` 和根 `package.json` 为准；安装及验证入口见根 AGENTS。运行产物放在 ignored `.release/`。机密配置仅按 `.env.example` 和所属 Workflow 契约使用，不加入源码或运行证据。
