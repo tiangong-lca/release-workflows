@@ -12,15 +12,19 @@ whenToUpdate:
   - 当 intake、package、candidate qualification、scope refinement 或 Candidate 后继路径变化时
 checkPaths:
   - workflows/release-candidate/**
-lastReviewedAt: 2026-08-29
-lastReviewedCommit: 67a61471502eed31af70358f86dd22be0e350d8a
-lastReviewedNote: "Reconciled portable Excel review, TIDAS memory budgets, and exact pnpm 11.24 dependencies without changing Candidate authority."
+lastReviewedAt: 2026-10-07
+lastReviewedCommit: 89847052770fede8ebe2eeb8aba32af9b3b71989
+lastReviewedNote: "Reviewed for Release #80: available Transformation help is distinct from unsupported downstream consumption and Result-only packaging; qualification and authorization are unchanged."
 related:
   - README.md
   - ../AGENTS.md
 ---
 
 # Release Candidate Workflow Agent Contract
+
+## 按动作读取
+
+读取 `workflows/AGENTS.md`；运行 cache、intake、package 或 failure 动作时，只展开 README 的相应章节及 CLI 指定模板。跨 Workflow 能力限制见 README 的 package profile 说明；下一步导航不授予操作权限。
 
 ## Agent 的职责
 
@@ -67,7 +71,7 @@ related:
 - 输出目录不可覆盖。只有四包回读校验全部通过才能原子提交可见 Candidate；包已经生成但 qualification 失败时，必须把 ZIP、结构化失败清单、已有验证报告和逐包回读目录保留为唯一 sibling failed build，并明确 `candidateCreated=false`、`publicationAuthorized=false`。它是诊断产物，不是 Candidate，也不得被发布。
 - `tidas release build-packages --format json` 非零退出时，必须把有界 stdout 解析为结构化 operation report 并写入 failed-build diagnostics；只有 stdout 不是有效 JSON 时才保留有界文本尾部。不得只保留 stderr 而丢失字段级 validation evidence。
 - CLI 的人类输出必须包含有界 `Summary / Next / Reply using template`；JSON 输出必须保持单对象、可解析，并携带 `outcome`、`completeness`、artifact 引用、`nextActions[]` 和 `replyTemplate`。
-- Candidate 成功结果还必须携带结构化 `nextDecision`，明确列出可执行的 Publication planning 和尚待设计的 Dataset Transformation，并只返回真实入口。
+- Candidate 成功结果还必须携带结构化 `nextDecision`，列出 Publication planning 和已可用的 Dataset Transformation inspect/freeze/execute 入口，同时披露 Derived Result 消费与 Result-only package 的能力缺口；不把可执行的本地节点描述成已完成的端到端路线。
 - cache refresh 的 CLI 输出和错误不得包含连接串、S3 secret 或 presigned URL。成功结果可以披露 execution mode 与 SSH host，但不能披露临时 object locator。
 - CLI 返回的自身命令和跨 Result Materialization 命令必须使用由 `import.meta.url` 生成的绝对入口，确保从任意 cwd 可复制执行。Release Intake 准备成功后应返回确定的 Candidate 输出目录，不把 `<CANDIDATE_DIR>` 留给 Agent 猜测。
 - CLI 必须拒绝未知和重复参数。失败使用非零退出码，并区分人类可读 stderr 与 `--json` 结构化 stderr。

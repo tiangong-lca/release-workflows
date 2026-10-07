@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 Calculation 的入口、用户决定、远程能力或产物变化时
 checkPaths:
   - workflows/calculation/**
-lastReviewedAt: 2026-08-25
-lastReviewedCommit: 8d9bd8d89aa14ecadab385422ed797e63fc3de44
-lastReviewedNote: "Isolated provider ResultSet payloads behind a workflow-local compatibility adapter and stable internal reference."
+lastReviewedAt: 2026-10-07
+lastReviewedCommit: 89847052770fede8ebe2eeb8aba32af9b3b71989
+lastReviewedNote: "Reviewed for Release #80: scoped reading and profile authority; existing task, Bundle and monitoring contracts retain their runtime behavior."
 related:
   - AGENTS.md
   - ../../README.md
@@ -225,7 +225,7 @@ Release-owned ResultSet 引用、target fingerprint 和观察时间，不包含�
 - Closure 运行失败与“Closure 发现数据问题”必须区分。
 - Certificate 过期、scope 改变或依赖漂移时重新验证受影响范围。
 - 计算任务失败不自动创建第二个任务；先读取权威终态和重试语义。
-- 下载失败只重试下载，不重新计算；重新获取短期 URL 后再次校验。
+- 下载失败只重试同一精确 Bundle 下载与完整性校验，不重新计算；受控 S3 数据面不要求 Agent 保存或重新拼装 signed URL。
 
 ## 不属于本 Workflow
 
@@ -235,10 +235,8 @@ Release-owned ResultSet 引用、target fingerprint 和观察时间，不包含�
 - 把 Calculation Bundle 组装为 Result Process 或 LifecycleModel；
 - 正式数据包发布。
 
-三项分别进入 Dataset Transformation、Result Materialization 和 Release Candidate Workflow。
+业务加权进入 Dataset Transformation，结果物化进入 Result Materialization，打包进入 Release Candidate，远程发布进入 Publication。
 
-## 待确认点
+## 执行终点
 
-1. Calculation Workflow 是否应同时支持 `global_eligible` 和用户指定 subset？
-2. 新计算是否总是先创建 ResultSet，还是允许用户选择“只采用已有远程任务，不创建本地业务名称”？
-3. 用户确认计算后，是默认等待完成并自动下载，还是先返回任务、由用户决定何时继续？
+以用户请求的终点为准：只要求检查或提交时不强制继续到下载。已有任务可按精确 ID 接入；scope 和默认方法由当前 profile 与显式选择决定。提交后持续监测须按 CLI 返回的确认提示处理，不把“已提交”描述成“已完成”。

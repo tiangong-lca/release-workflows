@@ -16,9 +16,9 @@ checkPaths:
   - workflows/dataset-transformation/lib/**
   - workflows/dataset-transformation/cli.mjs
   - workflows/dataset-transformation/test/**
-lastReviewedAt: 2026-08-28
-lastReviewedCommit: 527716567e705b5ea025a899efa7e164008db7a3
-lastReviewedNote: "Defined explicit aggregation-target selection and deterministic Unit/Result Process operations."
+lastReviewedAt: 2026-10-07
+lastReviewedCommit: 89847052770fede8ebe2eeb8aba32af9b3b71989
+lastReviewedNote: "Reviewed for Release #80: Unit/Result completion describes produced evidence, not downstream capability; DSL and numerical behavior remain unchanged."
 related:
   - README.md
   - contracts/dataset-transformation-dsl.v0.schema.json
@@ -53,9 +53,11 @@ Revised Draft DSL
 Frozen Spec (hash-bound，F3，不可原地修改)
   -> execute
 Transformed Process + Execution Receipt + Handoff
-  -> Unit Process: Calculation -> Result Materialization -> new Candidate
-  -> Result Process: Result Materialization -> new Candidate
+  -> intended Unit consumer: Calculation
+  -> intended Result consumer: Result Materialization
 ```
+
+handoff 描述目标与绑定证据，不证明消费者已实现。当前 Materialization 尚不消费 Derived Result handoff，Candidate 不支持 Result-only package；实际接收限制见 [Workflow README](README.md#result-evidence-与返回路径)。不得为打通路线补造 Model、改写输入类型或复用无效证据。
 
 `needs_decision` 是正常业务状态。只有 malformed contract、Candidate/input drift、运行时故障或生成结果违反确定性检查时才返回 system error / `needs_repair`。
 
@@ -305,7 +307,7 @@ execute 至少检查：
 - review 已重置；
 - receipt、output 和 handoff hash 可重算。
 
-Unit Process 输出使旧 Result Process/LifecycleModel evidence 无效，handoff 进入 Calculation。Result Process 输出是 hash-bound Derived Result，handoff 直接进入 Result Materialization，不调用 Worker Calculation，也不自动生成或聚合 LifecycleModel。Transformation 不会原地改写父 Candidate，也不会自行发布。
+Unit Process 输出使旧 Result Process/LifecycleModel evidence 无效，handoff 进入 Calculation。Result Process 输出是 hash-bound Derived Result，handoff 指向 Result Materialization，但须等待接收能力实现；Transformation 不调用 Worker Calculation，也不自动生成或聚合 LifecycleModel。Transformation 不会原地改写父 Candidate，也不会自行发布。
 
 ## 11. CLI
 

@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 materialization recipe、身份版本、数据集关系、验证或输出变化时
 checkPaths:
   - workflows/result-materialization/**
-lastReviewedAt: 2026-08-29
-lastReviewedCommit: 67a61471502eed31af70358f86dd22be0e350d8a
-lastReviewedNote: "Documented Result-only Transformation handoffs and root pnpm 11.24 SDK 0.2 validation."
+lastReviewedAt: 2026-10-07
+lastReviewedCommit: 89847052770fede8ebe2eeb8aba32af9b3b71989
+lastReviewedNote: "Reviewed for Release #80: current Bundle-only intake and unsupported Derived Result handoff are explicit; materialization and path behavior remain unchanged."
 related:
   - AGENTS.md
   - design/result-process-and-lifecycle-model.md
@@ -25,19 +25,18 @@ related:
 
 ## 目标
 
-把 Calculation Bundle 或经过确认的派生结果，确定性地组装为符合标准、具有稳定身份和版本、内部引用一致的 LCA 数据集集合。
+把已验证的 Calculation Bundle，确定性地组装为符合标准、具有稳定身份和版本、内部引用一致的 LCA 数据集集合。
 
 这个 Workflow 解决的是“数值和图证据如何成为 Process/LifecycleModel”，不是重新计算，也不是打包发布。
 
 ## 可以从哪里开始
 
 - Calculation Workflow 下载并验证的 Calculation Bundle；
-- Dataset Transformation Workflow 生成的 Derived Result；
-- 已冻结的 source closure、graph evidence 和 result arrays；
-- 已有 Materialization Request、Identity Plan、Version Plan 或部分生成结果；
+- 已由本 Workflow 验证的 Calculation Bundle intake，其中包含 source closure、graph evidence 和 result arrays；
+- 已有请求与精确输入，用于重新执行或核验已有完整产物；部分生成结果不构成独立输入或 checkpoint；
 - 已完成 materialization、但需要针对新 recipe 或上一版 manifest 重新生成的 dataset collection。
 
-Dataset Transformation 的 Result weighted aggregation handoff 使用 `status=ready_for_result_materialization`，绑定 Frozen Spec、Execution Receipt、Derived Result identity/version/hash 和父 Candidate。该入口默认只物化 Result Process；它不会因为父 Candidate 中存在 LifecycleModel 就自动聚合、复制或补造新 Model。
+Dataset Transformation 已输出 `status=ready_for_result_materialization` handoff，绑定 Frozen Spec、Execution Receipt、Derived Result identity/version/hash 和父 Candidate；但本 Workflow 尚未实现该输入的消费者，当前 CLI 仍只接受 Calculation Bundle intake。不得将 handoff 改名为 Bundle 或补造 LifecycleModel。Result-only materialization 也尚不受 Release Candidate 的 package profile 支持；本节点产物完成不表示可直接构建新 Candidate。
 
 ## 为什么是独立 Workflow
 

@@ -13,9 +13,9 @@ whenToUpdate:
   - 当支持的加工机制、DSL、冲突策略、验证或返回路径变化时
 checkPaths:
   - workflows/dataset-transformation/**
-lastReviewedAt: 2026-08-29
-lastReviewedCommit: 67a61471502eed31af70358f86dd22be0e350d8a
-lastReviewedNote: "Reviewed deterministic Unit/Result routes after current-main and pnpm 11.24 reconciliation."
+lastReviewedAt: 2026-10-07
+lastReviewedCommit: 89847052770fede8ebe2eeb8aba32af9b3b71989
+lastReviewedNote: "Reviewed for Release #80: Unit/Result completion describes produced evidence, not downstream capability; DSL and numerical behavior remain unchanged."
 related:
   - AGENTS.md
   - dsl-v0.md
@@ -39,8 +39,7 @@ Validated Candidate v1/v2
   -> Frozen Spec
   -> deterministic weighted Unit/Result Process
   -> validation + lineage + handoff
-  -> Unit Process: Calculation -> Result Materialization -> new Candidate
-  -> Result Process: Result Materialization -> new Candidate
+  -> intended next consumer (must support the exact handoff)
 ```
 
 支持：
@@ -98,7 +97,7 @@ exchange 按 Flow UUID/version、direction、location、function type 分组。�
 
 ## Result evidence 与返回路径
 
-完成并不表示已经形成 Candidate，也不表示发布。返回路径由冻结的 operation 决定：
+完成只证明本节点的输出与 handoff；不表示接收端已实现、Candidate 已形成或已经发布。以下是由冻结 operation 指定的目标路线，执行前须核对接收能力：
 
 ```text
 unit-process.weighted-aggregate.v1
@@ -109,6 +108,8 @@ result-process.weighted-aggregate.v0
 ```
 
 Unit Process 路线改变过程清单语义，因此父 Candidate 中已有 Result Process/LifecycleModel evidence 标记为 `invalidated`。Result Process 路线把输入 Result evidence 标记为 `derived`，不重新调用 Worker，也不隐式聚合 LifecycleModel。父 Candidate 不被覆盖；新 Candidate 必须绑定 Transformation Frozen Spec、Execution Receipt 和对应的新计算或物化证据。
+
+**当前限制：** Materialization 尚未实现 Derived Result handoff 消费，当前入口仍是 Calculation Bundle intake；Candidate 只接受 LifecycleModel full-closure profile，Result-only 输入会被拒绝。Unit handoff 也不能直接作为 Calculation API 输入，必须先满足其业务对象和授权契约。不要将目标路线当作自动可执行闭环。
 
 ## CLI
 

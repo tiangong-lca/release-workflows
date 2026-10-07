@@ -1,8 +1,8 @@
 version: 1
 layout: repo
-lastReviewedAt: "2026-09-30"
-lastReviewedCommit: "dd87344acad7a131c20d52ce0ea2fd5ed2894d41"
-lastReviewedNote: "Reviewed for Release #78: opt-in monitoring prompts preserve Workflow topology, ownership, authorization and external state authority."
+lastReviewedAt: "2026-10-07"
+lastReviewedCommit: "89847052770fede8ebe2eeb8aba32af9b3b71989"
+lastReviewedNote: "Reviewed for Release #80: smaller stable context, scoped routing and truthful handoff boundaries; ownership, immutable evidence and authorization constraints are retained."
 
 catalog:
   repos:
@@ -97,29 +97,19 @@ routing:
   intents:
     calculation-workflow:
       paths:
-        - workflows/AGENTS.md
         - workflows/calculation/**
-        - README.md
     dataset-transformation-workflow:
       paths:
-        - workflows/AGENTS.md
         - workflows/dataset-transformation/**
-        - README.md
     result-materialization-workflow:
       paths:
-        - workflows/AGENTS.md
         - workflows/result-materialization/**
-        - README.md
     release-candidate-workflow:
       paths:
-        - workflows/AGENTS.md
         - workflows/release-candidate/**
-        - README.md
     publication-workflow:
       paths:
-        - workflows/AGENTS.md
         - workflows/publication/**
-        - README.md
     validation-and-automation:
       paths:
         - package.json
@@ -153,6 +143,9 @@ docInventory:
     - workflows/AGENTS.md
     - workflows/**/README.md
     - workflows/**/AGENTS.md
+    - workflows/result-materialization/design/*.md
+    - workflows/dataset-transformation/dsl-v0.md
+    - workflows/publication/contracts/result-process-publication-transport.md
 
 repo:
   id: release
@@ -232,7 +225,7 @@ rules:
         mode: review_or_update
       - path: workflows/calculation/README.md
         mode: review_or_update
-      - path: README.md
+      - path: workflows/AGENTS.md
         mode: review_or_update
     reason: Calculation entry, validation, remote task, download, evidence, and recovery behavior must stay coherent.
   - id: dataset-transformation-workflow-contract
@@ -246,7 +239,9 @@ rules:
         mode: review_or_update
       - path: workflows/dataset-transformation/README.md
         mode: review_or_update
-      - path: README.md
+      - path: workflows/AGENTS.md
+        mode: review_or_update
+      - path: workflows/dataset-transformation/dsl-v0.md
         mode: review_or_update
     reason: Candidate-bound DSL, semantic decision handling, deterministic transformation, validation, and return paths must stay coherent.
   - id: result-materialization-workflow-contract
@@ -260,7 +255,7 @@ rules:
         mode: review_or_update
       - path: workflows/result-materialization/README.md
         mode: review_or_update
-      - path: README.md
+      - path: workflows/AGENTS.md
         mode: review_or_update
     reason: Result Process, LifecycleModel, identity/version planning, canonical dataset output, and validation behavior must stay coherent.
   - id: release-candidate-workflow-contract
@@ -274,7 +269,7 @@ rules:
         mode: review_or_update
       - path: workflows/release-candidate/README.md
         mode: review_or_update
-      - path: README.md
+      - path: workflows/AGENTS.md
         mode: review_or_update
     reason: Candidate intake, package planning, validation-failure repair, Publication handoff, and immutable Candidate behavior must stay coherent.
   - id: publication-workflow-contract
@@ -288,7 +283,7 @@ rules:
         mode: review_or_update
       - path: workflows/publication/README.md
         mode: review_or_update
-      - path: README.md
+      - path: workflows/AGENTS.md
         mode: review_or_update
     reason: Candidate-bound scope planning, exact payload, target inspection, authorization, resumable remote mutation, and independent readback must stay coherent.
   - id: release-validation-contract
@@ -317,3 +312,85 @@ rules:
       - path: docs/architecture.md
         mode: review_or_update
     reason: The exact runtime, effective pnpm workspace policy, dependency lock, documentation baseline, and repository-level validation entrypoints must stay aligned.
+  - id: materialization-domain-contract
+    scope: repo
+    repo: release
+    triggers:
+      - path: workflows/result-materialization/design/result-process-and-lifecycle-model.md
+        kind: specialized-contract
+      - path: workflows/result-materialization/lib/*renderer.mjs
+        kind: specialized-contract
+      - path: workflows/result-materialization/lib/materialize*.mjs
+        kind: specialized-contract
+      - path: workflows/result-materialization/lib/context.mjs
+        kind: specialized-contract
+      - path: workflows/result-materialization/lib/identity.mjs
+        kind: specialized-contract
+      - path: workflows/result-materialization/lib/versioning.mjs
+        kind: specialized-contract
+      - path: workflows/result-materialization/lib/reconstruction.mjs
+        kind: specialized-contract
+      - path: workflows/result-materialization/contracts/dataset-descriptor.v1.schema.json
+        kind: specialized-contract
+      - path: workflows/result-materialization/test/workflow.test.mjs
+        kind: specialized-contract
+      - path: workflows/result-materialization/test/failure-mechanisms.test.mjs
+        kind: specialized-contract
+    requiredDocs:
+      - path: workflows/result-materialization/design/result-process-and-lifecycle-model.md
+        mode: review_or_update
+    reason: Result and Model identity, one-hop semantics and quantitative reference must retain their domain rationale.
+  - id: materialization-artifact-path-contract
+    scope: repo
+    repo: release
+    triggers:
+      - path: workflows/result-materialization/design/local-artifact-path-convention.md
+        kind: specialized-contract
+      - path: workflows/result-materialization/lib/artifact-paths.mjs
+        kind: specialized-contract
+      - path: workflows/result-materialization/lib/intake.mjs
+        kind: specialized-contract
+      - path: workflows/result-materialization/lib/materialize.mjs
+        kind: specialized-contract
+      - path: workflows/result-materialization/lib/background-job.mjs
+        kind: specialized-contract
+      - path: workflows/result-materialization/contracts/materialization-key.v1.schema.json
+        kind: specialized-contract
+      - path: workflows/result-materialization/cli.mjs
+        kind: specialized-contract
+      - path: workflows/result-materialization/test/workflow.test.mjs
+        kind: specialized-contract
+    requiredDocs:
+      - path: workflows/result-materialization/design/local-artifact-path-convention.md
+        mode: review_or_update
+    reason: Content-addressed paths, immutable keys and verified reuse must match the active path contract.
+  - id: publication-result-transport-contract
+    scope: repo
+    repo: release
+    triggers:
+      - path: workflows/publication/contracts/result-process-publication-transport.md
+        kind: specialized-contract
+      - path: workflows/publication/contracts/result-process*.schema.json
+        kind: specialized-contract
+      - path: workflows/publication/lib/result-process*.mjs
+        kind: specialized-contract
+      - path: workflows/publication/lib/publication-state.mjs
+        kind: specialized-contract
+      - path: workflows/publication/test/result-process.test.mjs
+        kind: specialized-contract
+    requiredDocs:
+      - path: workflows/publication/contracts/result-process-publication-transport.md
+        mode: review_or_update
+    reason: Release consumption notes must follow its Result RPC adapter while Database remains the remote contract authority.
+  - id: publication-live-acceptance-contract
+    scope: repo
+    repo: release
+    triggers:
+      - path: workflows/publication/live/**
+        kind: specialized-contract
+      - path: workflows/publication/test/live-acceptance.test.mjs
+        kind: specialized-contract
+    requiredDocs:
+      - path: workflows/publication/live/README.md
+        mode: review_or_update
+    reason: Opt-in live prerequisites and evidence limits must follow the acceptance runner and guard tests.

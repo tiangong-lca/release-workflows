@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 Transformation DSL、决策权限、执行器、验证或返回路径变化时
 checkPaths:
   - workflows/dataset-transformation/**
-lastReviewedAt: 2026-08-29
-lastReviewedCommit: 67a61471502eed31af70358f86dd22be0e350d8a
-lastReviewedNote: "Reviewed Unit/Result Transformation semantics inside the exact pnpm 11.24 workspace."
+lastReviewedAt: 2026-10-07
+lastReviewedCommit: 89847052770fede8ebe2eeb8aba32af9b3b71989
+lastReviewedNote: "Reviewed for Release #80: Unit/Result completion describes produced evidence, not downstream capability; DSL and numerical behavior remain unchanged."
 related:
   - README.md
   - dsl-v0.md
@@ -25,9 +25,9 @@ related:
 
 ## 当前实现
 
-本 Workflow 已实现两类加权语义：Unit Process 聚合构造新的过程并返回 Calculation；Result Process 聚合组合已有 LCI/LCIA Result 并返回 Result Materialization。`process.weighted-aggregate.v0` 继续作为旧 Unit Process operation 兼容入口，新 Draft 使用显式目标选择和清晰 operation type。
+本 Workflow 已实现两类加权语义：Unit Process 聚合构造新过程并生成以 Calculation 为目标的 handoff；Result Process 聚合组合已有 LCI/LCIA Result 并生成以 Result Materialization 为目标的 handoff。handoff 不证明接收端支持：Materialization 的 Derived Result 消费与 Candidate 的 Result-only package 尚未实现，不得补造 Model 或改写输入契约绕过限制。`process.weighted-aggregate.v0` 继续作为旧 Unit Process operation 兼容入口，新 Draft 使用显式目标选择和清晰 operation type。
 
-进入源码前先阅读 [README](README.md) 与 [DSL v0](dsl-v0.md)。
+进入目标动作前读取 `workflows/AGENTS.md`、[README](README.md) 的对应章节；设计或执行 DSL 时读取 [DSL v0](dsl-v0.md)。只按 CLI 指针读取回复模板。
 
 ## Agent 职责
 
@@ -46,7 +46,7 @@ related:
 - `needs_decision`：正常流程；继续与用户解决语义问题。
 - `ready`：当前 Draft 已解决所有已发现问题，可以冻结。
 - `frozen`：不可变执行契约。
-- `completed`：transformed Unit Process 和验证/handoff 已产生。
+- `completed`：所选 Unit/Result operation 的 transformed Process、验证与 handoff 已产生；不表示接收端已消费或新 Candidate 已生成。
 - `input_drift` / `system_error` / `needs_repair`：非预期技术异常，保留 artifacts 并从原节点恢复。
 
 不得把业务字段差异、年产量缺失或 unsupported mapping 记录为 terminal `failed`。
@@ -76,6 +76,6 @@ Agent 不得代替用户决定 aggregation target、weighting mode、weights/ann
 - Draft、analysis/conflict report、Frozen Spec、transformed Process、receipt 和 handoff 可追溯；
 - 所有 business conflicts 有用户决定及 reason；
 - 自动测试通过；
-- 对真实三个相近 Process 的示例结果可重算；
+- 真实三 Process 试验是历史验收示例；只有任务要求重现且精确输入可用时才重算，不将其作为每次操作的完成门；
 - TIDAS JSON、eILCD projection/validation 和 semantic round-trip 通过；
-- handoff 与 operation 一致：Unit Process 为 `Calculation -> Result Materialization -> new Candidate`；Result Process 为 `Result Materialization -> new Candidate`，且不隐式聚合 LifecycleModel。
+- handoff 的目标与 operation 一致：Unit Process 需要新计算，Result Process 指向物化且不隐式聚合 LifecycleModel；显式披露当前消费者与 package 限制，不宣称后继已执行。
