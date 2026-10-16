@@ -1,0 +1,61 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: friday
+      time: "04:00"
+      timezone: Asia/Shanghai
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 2
+    groups:
+      postgres-minor-patch:
+        patterns:
+          - pg
+          - pg-query-stream
+        update-types:
+          - minor
+          - patch
+      aws-sdk-minor-patch:
+        patterns:
+          - "@aws-sdk/*"
+          - "@smithy/*"
+        update-types:
+          - minor
+          - patch
+      runtime-minor-patch:
+        dependency-type: production
+        patterns:
+          - "*"
+        exclude-patterns:
+          - pg
+          - pg-query-stream
+          - "@aws-sdk/*"
+          - "@smithy/*"
+          - "@tiangong-lca/*"
+        update-types:
+          - minor
+          - patch
+      development-minor-patch:
+        dependency-type: development
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: friday
+      time: "04:20"
+      timezone: Asia/Shanghai
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 1
+    groups:
+      github-actions:
+        patterns:
+          - "*"

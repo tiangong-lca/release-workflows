@@ -17,9 +17,9 @@ checkPaths:
   - README.md
   - .docpact/config.yaml
   - workflows/**
-lastReviewedAt: 2026-10-07
-lastReviewedCommit: 89847052770fede8ebe2eeb8aba32af9b3b71989
-lastReviewedNote: "Reviewed for Release #80: smaller stable context, scoped routing and truthful handoff boundaries; ownership, immutable evidence and authorization constraints are retained."
+lastReviewedAt: 2026-10-16
+lastReviewedCommit: e742f068222fe625faaa591f45c9dd832dd3d7b1
+lastReviewedNote: "Reviewed Release #82: weekly npm/Actions monitoring reuses unchanged secretless CI; only lock resolution maintenance avoids mandatory metadata churn, while manifest/source/runtime review and exact dependency, artifact and publication contracts remain intact."
 related:
   - ../AGENTS.md
   - ../README.md

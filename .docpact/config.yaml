@@ -1,8 +1,8 @@
 version: 1
 layout: repo
-lastReviewedAt: "2026-10-07"
-lastReviewedCommit: "89847052770fede8ebe2eeb8aba32af9b3b71989"
-lastReviewedNote: "Reviewed for Release #80: smaller stable context, scoped routing and truthful handoff boundaries; ownership, immutable evidence and authorization constraints are retained."
+lastReviewedAt: "2026-10-16"
+lastReviewedCommit: "e742f068222fe625faaa591f45c9dd832dd3d7b1"
+lastReviewedNote: "Reviewed Release #82: weekly npm/Actions monitoring reuses unchanged secretless CI; only lock resolution maintenance avoids mandatory metadata churn, while manifest/source/runtime review and exact dependency, artifact and publication contracts remain intact."
 
 catalog:
   repos:
@@ -14,6 +14,7 @@ catalog:
         - README.md
         - workflows/README.md
         - docs/architecture.md
+        - docs/dependency-updates.md
       workspaceIntegrationRequired: true
 
 ownership:
@@ -33,6 +34,7 @@ ownership:
           - .node-version
           - test/**
           - .github/workflows/ci.yml
+          - .github/dependabot.yml
       ownerRepo: release
     - id: shared-workflow-contract
       paths:
@@ -79,13 +81,14 @@ coverage:
     - workflows/**
     - package.json
     - pnpm-workspace.yaml
+    - pnpm-lock.yaml
+    - .github/dependabot.yml
     - .github/workflows/ci.yml
   exclude:
     - .git/**
     - .docpact/runs/**
     - node_modules/**
     - .release/**
-    - pnpm-lock.yaml
     - "*.log"
 
 freshness:
@@ -95,6 +98,11 @@ freshness:
 
 routing:
   intents:
+    dependency-maintenance:
+      paths:
+        - .github/dependabot.yml
+        - docs/dependency-updates.md
+        - pnpm-lock.yaml
     calculation-workflow:
       paths:
         - workflows/calculation/**
@@ -139,6 +147,7 @@ docInventory:
     - README.md
     - .docpact/config.yaml
     - docs/architecture.md
+    - docs/dependency-updates.md
     - workflows/README.md
     - workflows/AGENTS.md
     - workflows/**/README.md
@@ -152,6 +161,30 @@ repo:
   owner: release
 
 rules:
+  - id: release-dependency-monitoring-contract
+    scope: repo
+    repo: release
+    triggers:
+      - path: .github/dependabot.yml
+        kind: dependency-monitoring-config
+      - path: docs/dependency-updates.md
+        kind: dependency-maintainer-guide
+    requiredDocs:
+      - path: docs/dependency-updates.md
+        mode: review_or_update
+    reason: Dependency monitoring scope, cadence, related groups and existing CI reuse must match the focused maintainer guide.
+  - id: release-dependency-lock-contract
+    scope: repo
+    repo: release
+    triggers:
+      - path: pnpm-lock.yaml
+        kind: dependency-lock
+    requiredDocs:
+      - path: AGENTS.md
+        mode: must_exist
+      - path: docs/dependency-updates.md
+        mode: must_exist
+    reason: Lock resolution maintenance retains dependency guidance and repository invariants without manufactured documentation edits; manifests, source and runtime changes keep their separate semantic review requirements.
   - id: release-bootstrap-contract
     scope: repo
     repo: release
@@ -296,8 +329,6 @@ rules:
         kind: build-contract
       - path: pnpm-workspace.yaml
         kind: workspace-contract
-      - path: pnpm-lock.yaml
-        kind: dependency-lock
       - path: .node-version
         kind: runtime-pin
       - path: test/**
@@ -311,7 +342,7 @@ rules:
         mode: review_or_update
       - path: docs/architecture.md
         mode: review_or_update
-    reason: The exact runtime, effective pnpm workspace policy, dependency lock, documentation baseline, and repository-level validation entrypoints must stay aligned.
+    reason: The exact runtime, manifests, effective pnpm workspace policy, documentation baseline, and repository-level validation entrypoints must stay aligned.
   - id: materialization-domain-contract
     scope: repo
     repo: release

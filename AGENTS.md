@@ -25,9 +25,9 @@ checkPaths:
   - pnpm-lock.yaml
   - .node-version
   - .github/workflows/ci.yml
-lastReviewedAt: 2026-10-07
-lastReviewedCommit: 89847052770fede8ebe2eeb8aba32af9b3b71989
-lastReviewedNote: "Reviewed for Release #80: smaller stable context, scoped routing and truthful handoff boundaries; ownership, immutable evidence and authorization constraints are retained."
+lastReviewedAt: 2026-10-16
+lastReviewedCommit: e742f068222fe625faaa591f45c9dd832dd3d7b1
+lastReviewedNote: "Reviewed Release #82: weekly npm/Actions monitoring reuses unchanged secretless CI; only lock resolution maintenance avoids mandatory metadata churn, while manifest/source/runtime review and exact dependency, artifact and publication contracts remain intact."
 related:
   - README.md
   - .docpact/config.yaml
@@ -64,6 +64,7 @@ related:
 - 精确 Node 版本读 `.node-version`，package manager 读根 `package.json`；workspace 策略读 `pnpm-workspace.yaml`，全仓只维护一个 lockfile。
 - 仅在仓库根安装：`pnpm install --frozen-lockfile`。
 - 仓库验证门：`pnpm run prepush:gate`；局部测试入口读目标 package 的 `scripts.test`。
+- 依赖与 Actions 更新复用现有 CI；监控分组、节奏和审查要求见 `docs/dependency-updates.md`，不授予远程操作或发布权限。
 - 发布 live 验收是单独的 opt-in 操作，按 `workflows/publication/live/README.md` 执行；离线测试不证明 live 发布成功。
 
 ## 文档维护
