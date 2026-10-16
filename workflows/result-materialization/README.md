@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 materialization recipe、身份版本、数据集关系、验证或输出变化时
 checkPaths:
   - workflows/result-materialization/**
-lastReviewedAt: 2026-10-07
-lastReviewedCommit: 89847052770fede8ebe2eeb8aba32af9b3b71989
-lastReviewedNote: "Reviewed for Release #80: current Bundle-only intake and unsupported Derived Result handoff are explicit; materialization and path behavior remain unchanged."
+lastReviewedAt: 2026-10-16
+lastReviewedCommit: 04cccd9dc06aa5ae3b1f9f72f027692894d0c2ff
+lastReviewedNote: "Reviewed Release #85: exact Node 24.22.0 aligns the local selector, six manifests, CI and existing toolchain assertions; pnpm 11.24.0, frozen dependency graph, internal SDK, overrides, recipe/numerical contracts and publication authorization are preserved."
 related:
   - AGENTS.md
   - design/result-process-and-lifecycle-model.md

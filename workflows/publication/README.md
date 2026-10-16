@@ -13,9 +13,9 @@ whenToUpdate:
   - 当发布选择、目标差异、状态转换、写入、审批、恢复或回读规则变化时
 checkPaths:
   - workflows/publication/**
-lastReviewedAt: 2026-10-07
-lastReviewedCommit: 89847052770fede8ebe2eeb8aba32af9b3b71989
-lastReviewedNote: "Reviewed for Release #80: recipe-scoped reading and consumer authority pointers; authorization, hash domains, remote adapters and live acceptance remain unchanged."
+lastReviewedAt: 2026-10-16
+lastReviewedCommit: 04cccd9dc06aa5ae3b1f9f72f027692894d0c2ff
+lastReviewedNote: "Reviewed Release #85: exact Node 24.22.0 aligns the local selector, six manifests, CI and existing toolchain assertions; pnpm 11.24.0, frozen dependency graph, internal SDK, overrides, recipe/numerical contracts and publication authorization are preserved."
 related:
   - AGENTS.md
   - ../release-candidate/README.md
