@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/**
 lastReviewedAt: 2026-10-16
-lastReviewedCommit: e742f068222fe625faaa591f45c9dd832dd3d7b1
-lastReviewedNote: "Reviewed Release #82: weekly npm/Actions monitoring reuses unchanged secretless CI; only lock resolution maintenance avoids mandatory metadata churn, while manifest/source/runtime review and exact dependency, artifact and publication contracts remain intact."
+lastReviewedCommit: 04cccd9dc06aa5ae3b1f9f72f027692894d0c2ff
+lastReviewedNote: "Reviewed Release #85: exact Node 24.22.0 aligns the local selector, six manifests, CI and existing toolchain assertions; pnpm 11.24.0, frozen dependency graph, internal SDK, overrides, recipe/numerical contracts and publication authorization are preserved."
 related:
   - ../AGENTS.md
   - ../README.md
@@ -49,5 +49,7 @@ Candidate 成功冻结后不可原地修改。Publication 可规划引用完整�
 ## 维护与验证
 
 所有 JavaScript/MJS Workflow 共用根 pnpm workspace 和唯一 lockfile；仅从仓库根 frozen install。业务代码、schema、fixture 和测试留在所属 Workflow；根 `test/` 只负责仓库工具链/跨 Workflow 自动化契约。
+
+各 Workflow 的精确 Node engine 必须与根 `.node-version`、根 manifest 和 CI 选择一致。运行时更新沿用 frozen install 与完整 `prepush:gate`，不通过放宽 engine、修改依赖图或降低业务验证来替代资格验证。
 
 每个 Workflow 的 AGENTS 维护执行红线及触发式阅读入口，README 维护当前操作与限制。源码、schema、配置和测试解释当前可执行行为；文档与实现冲突时应显式修正，不能擅自改变授权或业务语义。任务进度、历史验收和临时 workaround 不累计为常驻规则。

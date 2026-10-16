@@ -20,8 +20,8 @@ checkPaths:
   - workflows/**
   - .docpact/config.yaml
 lastReviewedAt: 2026-10-16
-lastReviewedCommit: e742f068222fe625faaa591f45c9dd832dd3d7b1
-lastReviewedNote: "Reviewed Release #82: weekly npm/Actions monitoring reuses unchanged secretless CI; only lock resolution maintenance avoids mandatory metadata churn, while manifest/source/runtime review and exact dependency, artifact and publication contracts remain intact."
+lastReviewedCommit: 04cccd9dc06aa5ae3b1f9f72f027692894d0c2ff
+lastReviewedNote: "Reviewed Release #85: exact Node 24.22.0 aligns the local selector, six manifests, CI and existing toolchain assertions; pnpm 11.24.0, frozen dependency graph, internal SDK, overrides, recipe/numerical contracts and publication authorization are preserved."
 related:
   - AGENTS.md
   - docs/architecture.md

@@ -26,8 +26,8 @@ checkPaths:
   - .node-version
   - .github/workflows/ci.yml
 lastReviewedAt: 2026-10-16
-lastReviewedCommit: e742f068222fe625faaa591f45c9dd832dd3d7b1
-lastReviewedNote: "Reviewed Release #82: weekly npm/Actions monitoring reuses unchanged secretless CI; only lock resolution maintenance avoids mandatory metadata churn, while manifest/source/runtime review and exact dependency, artifact and publication contracts remain intact."
+lastReviewedCommit: 04cccd9dc06aa5ae3b1f9f72f027692894d0c2ff
+lastReviewedNote: "Reviewed Release #85: exact Node 24.22.0 aligns the local selector, six manifests, CI and existing toolchain assertions; pnpm 11.24.0, frozen dependency graph, internal SDK, overrides, recipe/numerical contracts and publication authorization are preserved."
 related:
   - README.md
   - .docpact/config.yaml
@@ -61,7 +61,7 @@ related:
 ## 开发与验证
 
 - JavaScript/MJS；不为工具链对齐引入 TypeScript、compiler 或 codegen。
-- 精确 Node 版本读 `.node-version`，package manager 读根 `package.json`；workspace 策略读 `pnpm-workspace.yaml`，全仓只维护一个 lockfile。
+- 本地、五个 Workflow 与 CI 使用 `.node-version` 指定的同一精确 Node LTS 版本，各 package 的 `engines.node` 必须一致；package manager 读根 `package.json`，workspace 策略读 `pnpm-workspace.yaml`，全仓只维护一个 lockfile。
 - 仅在仓库根安装：`pnpm install --frozen-lockfile`。
 - 仓库验证门：`pnpm run prepush:gate`；局部测试入口读目标 package 的 `scripts.test`。
 - 依赖与 Actions 更新复用现有 CI；监控分组、节奏和审查要求见 `docs/dependency-updates.md`，不授予远程操作或发布权限。

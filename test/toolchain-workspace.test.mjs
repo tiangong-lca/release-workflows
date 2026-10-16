@@ -20,14 +20,14 @@ const PNPM_INVOCATION = resolvePnpmInvocation(process.env.npm_execpath);
 test("the repository pins one exact Node and pnpm toolchain", () => {
   const rootManifest = readJson("package.json");
   assert.equal(rootManifest.packageManager, "pnpm@11.24.0");
-  assert.equal(readText(".node-version").trim(), "24.19.0");
+  assert.equal(readText(".node-version").trim(), "24.22.0");
 
   for (const directory of PACKAGE_MANIFESTS) {
     const relativePath = path.join(directory, "package.json");
     const manifest = readJson(relativePath);
     assert.equal(
       manifest.engines?.node,
-      "24.19.0",
+      "24.22.0",
       `${relativePath} must reject every other Node release`,
     );
   }
@@ -101,7 +101,7 @@ test("active package commands and automation are pnpm-only", () => {
     /pnpm\/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2\.0\.2/,
   );
   assert.match(ci, /version:\s*11\.24\.0/);
-  assert.match(ci, /runtime:\s*node@24\.19\.0/);
+  assert.match(ci, /runtime:\s*node@24\.22\.0/);
   assert.match(ci, /cache:\s*true/);
   assert.match(ci, /install:\s*false/);
   assert.doesNotMatch(ci, /pnpm\/action-setup@/);
