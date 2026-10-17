@@ -1,8 +1,8 @@
 version: 1
 layout: repo
-lastReviewedAt: "2026-10-16"
-lastReviewedCommit: "04cccd9dc06aa5ae3b1f9f72f027692894d0c2ff"
-lastReviewedNote: "Reviewed Release #85: exact Node 24.22.0 aligns the local selector, six manifests, CI and existing toolchain assertions; pnpm 11.24.0, frozen dependency graph, internal SDK, overrides, recipe/numerical contracts and publication authorization are preserved."
+lastReviewedAt: "2026-10-17"
+lastReviewedCommit: "df24a5d5a80cbe89ba379e8a996d70edd2c8954f"
+lastReviewedNote: "Reviewed Release #90 / original #84: immutable checkout v7.0.1 and pnpm/setup v3.1.1 pins plus matching exact assertions retain Node 24.22.0, pnpm 11.24.0, frozen graph, all offline gates and Publication authorization. Document bodies and business inputs are preserved; hosted qualification, independent review and exact integration remain required."
 
 catalog:
   repos:
