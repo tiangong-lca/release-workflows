@@ -189,6 +189,10 @@ export async function buildPackageCandidate({
       canonicalRoot,
       indexPath,
       packagesDir,
+      issueSpoolPath: path.join(
+        candidateStaging,
+        "tidas-validation-issues.ndjson",
+      ),
     });
     await applyDistributionNames(packagesDir, releaseVersion);
     await writeFile(
@@ -298,6 +302,18 @@ function failedBuildPath(target, candidateStaging) {
   return `${target}.failed-${suffix}`;
 }
 
+function rewriteArtifactPaths(operationReport, fromRoot, toRoot) {
+  const artifacts = operationReport?.artifacts;
+  if (!Array.isArray(artifacts)) return;
+  for (const artifact of artifacts) {
+    if (typeof artifact.path !== "string") continue;
+    const relative = path.relative(fromRoot, artifact.path);
+    if (!relative || relative.startsWith("..") || path.isAbsolute(relative))
+      continue;
+    artifact.path = path.join(toRoot, relative);
+  }
+}
+
 async function retainFailedBuild({
   candidateStaging,
   failedBuildTarget,
@@ -327,6 +343,17 @@ async function retainFailedBuild({
     canonicalDatasetIndex: "canonical-dataset-index.json",
     packagesDirectory: "packages",
   };
+  rewriteArtifactPaths(
+    failure.diagnostics.operationReport,
+    candidateStaging,
+    failedBuildTarget,
+  );
+  if (
+    await pathExists(
+      path.join(candidateStaging, "tidas-validation-issues.ndjson"),
+    )
+  )
+    artifacts.validationIssues = "tidas-validation-issues.ndjson";
   if (
     await pathExists(path.join(candidateStaging, "tidas-release-report.json"))
   )
@@ -868,10 +895,11 @@ export async function runTidas({
   canonicalRoot,
   indexPath,
   packagesDir,
+  issueSpoolPath,
   spawnCommand = spawnBounded,
 }) {
   const budget = validateTidasMemoryBudgetMiB(memoryBudgetMiB);
-  await verifyTidasRuntime({
+  const runtime = await verifyTidasRuntime({
     tidasBin,
     memoryBudgetMiB: budget,
     spawnCommand,
@@ -889,6 +917,8 @@ export async function runTidas({
     "--format",
     "json",
   ];
+  if (issueSpoolPath && runtime.issueSpoolSupported)
+    args.push("--issue-spool", issueSpoolPath);
   const result = await spawnCommand(tidasBin, args, tidasSpawnOptions(budget));
   if (result.code !== 0) {
     const structuredDiagnostics = parseFailedTidasOutput(result.stdout);
@@ -966,9 +996,18 @@ export async function verifyTidasRuntime({
       { validationDescribe: describe ?? null },
     );
 
+  const help = await spawnCommand(
+    tidasBin,
+    ["release", "build-packages", "--help"],
+    tidasSpawnOptions(memoryBudgetMiB),
+  );
+  const issueSpoolSupported =
+    help.code === 0 && help.stdout.includes("--issue-spool");
+
   return {
     binaryVersion: EXPECTED_TIDAS_VERSION,
     assetFingerprint: describe.asset_fingerprint,
+    issueSpoolSupported,
   };
 }
 
