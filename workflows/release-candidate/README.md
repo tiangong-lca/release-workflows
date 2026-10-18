@@ -168,7 +168,7 @@ node cli.mjs package build \
   --json
 ```
 
-`--tidas-bin` 可省略，此时读取 `TIDAS_BIN`，再回退到 `PATH` 中的 `tidas`。完整闭包构建默认使用 Release-owned `2048 MiB` 内存预算；`--tidas-memory-budget-mib` 优先于 `TIDAS_MEMORY_BUDGET_MIB`，选择值会一致传给 build、preflight 和四包 qualification 的每个 TIDAS 子进程。`memory_budget_exceeded` 会保留资源失败证据并返回同一冻结输入、提高预算的精确重试命令，不触发数据排除分析。开始组装前会执行 `version` 与 `validate --describe` 握手，并要求精确的 `tidas v0.2.0` 与既定 validation protocol；旧版本会在产生 staging 输出前以可操作错误停止。命令随后生成本地 package build，并用最终 ZIP 做 qualification；只有全部通过才形成 Candidate。整个动作不上传、不批准、也不发布。
+`--tidas-bin` 可省略，此时读取 `TIDAS_BIN`，再回退到 `PATH` 中的 `tidas`。完整闭包构建默认使用 Release-owned `2048 MiB` 内存预算；`--tidas-memory-budget-mib` 优先于 `TIDAS_MEMORY_BUDGET_MIB`，选择值会一致传给 build、preflight 和四包 qualification 的每个 TIDAS 子进程。`memory_budget_exceeded` 会保留资源失败证据并返回同一冻结输入、提高预算的精确重试命令，不触发数据排除分析。开始组装前会执行 `version` 与 `validate --describe` 握手，并要求 `tidas.operation-report.v1`、`tidas.validation-describe.v1`、`document-validation-batch.v1` 与 `package.name=tidas`；不绑定精确版本号，缺少必需能力的二进制会在产生 staging 输出前以可操作错误停止。命令随后生成本地 package build，并用最终 ZIP 做 qualification；只有全部通过才形成 Candidate。整个动作不上传、不批准、也不发布。
 
 如果省略 `--release-version`，命令不会开始构建，而是以 `release_version_confirmation_required` 返回按 Asia/Shanghai 当前年月生成的推荐版本（例如 `2026.08.0`）、四个预期文件名和专用回复模板。Agent 必须先请用户确认或替换版本号，再使用返回的 argv 带上 `--release-version` 重跑；显式传入版本号即表示该前置确认已经完成。
 

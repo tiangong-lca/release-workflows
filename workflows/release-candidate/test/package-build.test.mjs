@@ -28,7 +28,6 @@ import {
 import {
   buildPackageCandidate,
   DEFAULT_TIDAS_MEMORY_BUDGET_MIB,
-  EXPECTED_TIDAS_VERSION,
   PACKAGE_PROFILE,
   runTidas,
   verifyTidasRuntime,
@@ -51,6 +50,7 @@ const RETAINED_UNIT_VERSION = "01.00.001";
 const VERSION = "01.00.000";
 const REPOSITORY_ROOT = new URL("../../../", import.meta.url).pathname;
 const RELEASE_VERSION = "2026.08.0";
+const FIXTURE_TIDAS_VERSION = "0.3.5";
 
 test("release package adapter requires exact tidas v0.2.0 contract", async () => {
   const calls = [];
@@ -67,7 +67,7 @@ test("release package adapter requires exact tidas v0.2.0 contract", async () =>
             exit_class: "success",
             completeness: "complete",
             summary: {
-              binary_version: EXPECTED_TIDAS_VERSION,
+              binary_version: FIXTURE_TIDAS_VERSION,
               operation_report_schema: "tidas.operation-report.v1",
             },
           }),
@@ -90,7 +90,7 @@ test("release package adapter requires exact tidas v0.2.0 contract", async () =>
           summary: {
             validation_describe: {
               schema_version: "tidas.validation-describe.v1",
-              package: { name: "tidas", version: EXPECTED_TIDAS_VERSION },
+              package: { name: "tidas", version: FIXTURE_TIDAS_VERSION },
               protocols: ["document-validation-batch.v1"],
               asset_fingerprint: "fixture-fingerprint",
             },
@@ -100,7 +100,7 @@ test("release package adapter requires exact tidas v0.2.0 contract", async () =>
       };
     },
   });
-  assert.equal(result.binaryVersion, "0.2.0");
+  assert.equal(result.binaryVersion, FIXTURE_TIDAS_VERSION);
   assert.equal(result.assetFingerprint, "fixture-fingerprint");
   assert.equal(result.issueSpoolSupported, true);
   assert.deepEqual(
@@ -114,26 +114,90 @@ test("release package adapter requires exact tidas v0.2.0 contract", async () =>
         String(DEFAULT_TIDAS_MEMORY_BUDGET_MIB),
     ),
   );
+});
 
+test("runtime handshake accepts any capability-complete tidas version", async () => {
+  const result = await verifyTidasRuntime({
+    tidasBin: "/tools/tidas",
+    spawnCommand: async (_command, args) => {
+      if (args[0] === "version")
+        return {
+          code: 0,
+          stdout: JSON.stringify({
+            schema_version: "tidas.operation-report.v1",
+            status: "succeeded",
+            exit_class: "success",
+            completeness: "complete",
+            summary: {
+              binary_version: "9.9.9",
+              operation_report_schema: "tidas.operation-report.v1",
+            },
+          }),
+          stderr: "",
+        };
+      if (args[0] === "validate")
+        return {
+          code: 0,
+          stdout: JSON.stringify({
+            schema_version: "tidas.operation-report.v1",
+            status: "succeeded",
+            exit_class: "success",
+            completeness: "complete",
+            summary: {
+              validation_describe: {
+                schema_version: "tidas.validation-describe.v1",
+                package: { name: "tidas", version: "9.9.9" },
+                protocols: ["document-validation-batch.v1"],
+                asset_fingerprint: "fixture-fingerprint",
+              },
+            },
+          }),
+          stderr: "",
+        };
+      return { code: 0, stdout: "Usage", stderr: "" };
+    },
+  });
+  assert.equal(result.binaryVersion, "9.9.9");
+  assert.equal(result.issueSpoolSupported, false);
+});
+
+test("runtime handshake rejects a missing validation protocol", async () => {
   await assert.rejects(
     verifyTidasRuntime({
       tidasBin: "/tools/tidas",
-      spawnCommand: async () => ({
+      spawnCommand: async (_command, args) => ({
         code: 0,
-        stdout: JSON.stringify({
-          schema_version: "tidas.operation-report.v1",
-          status: "succeeded",
-          exit_class: "success",
-          completeness: "complete",
-          summary: {
-            binary_version: "0.1.4",
-            operation_report_schema: "tidas.operation-report.v1",
-          },
-        }),
+        stdout: JSON.stringify(
+          args[0] === "version"
+            ? {
+                schema_version: "tidas.operation-report.v1",
+                status: "succeeded",
+                exit_class: "success",
+                completeness: "complete",
+                summary: {
+                  binary_version: "9.9.9",
+                  operation_report_schema: "tidas.operation-report.v1",
+                },
+              }
+            : {
+                schema_version: "tidas.operation-report.v1",
+                status: "succeeded",
+                exit_class: "success",
+                completeness: "complete",
+                summary: {
+                  validation_describe: {
+                    schema_version: "tidas.validation-describe.v1",
+                    package: { name: "tidas", version: "9.9.9" },
+                    protocols: [],
+                    asset_fingerprint: "fixture-fingerprint",
+                  },
+                },
+              },
+        ),
         stderr: "",
       }),
     }),
-    (error) => error.code === "tidas_version_incompatible",
+    (error) => error.code === "tidas_validation_contract_incompatible",
   );
 });
 
@@ -157,7 +221,7 @@ test("runTidas forwards the issue spool only when the binary advertises it", asy
               exit_class: "success",
               completeness: "complete",
               summary: {
-                binary_version: EXPECTED_TIDAS_VERSION,
+                binary_version: FIXTURE_TIDAS_VERSION,
                 operation_report_schema: "tidas.operation-report.v1",
               },
             }),
@@ -174,7 +238,7 @@ test("runTidas forwards the issue spool only when the binary advertises it", asy
               summary: {
                 validation_describe: {
                   schema_version: "tidas.validation-describe.v1",
-                  package: { name: "tidas", version: EXPECTED_TIDAS_VERSION },
+                  package: { name: "tidas", version: FIXTURE_TIDAS_VERSION },
                   protocols: ["document-validation-batch.v1"],
                   asset_fingerprint: "fixture-fingerprint",
                 },
@@ -220,7 +284,7 @@ test("failed package construction retains the structured tidas operation report"
           exit_class: "success",
           completeness: "complete",
           summary: {
-            binary_version: EXPECTED_TIDAS_VERSION,
+            binary_version: FIXTURE_TIDAS_VERSION,
             operation_report_schema: "tidas.operation-report.v1",
           },
         }),
@@ -237,7 +301,7 @@ test("failed package construction retains the structured tidas operation report"
           summary: {
             validation_describe: {
               schema_version: "tidas.validation-describe.v1",
-              package: { name: "tidas", version: EXPECTED_TIDAS_VERSION },
+              package: { name: "tidas", version: FIXTURE_TIDAS_VERSION },
               protocols: ["document-validation-batch.v1"],
               asset_fingerprint: "fixture-fingerprint",
             },
@@ -287,7 +351,7 @@ test("retained failed builds rewrite the validation spool path", async () => {
           exit_class: "success",
           completeness: "complete",
           summary: {
-            binary_version: EXPECTED_TIDAS_VERSION,
+            binary_version: FIXTURE_TIDAS_VERSION,
             operation_report_schema: "tidas.operation-report.v1",
           },
         }),
@@ -304,7 +368,7 @@ test("retained failed builds rewrite the validation spool path", async () => {
           summary: {
             validation_describe: {
               schema_version: "tidas.validation-describe.v1",
-              package: { name: "tidas", version: EXPECTED_TIDAS_VERSION },
+              package: { name: "tidas", version: FIXTURE_TIDAS_VERSION },
               protocols: ["document-validation-batch.v1"],
               asset_fingerprint: "fixture-fingerprint",
             },
@@ -845,11 +909,11 @@ test("CLI returns retained packages and failure manifest after package build fai
     fakeTidas,
     `#!/bin/sh
 if [ "$1" = "version" ]; then
-  printf '%s' '{"schema_version":"tidas.operation-report.v1","status":"succeeded","exit_class":"success","completeness":"complete","summary":{"binary_version":"${EXPECTED_TIDAS_VERSION}","operation_report_schema":"tidas.operation-report.v1"}}'
+  printf '%s' '{"schema_version":"tidas.operation-report.v1","status":"succeeded","exit_class":"success","completeness":"complete","summary":{"binary_version":"${FIXTURE_TIDAS_VERSION}","operation_report_schema":"tidas.operation-report.v1"}}'
   exit 0
 fi
 if [ "$1" = "validate" ] && [ "$2" = "--describe" ]; then
-  printf '%s' '{"schema_version":"tidas.operation-report.v1","status":"succeeded","exit_class":"success","completeness":"complete","summary":{"validation_describe":{"schema_version":"tidas.validation-describe.v1","package":{"name":"tidas","version":"${EXPECTED_TIDAS_VERSION}"},"protocols":["document-validation-batch.v1"],"asset_fingerprint":"fixture-fingerprint"}}}'
+  printf '%s' '{"schema_version":"tidas.operation-report.v1","status":"succeeded","exit_class":"success","completeness":"complete","summary":{"validation_describe":{"schema_version":"tidas.validation-describe.v1","package":{"name":"tidas","version":"${FIXTURE_TIDAS_VERSION}"},"protocols":["document-validation-batch.v1"],"asset_fingerprint":"fixture-fingerprint"}}}'
   exit 0
 fi
 if [ "$1" = "release" ] && [ "$3" = "--help" ]; then
@@ -925,11 +989,11 @@ if [ "$TIDAS_MEMORY_BUDGET_MIB" != "${DEFAULT_TIDAS_MEMORY_BUDGET_MIB}" ]; then
   exit 3
 fi
 if [ "$1" = "version" ]; then
-  printf '%s' '{"schema_version":"tidas.operation-report.v1","status":"succeeded","exit_class":"success","completeness":"complete","summary":{"binary_version":"${EXPECTED_TIDAS_VERSION}","operation_report_schema":"tidas.operation-report.v1"}}'
+  printf '%s' '{"schema_version":"tidas.operation-report.v1","status":"succeeded","exit_class":"success","completeness":"complete","summary":{"binary_version":"${FIXTURE_TIDAS_VERSION}","operation_report_schema":"tidas.operation-report.v1"}}'
   exit 0
 fi
 if [ "$1" = "validate" ] && [ "$2" = "--describe" ]; then
-  printf '%s' '{"schema_version":"tidas.operation-report.v1","status":"succeeded","exit_class":"success","completeness":"complete","summary":{"validation_describe":{"schema_version":"tidas.validation-describe.v1","package":{"name":"tidas","version":"${EXPECTED_TIDAS_VERSION}"},"protocols":["document-validation-batch.v1"],"asset_fingerprint":"fixture-fingerprint"}}}'
+  printf '%s' '{"schema_version":"tidas.operation-report.v1","status":"succeeded","exit_class":"success","completeness":"complete","summary":{"validation_describe":{"schema_version":"tidas.validation-describe.v1","package":{"name":"tidas","version":"${FIXTURE_TIDAS_VERSION}"},"protocols":["document-validation-batch.v1"],"asset_fingerprint":"fixture-fingerprint"}}}'
   exit 0
 fi
 printf '%s' '{"schema_version":"tidas.operation-report.v1","status":"failed","exit_class":"internal","completeness":"complete","invocation":{"memory_budget_bytes":2147483648},"diagnostics":[{"code":"memory_budget_exceeded"}]}'
