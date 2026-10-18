@@ -24,7 +24,6 @@ import { loadReleaseIntake } from "./release-intake.mjs";
 
 export const PACKAGE_PROFILE =
   "standalone-lifecyclemodel-result-full-closure.v1";
-export const EXPECTED_TIDAS_VERSION = "0.2.0";
 export const DEFAULT_TIDAS_MEMORY_BUDGET_MIB = 2048;
 
 const DISTRIBUTION_PACKAGES = [
@@ -960,18 +959,18 @@ export async function verifyTidasRuntime({
     memoryBudgetMiB,
     spawnCommand,
   });
+  const observedVersion = version.summary?.binary_version;
   if (
     version.schema_version !== "tidas.operation-report.v1" ||
     version.status !== "succeeded" ||
     version.exit_class !== "success" ||
     version.completeness !== "complete" ||
-    version.summary?.binary_version !== EXPECTED_TIDAS_VERSION ||
     version.summary?.operation_report_schema !== "tidas.operation-report.v1"
   )
     fail(
-      "tidas_version_incompatible",
-      `Release package construction requires exact tidas ${EXPECTED_TIDAS_VERSION}`,
-      { actualVersion: version.summary?.binary_version ?? null },
+      "tidas_runtime_incompatible",
+      "Release package construction requires the tidas operation-report.v1 contract",
+      { actualVersion: observedVersion ?? null },
     );
 
   const validation = await runTidasPreflight({
@@ -981,18 +980,21 @@ export async function verifyTidasRuntime({
     spawnCommand,
   });
   const describe = validation.summary?.validation_describe;
+  const describeVersion = describe?.package?.version;
   if (
     validation.schema_version !== "tidas.operation-report.v1" ||
     validation.status !== "succeeded" ||
     validation.exit_class !== "success" ||
     validation.completeness !== "complete" ||
     describe?.schema_version !== "tidas.validation-describe.v1" ||
-    describe?.package?.version !== EXPECTED_TIDAS_VERSION ||
+    describe?.package?.name !== "tidas" ||
+    typeof describeVersion !== "string" ||
+    describeVersion.length === 0 ||
     !describe?.protocols?.includes("document-validation-batch.v1")
   )
     fail(
       "tidas_validation_contract_incompatible",
-      `tidas ${EXPECTED_TIDAS_VERSION} does not advertise the required validation contract`,
+      "tidas does not advertise the required validation contract",
       { validationDescribe: describe ?? null },
     );
 
@@ -1005,7 +1007,7 @@ export async function verifyTidasRuntime({
     help.code === 0 && help.stdout.includes("--issue-spool");
 
   return {
-    binaryVersion: EXPECTED_TIDAS_VERSION,
+    binaryVersion: describeVersion ?? observedVersion ?? null,
     assetFingerprint: describe.asset_fingerprint,
     issueSpoolSupported,
   };
