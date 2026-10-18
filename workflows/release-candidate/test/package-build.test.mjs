@@ -73,6 +73,13 @@ test("release package adapter requires exact tidas v0.2.0 contract", async () =>
           }),
           stderr: "",
         };
+      if (args[0] === "release")
+        return {
+          code: 0,
+          stdout:
+            "Usage: tidas release build-packages [OPTIONS]\n      --issue-spool <PATH>\n",
+          stderr: "",
+        };
       return {
         code: 0,
         stdout: JSON.stringify({
@@ -95,9 +102,10 @@ test("release package adapter requires exact tidas v0.2.0 contract", async () =>
   });
   assert.equal(result.binaryVersion, "0.2.0");
   assert.equal(result.assetFingerprint, "fixture-fingerprint");
+  assert.equal(result.issueSpoolSupported, true);
   assert.deepEqual(
     calls.map(({ args }) => args[0]),
-    ["version", "validate"],
+    ["version", "validate", "release"],
   );
   assert.ok(
     calls.every(
@@ -127,6 +135,66 @@ test("release package adapter requires exact tidas v0.2.0 contract", async () =>
     }),
     (error) => error.code === "tidas_version_incompatible",
   );
+});
+
+test("runTidas forwards the issue spool only when the binary advertises it", async () => {
+  for (const supported of [true, false]) {
+    const calls = [];
+    await runTidas({
+      tidasBin: "/tools/tidas",
+      canonicalRoot: "/canonical",
+      indexPath: "/canonical/index.json",
+      packagesDir: "/tmp/packages",
+      issueSpoolPath: "/tmp/issues.ndjson",
+      spawnCommand: async (command, args) => {
+        calls.push(args);
+        if (args[0] === "version")
+          return {
+            code: 0,
+            stdout: JSON.stringify({
+              schema_version: "tidas.operation-report.v1",
+              status: "succeeded",
+              exit_class: "success",
+              completeness: "complete",
+              summary: {
+                binary_version: EXPECTED_TIDAS_VERSION,
+                operation_report_schema: "tidas.operation-report.v1",
+              },
+            }),
+            stderr: "",
+          };
+        if (args[0] === "validate")
+          return {
+            code: 0,
+            stdout: JSON.stringify({
+              schema_version: "tidas.operation-report.v1",
+              status: "succeeded",
+              exit_class: "success",
+              completeness: "complete",
+              summary: {
+                validation_describe: {
+                  schema_version: "tidas.validation-describe.v1",
+                  package: { name: "tidas", version: EXPECTED_TIDAS_VERSION },
+                  protocols: ["document-validation-batch.v1"],
+                  asset_fingerprint: "fixture-fingerprint",
+                },
+              },
+            }),
+            stderr: "",
+          };
+        if (args.includes("--help"))
+          return {
+            code: 0,
+            stdout: supported ? "--issue-spool <PATH>" : "Usage",
+            stderr: "",
+          };
+        return { code: 0, stdout: "{}", stderr: "" };
+      },
+    });
+    const build = calls.find((args) => args.includes("--tidas-dir"));
+    assert.ok(build);
+    assert.equal(build.includes("--issue-spool"), supported);
+  }
 });
 
 test("failed package construction retains the structured tidas operation report", async () => {
@@ -205,6 +273,112 @@ test("failed package construction retains the structured tidas operation report"
     failureManifest.failure.diagnostics.operationReport,
     operationReport,
   );
+});
+
+test("retained failed builds rewrite the validation spool path", async () => {
+  const fixture = await createFixture();
+  const spawnCommand = async (_command, args) => {
+    if (args[0] === "version")
+      return {
+        code: 0,
+        stdout: JSON.stringify({
+          schema_version: "tidas.operation-report.v1",
+          status: "succeeded",
+          exit_class: "success",
+          completeness: "complete",
+          summary: {
+            binary_version: EXPECTED_TIDAS_VERSION,
+            operation_report_schema: "tidas.operation-report.v1",
+          },
+        }),
+        stderr: "",
+      };
+    if (args[0] === "validate")
+      return {
+        code: 0,
+        stdout: JSON.stringify({
+          schema_version: "tidas.operation-report.v1",
+          status: "succeeded",
+          exit_class: "success",
+          completeness: "complete",
+          summary: {
+            validation_describe: {
+              schema_version: "tidas.validation-describe.v1",
+              package: { name: "tidas", version: EXPECTED_TIDAS_VERSION },
+              protocols: ["document-validation-batch.v1"],
+              asset_fingerprint: "fixture-fingerprint",
+            },
+          },
+        }),
+        stderr: "",
+      };
+    if (args.includes("--help"))
+      return { code: 0, stdout: "--issue-spool <PATH>", stderr: "" };
+    const spoolPath = args[args.indexOf("--issue-spool") + 1];
+    await writeFile(
+      spoolPath,
+      `${JSON.stringify({
+        type: "issue",
+        issue: {
+          issue_code: "ilcd_schema_error",
+          severity: "error",
+          file_path: "data/processes/bad_01.00.000.xml",
+        },
+      })}\n`,
+    );
+    return {
+      code: 2,
+      stdout: JSON.stringify({
+        schema_version: "tidas.operation-report.v1",
+        status: "failed",
+        exit_class: "data-issues",
+        completeness: "complete",
+        summary: {},
+        diagnostics: [
+          {
+            schema_version: "tidas.diagnostic.v1",
+            code: "release_input_invalid",
+            message: "validation failed",
+            details: {},
+          },
+        ],
+        artifacts: [
+          {
+            path: spoolPath,
+            media_type: "application/x-ndjson",
+            sha256: "0".repeat(64),
+            bytes: 1,
+          },
+        ],
+        next_actions: [],
+      }),
+      stderr: "",
+    };
+  };
+
+  let observedError;
+  try {
+    await buildPackageCandidate({
+      releaseIntakeDir: fixture.releaseIntake,
+      outDir: fixture.output,
+      releaseVersion: RELEASE_VERSION,
+      runTool: (request) => runTidas({ ...request, spawnCommand }),
+    });
+  } catch (error) {
+    observedError = error;
+  }
+  assert.equal(observedError.code, "tidas_package_build_failed");
+  const retained = JSON.parse(
+    await readFile(observedError.details.retainedBuild.manifest, "utf8"),
+  );
+  assert.equal(
+    retained.artifacts.validationIssues,
+    "tidas-validation-issues.ndjson",
+  );
+  const artifact = retained.failure.diagnostics.operationReport.artifacts[0];
+  assert.equal(artifact.media_type, "application/x-ndjson");
+  assert.ok(artifact.path.startsWith(observedError.details.retainedBuild.path));
+  await access(artifact.path);
 });
 
 test("shared Elementary Flow cache distinguishes fresh and stale watermarks", async () => {
@@ -678,6 +852,10 @@ if [ "$1" = "validate" ] && [ "$2" = "--describe" ]; then
   printf '%s' '{"schema_version":"tidas.operation-report.v1","status":"succeeded","exit_class":"success","completeness":"complete","summary":{"validation_describe":{"schema_version":"tidas.validation-describe.v1","package":{"name":"tidas","version":"${EXPECTED_TIDAS_VERSION}"},"protocols":["document-validation-batch.v1"],"asset_fingerprint":"fixture-fingerprint"}}}'
   exit 0
 fi
+if [ "$1" = "release" ] && [ "$3" = "--help" ]; then
+  printf '%s' 'Usage: tidas release build-packages [OPTIONS]'
+  exit 0
+fi
 output_dir=""
 while [ "$#" -gt 0 ]; do
   if [ "$1" = "--output-dir" ]; then
@@ -727,7 +905,7 @@ exit 0
   await access(payload.artifacts.failureManifest);
   assert.equal(payload.nextActions[0].kind, "inspect_failed_build");
   assert.match(payload.nextActions[0].command, /failed-package-build\.json/u);
-  assert.equal(payload.nextActions[1].kind, "analyze_exclusion_impact");
+  assert.equal(payload.nextActions[1].kind, "diagnose_without_issue_spool");
   assert.equal(payload.nextActions[2].kind, "inspect_retained_artifacts");
   assert.equal(payload.replyTemplate.id, "release-package-validation-failed");
   await assert.rejects(
@@ -1031,6 +1209,67 @@ test("Release failure analysis binds the complete exclusion set before rebuildin
   assert.equal(result.candidate.publicationAuthorized, false);
   assert.equal(result.candidate.scopeDecisionSha256, decision.decisionSha256);
   assert.equal(result.plan.scopeDecision.excludedSetHash.length, 64);
+});
+
+test("impact analysis normalizes ILCD spool paths and discloses ignored model issues", async () => {
+  const fixture = await createExclusionFixture();
+  const manifestPath = path.join(
+    fixture.failedBuild,
+    "failed-package-build.json",
+  );
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  const spoolPath =
+    manifest.failure.diagnostics.operationReport.artifacts[0].path;
+  const events = [
+    {
+      type: "issue",
+      issue: {
+        issue_code: "ilcd_schema_error",
+        severity: "error",
+        category: "processes",
+        file_path: `data/processes/${UNIT_ID}_${VERSION}.xml`,
+        location: "line 1",
+        message: "process issue",
+      },
+    },
+    {
+      type: "issue",
+      issue: {
+        issue_code: "ilcd_schema_error",
+        severity: "error",
+        category: "lifecyclemodels",
+        file_path: `data/lifecyclemodels/${MODEL_ID}_${VERSION}.xml`,
+        location: "line 1",
+        message: "model issue",
+      },
+    },
+  ];
+  const text = `${events.map((event) => JSON.stringify(event)).join("\n")}\n`;
+  await writeFile(spoolPath, text);
+  manifest.failure.diagnostics.operationReport.artifacts[0].sha256 =
+    sha256Bytes(Buffer.from(text));
+  manifest.failure.diagnostics.operationReport.artifacts[0].bytes =
+    Buffer.byteLength(text);
+  await writeFile(manifestPath, canonicalJson(manifest));
+
+  const analysis = await analyzeExclusionImpact({
+    failedBuildDir: fixture.failedBuild,
+    releaseIntakeDir: fixture.releaseIntake,
+    outDir: path.join(fixture.root, "impact-normalized"),
+  });
+  assert.equal(analysis.report.validationIssues.invalidDatasets.length, 1);
+  assert.equal(
+    analysis.report.validationIssues.invalidDatasets[0].path,
+    `processes/${UNIT_ID}_${VERSION}.json`,
+  );
+  assert.equal(
+    analysis.report.validationIssues.ignoredNonProcessDatasets.length,
+    1,
+  );
+  assert.equal(
+    analysis.report.validationIssues.ignoredNonProcessDatasets[0].datasetType,
+    "lifecyclemodel",
+  );
 });
 
 test("Release exclusion impact treats preceding-version references as non-closure lineage", async (t) => {

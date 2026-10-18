@@ -801,12 +801,23 @@ function failureNextActions(error) {
         command: `jq . ${shellQuote(retained.manifest)}`,
         argv: ["jq", ".", retained.manifest],
       });
-    if (error.details?.releaseIntakeDir)
+    const validationIssueSpool = (
+      error.details?.operationReport?.artifacts ?? []
+    ).find((artifact) => artifact?.media_type === "application/x-ndjson");
+    if (error.details?.releaseIntakeDir && validationIssueSpool)
       actions.push({
         kind: "analyze_exclusion_impact",
         description:
           "Analyze the complete affected root and dependency set before considering any exclusion.",
         command: `${RELEASE_COMMAND} failure analyze --failed-build ${shellQuote(retained.path)} --release-intake ${shellQuote(error.details.releaseIntakeDir)} --out-dir ${shellQuote(`${retained.path}.impact`)} --json`,
+      });
+    else if (error.details?.releaseIntakeDir)
+      actions.push({
+        kind: "diagnose_without_issue_spool",
+        description:
+          "The failed build did not reference a validation issue spool; use a tidas build that supports --issue-spool before analyzing exclusions.",
+        command: `jq . ${shellQuote(retained.manifest)}`,
+        argv: ["jq", ".", retained.manifest],
       });
     actions.push({
       kind: "inspect_retained_artifacts",

@@ -80,17 +80,18 @@ export async function analyzeExclusionImpact({
     issueSpoolPath,
   });
   const issues = await readValidationIssues(issueSpool.path);
-  const invalidDatasets = groupInvalidDatasets(issues);
+  const allInvalidDatasets = groupInvalidDatasets(issues);
+  const invalidDatasets = allInvalidDatasets.filter(
+    ({ datasetType }) => datasetType === "process",
+  );
+  const ignoredNonProcessDatasets = allInvalidDatasets.filter(
+    ({ datasetType }) => datasetType !== "process",
+  );
   if (!invalidDatasets.length)
     fail(
       "exclusion_subject_missing",
-      "Validation evidence contains no exact dataset identity that can be analyzed",
-    );
-  if (invalidDatasets.some(({ datasetType }) => datasetType !== "process"))
-    fail(
-      "exclusion_subject_unsupported",
-      "The first exclusion analyzer supports exact Process validation failures only",
-      { invalidDatasets },
+      "Validation evidence contains no exact Process identity that can be analyzed",
+      { ignoredNonProcessDatasets },
     );
   const failedDatasetByPath = new Map(
     (failedIndex.datasets ?? []).map((dataset) => [
@@ -293,6 +294,7 @@ export async function analyzeExclusionImpact({
       errorCount: issues.filter(({ severity }) => severity === "error").length,
       issueCodes: [...new Set(issues.map(({ issueCode }) => issueCode))].sort(),
       invalidDatasets: invalidWithClassification,
+      ignoredNonProcessDatasets,
     },
     impact: {
       processGraphAvailable: calculationGraph.edges.length > 0,
@@ -568,7 +570,7 @@ async function readValidationIssues(file) {
     issues.push({
       issueCode: issue.issue_code,
       severity: issue.severity ?? "error",
-      filePath: safeRelative(issue.file_path),
+      filePath: normalizeIssueFilePath(issue.file_path),
       location: issue.location ?? null,
       message: issue.message ?? "",
     });
@@ -844,6 +846,12 @@ function datasetTypeForCategory(category) {
 
 function stripCanonicalPrefix(value) {
   return String(value).replace(/^canonical-datasets\//u, "");
+}
+
+function normalizeIssueFilePath(value) {
+  let normalized = safeRelative(String(value).replaceAll("\\", "/"));
+  if (normalized.startsWith("data/")) normalized = normalized.slice(5);
+  return normalized.replace(/\.xml$/iu, ".json");
 }
 
 function safeRelative(value) {
