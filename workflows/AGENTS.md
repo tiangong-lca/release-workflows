@@ -12,9 +12,9 @@ whenToUpdate:
   - 当所有 Workflow 共享的证据、权限、恢复或文档规则变化时
 checkPaths:
   - workflows/**
-lastReviewedAt: 2026-10-17
-lastReviewedCommit: df24a5d5a80cbe89ba379e8a996d70edd2c8954f
-lastReviewedNote: "Reviewed Release #90 / original #84: immutable checkout v7.0.1 and pnpm/setup v3.1.1 pins plus matching exact assertions retain Node 24.22.0, pnpm 11.24.0, frozen graph, all offline gates and Publication authorization. Document bodies and business inputs are preserved; hosted qualification, independent review and exact integration remain required."
+lastReviewedAt: 2026-10-30
+lastReviewedCommit: 8a9aa0bbb273d630247264318201f84e6b72b9ba
+lastReviewedNote: "Release #97: Calculation owns the opt-in Worker query-artifact upload/readback and parameterized metadata registration adapter. Numeric generation, ZIP recipes, actor Publication authorization and source provenance remain with their existing owners."
 related:
   - ../AGENTS.md
   - ../README.md

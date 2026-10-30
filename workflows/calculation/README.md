@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 Calculation 的入口、用户决定、远程能力或产物变化时
 checkPaths:
   - workflows/calculation/**
-lastReviewedAt: 2026-10-16
-lastReviewedCommit: 04cccd9dc06aa5ae3b1f9f72f027692894d0c2ff
-lastReviewedNote: "Reviewed Release #85: exact Node 24.22.0 aligns the local selector, six manifests, CI and existing toolchain assertions; pnpm 11.24.0, frozen dependency graph, internal SDK, overrides, recipe/numerical contracts and publication authorization are preserved."
+lastReviewedAt: 2026-10-30
+lastReviewedCommit: 8a9aa0bbb273d630247264318201f84e6b72b9ba
+lastReviewedNote: "Release #97: Calculation owns the opt-in Worker query-artifact upload/readback and parameterized metadata registration adapter. Numeric generation, ZIP recipes, actor Publication authorization and source provenance remain with their existing owners."
 related:
   - AGENTS.md
   - ../../README.md
@@ -240,3 +240,25 @@ Release-owned ResultSet 引用、target fingerprint 和观察时间，不包含�
 ## 执行终点
 
 以用户请求的终点为准：只要求检查或提交时不强制继续到下载。已有任务可按精确 ID 接入；scope 和默认方法由当前 profile 与显式选择决定。提交后持续监测须按 CLI 返回的确认提示处理，不把“已提交”描述成“已完成”。
+
+## HDF5 查询产物：构建、存储与关联
+
+此路径依赖 Worker #348 的独立 `result_artifact_builder` 和 Database #877 的服务 RPC。先使用经过评审的 Worker binary，从数据库可信的 canonical Bundle v2 reference 构建新目录：
+
+```sh
+/absolute/path/result_artifact_builder build --bundle-ref /absolute/path/bundle-ref.json --source-dir /absolute/path/verified-bundle --output /absolute/path/new-query-artifact --artifact-id <uuid>
+```
+
+Worker 生成 `artifact-ref.json`、manifest、冻结索引、LCI CSR HDF5，以及存在影响类别时的 LCIA dense HDF5。Release 不用 JavaScript 解析 HDF5，不修改数值或把查询文件加入标准 ZIP。Result Materialization / Release Candidate 继续拥有原有标准数据集和 ZIP。
+
+在 operator 已明确选择 exact package、已完成的 formal release run 和目标环境后，提供进程环境中的 `CONN`、`S3_ENDPOINT`、`S3_REGION`、`S3_BUCKET`、`S3_ACCESS_KEY_ID`、`S3_SECRET_ACCESS_KEY`，可选 `S3_PREFIX`、`S3_SESSION_TOKEN`。本入口不隐式同步 `.env`，不接受命令参数中的凭据。以下 SHA-256 必须从已检查的 `artifact-ref.json` 读取：
+
+```sh
+node workflows/calculation/query-artifact.mjs --artifact-dir /absolute/path/query-artifact --builder /absolute/path/result_artifact_builder --package-id <uuid> --release-run-id <uuid> --confirm-manifest <sha256>
+```
+
+`--help` 无副作用，返回绝对入口。Worker upload 在上传前验证本地产物，并最后上传 manifest。Release 校验本地有界文件和源索引，独立回读每一个远端对象的完整 bytes，随后每批最多 500 行登记源映射，seal 完整轴，再绑定 exact release。配置的 S3 bucket/prefix 与 Worker 使用同一环境；路径仅由 artifact UUID、manifest hash 和封闭文件名集合生成。对象单次回读最多 120 秒，Worker 上传最多 30 分钟，SQL statement 最多 15 秒、锁等待 5 秒。
+
+返回 `result.query.registration.v1` 仅表示查询关联登记，不是批准、发布、readback_verified 或 public visibility。缺失文件、hash 不同、source axis 不完整、错误 package/Bundle/release 均拒绝。部分远端成功或响应丢失时保留文件，重复同一输入会重新验证并依赖 Database 幂等约束恢复；没有自动重新计算、重新构建、更新 publication 或切换 latest 的行为。改变源或编码时分配新 artifact 身份，不能覆盖已绑定 release。
+
+离线 `test/query-artifact.test.mjs` 验证 SDK adapter 编排、真实公共子进程参数、hash/路径/边界、读回失败、批量登记和未知结果停止。合成 HDF5 文件不会作为格式正确性的证据；格式与数值验证由 Worker 测试及真实 Worker CLI 承担。生产 S3 / DB 运行仍需独立环境资格和操作授权。
