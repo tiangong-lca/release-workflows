@@ -17,9 +17,9 @@ checkPaths:
   - README.md
   - .docpact/config.yaml
   - workflows/**
-lastReviewedAt: 2026-10-17
-lastReviewedCommit: df24a5d5a80cbe89ba379e8a996d70edd2c8954f
-lastReviewedNote: "Reviewed Release #90 / original #84: immutable checkout v7.0.1 and pnpm/setup v3.1.1 pins plus matching exact assertions retain Node 24.22.0, pnpm 11.24.0, frozen graph, all offline gates and Publication authorization. Document bodies and business inputs are preserved; hosted qualification, independent review and exact integration remain required."
+lastReviewedAt: 2026-10-30
+lastReviewedCommit: 8a9aa0bbb273d630247264318201f84e6b72b9ba
+lastReviewedNote: "Release #97: reviewed Calculation-owned query artifact transport/metadata registration and unchanged numeric, ZIP, actor Publication, dependency and delivery boundaries."
 related:
   - ../AGENTS.md
   - ../README.md
@@ -90,3 +90,7 @@ Release 自己拥有 cache 格式、只读远端导出编排、临时传输校�
 确定性实现生成数值、hash、验证和 package；Agent 不模拟这些结果。provider payload 在 adapter 边界解析，不让外部非破坏性字段影响内部路线。共享代码只提取多个 Workflow 已实际复用的机制。
 
 JavaScript/MJS 与禁止生产 compiler/codegen 的约束由依赖图测试守护；精确工具链、workspace 有效配置、单一 lockfile 和 CI 行为由根工具链测试验证。文档不重复这些配置值。业务协议、授权与 numerical invariants 的测试留在各 Workflow。
+
+## 查询产物存储边界
+
+Calculation 的 opt-in query-artifact adapter 调用 Worker 公共 CLI 上传数值查询文件，独立验证 S3 bytes 后登记 Database-owned metadata/source/release 关联。它不属于 actor Publication recipe，也不创建 canonical dataset、ZIP、Approval 或 publication。Worker 拥有 HDF5 编码和数值校验，Database 拥有封闭服务 RPC 的 lineage/幂等约束，Edge 每次读取仍检查 actor 与 current publication。操作及恢复入口见 Calculation README。

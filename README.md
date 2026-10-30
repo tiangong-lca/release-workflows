@@ -19,9 +19,9 @@ checkPaths:
   - docs/architecture.md
   - workflows/**
   - .docpact/config.yaml
-lastReviewedAt: 2026-10-17
-lastReviewedCommit: df24a5d5a80cbe89ba379e8a996d70edd2c8954f
-lastReviewedNote: "Reviewed Release #90 / original #84: immutable checkout v7.0.1 and pnpm/setup v3.1.1 pins plus matching exact assertions retain Node 24.22.0, pnpm 11.24.0, frozen graph, all offline gates and Publication authorization. Document bodies and business inputs are preserved; hosted qualification, independent review and exact integration remain required."
+lastReviewedAt: 2026-10-30
+lastReviewedCommit: 8a9aa0bbb273d630247264318201f84e6b72b9ba
+lastReviewedNote: "Release #97: reviewed Calculation-owned query artifact transport/metadata registration and unchanged numeric, ZIP, actor Publication, dependency and delivery boundaries."
 related:
   - AGENTS.md
   - docs/architecture.md
