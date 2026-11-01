@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/release-candidate/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 097f0da0a81a8266cf794a445a4940e721f70f23
-lastReviewedNote: "Release #99: explicit Result-only Toolkit capability admission and actual ZIP/HDF5 pairing; mixed layers, exact versions and independent numeric fixtures verified. Candidate identity/lineage and publication remain separate."
+lastReviewedCommit: 4b0f1552d51610be8fd84ae27bf1f6cd6155ae3c
+lastReviewedNote: "Release #99: reviewed final identity RPC isolation, structured direct/derived lineage, immutable input receipts and unknown-outcome recovery; Candidate orchestration and publication remain separate."
 related:
   - README.md
   - ../AGENTS.md
@@ -86,7 +86,7 @@ related:
 
 ## 硬边界
 
-- 不使用 service-role、secret key 或直接 SQL/REST mutation。
+- 不使用 actor service key、任意 SQL/REST mutation 或 canonical 表写入；仅最终输入身份 adapter 可经显式授权的数据面连接调用本契约列出的两个 Database-owned 服务 RPC，并在事务内设置服务角色。
 - 不解码、打印、持久化或放入命令参数的用户凭据。
 - 不从 mutable `latest` 补齐 graph、exchange、provider、method 或 version。
 - 不在 Package build 中生成或修改 Result Process、LifecycleModel、identity 或 dataset version。
@@ -120,3 +120,11 @@ Release Candidate 只有在以下条件同时成立时完成：
 - `buildFinalResultPair` 内部能力显式选择 `result-process-full-closure.v1` 两包，不修改 legacy `package build` 四包契约。工具必须声明 profile 与 report v2 能力。
 - 配对须覆盖实际 ZIP 解压验证、实际归档语义 round-trip、完整冻结文档与依赖、最终 Result 轴及实际 HDF5 全量数值。缺少方法能力不能补零，完整零结果不能丢行。
 - 配对 receipt 只证明本地文件一致，不替代身份登记、来源证据、Candidate 资格或发布批准。失败保留成功产物和诊断；不创建合格 Candidate、不覆盖原输出。
+
+### 最终输入与身份登记
+
+- `inspectFinalResultInput` 只读重验 canonical bytes、完整语义依赖和 Materialization lineage，形成精确输入 hash；`prepareFinalResultInput` 必须确认同一 hash 后才能打开身份 authority。输入层仍不是 Candidate。
+- 最终身份登记仅调用 Database 的 `svc_result_identity_versions` 与 `svc_result_identity_register`，使用显式 operator 数据面连接、单客户端事务和有界参数；不引入 actor service key、任意 SQL、canonical 表写入或发布权限。实际远程登记仍需该操作的授权。
+- `first-generation` 不能免除权威占用查询和原子登记。legacy 占用、内容冲突须回上游重新生成版本和引用；不改写已冻结文件。响应丢失保留请求与已收到的凭证，只核对/重试同一输入，不自动换版本。
+- 直接关联来自 manifest 绑定的 Result Catalog sourceProcess；派生关联必须经过精确父 Candidate、父 Result 内容和 Transformation spec/receipt/handoff 的绑定。legacy 父 Candidate 要求原始 Package Plan 绑定的 Materialization witness；不得解析说明字段或将祖先视为直接替代结果。新父格式的关联读取有显式版本边界。
+- 编排层在消费 Derived Materialization 前仍调用 producer 的确定性 handoff/replay 校验；纯 lineage 解析不替代 canonical 文件验证或 Transformation 的业务验证。

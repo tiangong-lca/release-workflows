@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/release-candidate/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 097f0da0a81a8266cf794a445a4940e721f70f23
-lastReviewedNote: "Release #99: explicit Result-only Toolkit capability admission and actual ZIP/HDF5 pairing; mixed layers, exact versions and independent numeric fixtures verified. Candidate identity/lineage and publication remain separate."
+lastReviewedCommit: 4b0f1552d51610be8fd84ae27bf1f6cd6155ae3c
+lastReviewedNote: "Release #99: reviewed final identity RPC isolation, structured direct/derived lineage, immutable input receipts and unknown-outcome recovery; Candidate orchestration and publication remain separate."
 related:
   - AGENTS.md
   - ../../README.md
@@ -314,3 +314,15 @@ RELEASE_PAIR_TIDAS_BIN=/absolute/path/to/tidas node --test workflows/release-can
 ```
 
 测试输入完全合成，包含同 UUID 两版本、LCI-only、LCIA 42/0、LCI 2.5/0/-3 和参考量 -2；另以手写二进制期望值验证实际 HDF5。未配置测试专用 `RELEASE_PAIR_TIDAS_BIN` 时只有真实 Toolkit 集成项明确 skipped，其余能力拒绝、输出保留及篡改反例照常执行；不能把 skipped 描述为双产物资格通过。`fixtures/paired-final-results.json` 保留全部输入与 provenance，不需要其他仓库私有模块。
+
+### 最终输入准备与全局身份
+
+`final-result-input.mjs` 提供只读 inspection 和显式准备两个内部动作：先验证冻结文件及完整依赖、解析结构化来源、形成 input hash；确认这个 hash 后，在单独副本上重验，再对每个最终 Result 查询权威占用并原子登记。`final-result-identity.mjs` 复用项目已有 pg 依赖，只提供两个封闭、参数化的服务 RPC。登记凭证逐项检查 UUID/version、hash domain、canonical/content hash、registration ID 与 content reference；数据库或连接的原始错误不会进入返回诊断。
+
+全部登记成功后才写不可变 `final-result-input.json`，绑定精确 selection、内容/登记凭证与 lineage hash。供配对构建使用的是 `selection`，不能把包含登记凭证的 `results` catalog 直接当作数值选择，否则 input hash 会改变。输出仍标记 `candidateQualified=false`、`publicationAuthorized=false`。
+
+失败工作目录保留 `input-plan.json`、原请求和已收到的 `registration-receipts.ndjson`。可能已经提交但丢失响应的登记不能按失败释放身份；重试原输入会复用原凭证。版本占用查询是有界观察，不保证尚未显示的版本可用，最终以原子登记为准。冲突须重新生成版本相关文档；不能在打包时改版本并沿用旧 hash。
+
+来源解析消费 manifest/index/catalog 的 hash 链。Derived Result 另绑定 Transformation 的精确输入/输出与父 Candidate。legacy 父 Candidate 需提供原 Package Plan 所绑定的 Materialization manifest/index/catalog；缺少 witness 则拒绝关联，不从 comments 猜测。v3 父格式读取其绑定的结构化 final input，但该读取能力不表示完整 v3 Candidate CLI 已交付。
+
+普通测试覆盖确认前零远程调用、冲突拒绝、丢失第二次登记响应后的相同输入恢复，以及直接/派生来源的错误绑定。`final-result-identity.test.mjs` 的数据库联调仅接受测试变量 `RELEASE_IDENTITY_TEST_CONN` 指向 `127.0.0.1:61432/postgres` 的任务专用合成实例；缺少变量明确 skipped。不可把业务连接放进该变量，也不能把本地联调解释为生产部署或登记授权。

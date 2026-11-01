@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 097f0da0a81a8266cf794a445a4940e721f70f23
-lastReviewedNote: "Release #99: explicit Result-only Toolkit capability admission and actual ZIP/HDF5 pairing; mixed layers, exact versions and independent numeric fixtures verified. Candidate identity/lineage and publication remain separate."
+lastReviewedCommit: 4b0f1552d51610be8fd84ae27bf1f6cd6155ae3c
+lastReviewedNote: "Release #99: reviewed final identity RPC isolation, structured direct/derived lineage, immutable input receipts and unknown-outcome recovery; Candidate orchestration and publication remain separate."
 related:
   - ../AGENTS.md
   - ../README.md
