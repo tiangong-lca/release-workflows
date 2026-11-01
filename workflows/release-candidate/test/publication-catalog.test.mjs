@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { canonicalJson, hashJson, sha256Bytes } from "../lib/common.mjs";
+import { assertMatchesSchema } from "../../publication/test-support/contracts.mjs";
 import {
   buildPublicationCatalog,
   publicationCatalogSetHash,
@@ -89,6 +90,23 @@ test("publication catalog accepts non-RFC-versioned platform UUIDs", async () =>
     assert.deepEqual(processRecord.references, [
       `source:${NON_RFC_UUID}@01.00.005`,
     ]);
+    const schema =
+      "../../release-candidate/contracts/candidate-publication-catalog.v1.schema.json";
+    assertMatchesSchema(catalog, schema);
+    const wrongShape = structuredClone(catalog);
+    wrongShape.datasets.find(
+      (entry) => entry.key === processRecord.key,
+    ).references = [
+      {
+        target: processRecord.references[0],
+        location: "processInformation/technology",
+        role: "closure_dependency",
+      },
+    ];
+    assert.throws(
+      () => assertMatchesSchema(wrongShape, schema),
+      /must be string/u,
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }

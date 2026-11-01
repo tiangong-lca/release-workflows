@@ -18,8 +18,8 @@ checkPaths:
   - .docpact/config.yaml
   - workflows/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: b972a085d013ebb24b72a44b9ece549b782d46f5
-lastReviewedNote: "Release #99: reviewed direct/Derived Result Intake, explicit inspect/register/build/verify commands, parent replay, final Candidate consumers and marker-last recovery; publication remains separate."
+lastReviewedCommit: 86ac3d9737b4cd6c061e50cd199a7711bc6e3e95
+lastReviewedNote: "Release #99: reviewed the catalog schema correction to the existing exact-key reference arrays; generated Candidate bytes, numeric/storage ownership and publication authorization remain unchanged."
 related:
   - ../AGENTS.md
   - ../README.md

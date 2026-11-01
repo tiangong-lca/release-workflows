@@ -50,16 +50,6 @@
         "datasets": { "type": "array", "items": { "$ref": "#/$defs/key" } }
       }
     },
-    "reference": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["target", "location", "role"],
-      "properties": {
-        "target": { "$ref": "#/$defs/key" },
-        "location": { "type": "string" },
-        "role": { "const": "closure_dependency" }
-      }
-    },
     "dataset": {
       "type": "object",
       "additionalProperties": false,
@@ -89,7 +79,8 @@
         "canonicalContentHash": { "$ref": "#/$defs/hash" },
         "references": {
           "type": "array",
-          "items": { "$ref": "#/$defs/reference" }
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/key" }
         },
         "components": {
           "type": "array",

@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/release-candidate/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: b972a085d013ebb24b72a44b9ece549b782d46f5
-lastReviewedNote: "Release #99: reviewed direct/Derived Result Intake, explicit inspect/register/build/verify commands, parent replay, final Candidate consumers and marker-last recovery; publication remains separate."
+lastReviewedCommit: 86ac3d9737b4cd6c061e50cd199a7711bc6e3e95
+lastReviewedNote: "Release #99: aligned Publication catalog reference schema with actual exact-key arrays and validated the generated catalog using the existing Draft 2020-12 test stack; runtime bytes and publication authorization are unchanged."
 related:
   - AGENTS.md
   - ../../README.md
@@ -261,6 +261,8 @@ Candidate 成功冻结后必须展示两个互斥的当前方向：
 
 Candidate v2 在 canonical bytes 仍可验证时生成 `publication-catalog.json`，记录 exact identity、required references 和 Unit Process/Result component sets。Publication 的纯 include/exclude 只引用 Candidate 子集，不改变 Candidate；只有 dataset bytes、identity、version 或 package 内容变化才形成新 Candidate。
 
+同一 catalog 契约也用于配对 Candidate v3。每个 dataset 的 `references` 是去重后的 exact dataset key 字符串数组（`kind:uuid@version`），不是含 `target/location/role` 的引用对象；所有消费者与 JSON Schema 都使用此冻结形式。原始引用位置仅用于构建时的错误诊断，不进入 catalog 的引用数组。
+
 ## 失败与恢复
 
 - 本地验证失败返回到拥有错误输入或 recipe 的最早节点。
@@ -323,7 +325,7 @@ RELEASE_PAIR_TIDAS_BIN=/absolute/path/to/tidas node --test workflows/release-can
 
 失败工作目录保留 `input-plan.json`、原请求和已收到的 `registration-receipts.ndjson`。可能已经提交但丢失响应的登记不能按失败释放身份；重试原输入会复用原凭证。版本占用查询是有界观察，不保证尚未显示的版本可用，最终以原子登记为准。冲突须重新生成版本相关文档；不能在打包时改版本并沿用旧 hash。
 
-来源解析消费 manifest/index/catalog 的 hash 链。Derived Result 另绑定 Transformation 的精确输入/输出与父 Candidate。legacy 父 Candidate 需提供原 Package Plan 所绑定的 Materialization manifest/index/catalog；缺少 witness 则拒绝关联，不从 comments 猜测。v3 父格式读取其绑定的结构化 final input，但该读取能力不表示完整 v3 Candidate CLI 已交付。
+来源解析消费 manifest/index/catalog 的 hash 链。Derived Result 另绑定 Transformation 的精确输入/输出与父 Candidate。legacy 父 Candidate 需提供原 Package Plan 所绑定的 Materialization manifest/index/catalog；缺少 witness 则拒绝关联，不从 comments 猜测。v3 父格式读取其绑定的结构化 final input，并由 Candidate loader 重新验证真实文件与配对证据。
 
 普通测试覆盖确认前零远程调用、冲突拒绝、丢失第二次登记响应后的相同输入恢复，以及直接/派生来源的错误绑定。`final-result-identity.test.mjs` 的数据库联调仅接受测试变量 `RELEASE_IDENTITY_TEST_CONN` 指向 `127.0.0.1:61432/postgres` 的任务专用合成实例；缺少变量明确 skipped。不可把业务连接放进该变量，也不能把本地联调解释为生产部署或登记授权。
 
