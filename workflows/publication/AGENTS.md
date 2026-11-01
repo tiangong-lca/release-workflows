@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 1a502478a67a3fbb657f352f588cc2fb14abb882
-lastReviewedNote: "Release #99: reviewed exact approval/activation intent confirmation, separate approver/executor binding, session audit fingerprint, immutable recovery and real synthetic CLI qualification. Public readback and hosted adoption remain pending."
+lastReviewedCommit: b2d88623f6454fc7cea5597d865a66cddf37d3eb
+lastReviewedNote: "Release #99: public Edge numerical and ZIP readback, immutable actor attestation and recovery are implemented; hosted/browser adoption remains separate."
 related:
   - README.md
   - ../AGENTS.md
@@ -206,7 +206,7 @@ Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认
   当次权限决定。status 的 run 状态与 publication 当前性必须分开表达。
 - approve/activate 传输原语不构成用户授权，也不绕过上层 intent 的精确确认；
   它们不接受 client-supplied actor。真正批准/激活仍由 Database 原子检查，
-  确认入口按下节执行，独立公开查询的发布后观察另行接入。
+  确认入口按下节执行，独立公开查询由 `result-publication readback` 执行。
 
 ## 最终 Result 批准与激活意图
 
@@ -224,3 +224,17 @@ Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认
   不复活授权。记录失败时保留意图和已有证据，新尝试仍用原操作身份查询恢复。
 - 数据库激活观察不是公开读取完成；回执必须保持 `publicReadbackVerified=false`，
   不能在未通过真实 Edge/Platform/下载链路检查时宣称发布验证完成。
+
+## 最终 Result 公开回读
+
+`result-publication readback` 只使用当前 actor 和相同 API origin 的公开 Edge。
+逐一对全部选定 Result 的冻结标准投影核对 overview、完整 LCI 和声明的 LCIA，
+固定 publication/runtime；查询失败不得用原 Bundle 或私有 reader 成功替代。
+可授权 ZIP 必须独立完整 GET 校验长度/hash，明确不可用单独记录，其余错误失败。
+签名 URL 只在内存中使用，不保存、不转发 actor 凭据、不跟随跳转。
+
+观测原文必须先独占落盘，再登记 immutable manager attestation，并独立读回原文摘要。
+Database 重新检查 current、选择、reader、实时角色/ZIP 权限和新鲜度。写入结果不明
+先恢复同一 run 记录，禁止换新内容覆盖凭证。`readback_verified` 是发布后的审计状态，
+不能作为首次公开可见性的额外门槛；失败不隐式撤回、回滚或再次激活。历史凭证不
+承诺当前持续可用，也不冒充浏览器交互或 hosted JWT 验收。

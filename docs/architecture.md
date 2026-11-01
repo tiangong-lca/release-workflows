@@ -18,8 +18,8 @@ checkPaths:
   - .docpact/config.yaml
   - workflows/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 1a502478a67a3fbb657f352f588cc2fb14abb882
-lastReviewedNote: "Release #99: reviewed exact approval/activation intent confirmation, separate approver/executor binding, session audit fingerprint, immutable recovery and real synthetic CLI qualification. Public readback and hosted adoption remain pending."
+lastReviewedCommit: b2d88623f6454fc7cea5597d865a66cddf37d3eb
+lastReviewedNote: "Release #99: reviewed public Edge numeric/ZIP observations and immutable actor recovery; hosted adoption remains separate."
 related:
   - ../AGENTS.md
   - ../README.md

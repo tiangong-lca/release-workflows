@@ -19,6 +19,8 @@ import {
   validateFinalResultPublicationPlan,
   prepareFinalResultPublication,
 } from "./final-result-publication-plan.mjs";
+import { createFinalResultPublicReader } from "../adapters/final-result-public-reader.mjs";
+import { verifyFinalResultPublicReadback } from "./final-result-public-readback.mjs";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const CLI = fileURLToPath(new URL("../cli.mjs", import.meta.url));
 const quote = (v) => `'${String(v).replaceAll("'", `'"'"'`)}'`;
@@ -52,6 +54,7 @@ const allowed = {
   "activation-plan": ["plan-dir", "readiness-receipt", "approval-id"],
   activate: ["plan-dir", "intent-dir", "confirm"],
   status: ["run-id"],
+  readback: ["plan-dir", "final-input"],
 };
 function value(env, name) {
   required(
@@ -99,6 +102,8 @@ export async function runFinalResultPublicationCommand(
     approve = approveFinalResultPublication,
     activationPlan = buildFinalResultActivationIntent,
     activate = activateFinalResultPublication,
+    createPublicReader = createFinalResultPublicReader,
+    readback = verifyFinalResultPublicReadback,
     build = buildFinalResultPublicationPlan,
     prepare = prepareFinalResultPublication,
   } = {},
@@ -113,6 +118,7 @@ export async function runFinalResultPublicationCommand(
     plan: ["candidate", "target-hash", "reason"],
     prepare: ["plan-dir", "confirm"],
     status: ["run-id"],
+    readback: ["plan-dir", "final-input"],
     "approval-plan": ["plan-dir", "readiness-receipt", "expires-at", "reason"],
     approve: ["plan-dir", "intent-dir", "confirm"],
     "activation-plan": ["plan-dir", "readiness-receipt", "approval-id"],
@@ -141,6 +147,11 @@ export async function runFinalResultPublicationCommand(
     if (action === "plan")
       await assertFinalResultExternalOutput(
         path.resolve(options.candidate),
+        outDir,
+      );
+    if (options["final-input"])
+      await assertFinalResultExternalOutput(
+        path.resolve(options["final-input"]),
         outDir,
       );
     if (options["plan-dir"]) {
@@ -249,6 +260,36 @@ export async function runFinalResultPublicationCommand(
             `${outDir}-prepare`,
           ]),
         ],
+      };
+    }
+    if (action === "readback") {
+      const receipt = await readback({
+        local: context.local,
+        inputDir: path.resolve(options["final-input"]),
+        actor,
+        reader: createPublicReader(actorConfig),
+        record: async (e) => {
+          required(
+            ["public-readback-intent", "public-readback-receipt"].includes(
+              e.kind,
+            ),
+          );
+          await write(`${e.kind}.json`, e.receipt ?? e);
+        },
+      });
+      return {
+        ok: true,
+        command: "result-publication readback",
+        outcome: "final_result_public_readback_verified",
+        completeness: "public_readback_verified",
+        publicationAuthorized: false,
+        releaseRunId: context.plan.releaseRunId,
+        publicationId: receipt.observation.publicationId,
+        publicReadbackVerified: true,
+        artifacts: {
+          receipt: path.join(outDir, "public-readback-receipt.json"),
+        },
+        nextActions: [],
       };
     }
     if (action === "prepare") {

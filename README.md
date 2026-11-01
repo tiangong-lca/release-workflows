@@ -20,8 +20,8 @@ checkPaths:
   - workflows/**
   - .docpact/config.yaml
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 1a502478a67a3fbb657f352f588cc2fb14abb882
-lastReviewedNote: "Release #99: reviewed exact approval/activation intent confirmation, separate approver/executor binding, session audit fingerprint, immutable recovery and real synthetic CLI qualification. Public readback and hosted adoption remain pending."
+lastReviewedCommit: b2d88623f6454fc7cea5597d865a66cddf37d3eb
+lastReviewedNote: "Release #99: reviewed public Edge numeric/ZIP observations and immutable actor recovery; hosted adoption remains separate."
 related:
   - AGENTS.md
   - docs/architecture.md
@@ -57,7 +57,7 @@ Candidate 构建不构成发布授权。Publication 可选择引用完整的子�
 
 Transformation 的 inspect、freeze、execute 已实现；其 `completed` 只证明本节点产物和 handoff 已生成。Unit 聚合使旧 Result evidence 失效，需要新的计算；Result 聚合产生 Derived Result，不重新求解或补造 LifecycleModel。
 
-Materialization 的 `materialize derived` 接收精确 Derived Result handoff；Candidate 的 `result intake/inspect/register/build/verify` 接通结构化来源、全局身份登记和 Result-only 两包/HDF5 的 v3 冻结。`package build` 继续提供 legacy 四包路线。Publication 的 `result-storage inspect/execute` 接通 v3 存储计划、条件上传、完整 GET 和 Database v2 登记；`result-readiness verify` 已连接完整文件/reader 核验、不可变磁盘证据与 Database seal；`result-publication plan/prepare/status` 接通选择确认与状态观察；独立批准/激活意图确认入口已接通，公开查询的发布后验证仍需接通，不能交给旧四包发布入口。进入后继 Workflow 前应核对其真实输入契约；不能通过重命名产物、复用旧证据或补造 Model 绕过限制。具体节点和限制由各 Workflow 文档维护。
+Materialization 的 `materialize derived` 接收精确 Derived Result handoff；Candidate 的 `result intake/inspect/register/build/verify` 接通结构化来源、全局身份登记和 Result-only 两包/HDF5 的 v3 冻结。`package build` 继续提供 legacy 四包路线。Publication 的 `result-storage inspect/execute` 接通 v3 存储计划、条件上传、完整 GET 和 Database v2 登记；`result-readiness verify` 已连接完整文件/reader 核验、不可变磁盘证据与 Database seal；`result-publication plan/prepare/status` 接通选择确认与状态观察；独立批准/激活意图确认入口已接通，`result-publication readback` 已接通公开数值/ZIP 回读与不可变凭证，不能交给旧四包发布入口。进入后继 Workflow 前应核对其真实输入契约；不能通过重命名产物、复用旧证据或补造 Model 绕过限制。具体节点和限制由各 Workflow 文档维护。
 
 ## 开发与阅读
 

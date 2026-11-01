@@ -22,6 +22,9 @@ const DENIALS = new Set([
   "approval_context_changed",
   "rollback_scope_mismatch",
   "publication_conflict",
+  "final_result_readback_conflict",
+  "final_result_readback_changed",
+  "final_result_readback_expired",
 ]);
 function required(value, code = "final_actor_contract_invalid") {
   if (!value) fail(code, "Final Result actor request failed");
@@ -54,6 +57,8 @@ const ROUTINES = new Set([
   "cmd_final_result_release_seal_v2",
   "cmd_final_result_release_approve_v2",
   "cmd_final_result_release_activate_v2",
+  "cmd_final_result_release_readback_v2",
+  "qry_final_result_query_v2",
 ]);
 export function createFinalResultActorTransport({
   endpoint,

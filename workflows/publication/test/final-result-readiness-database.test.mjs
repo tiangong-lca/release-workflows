@@ -154,16 +154,31 @@ test(
     ].join(".");
     const pool = new pg.Pool({ connectionString, max: 2 });
     t.after(() => pool.end());
+    let publicEdge;
     const server = createServer(async (req, res) => {
       let client;
       try {
         assert.equal(req.headers.authorization, `Bearer ${token}`);
+        if (req.url === "/functions/v1/lca_release_results") {
+          assert.ok(publicEdge);
+          const chunks = [];
+          for await (const chunk of req) chunks.push(chunk);
+          const reply = await publicEdge(JSON.parse(Buffer.concat(chunks)));
+          res.writeHead(reply.status, { "content-type": "application/json" });
+          res.end(JSON.stringify(reply.body));
+          return;
+        }
         assert.equal(req.headers["content-profile"], "api");
         assert.equal(req.headers.apikey, "sb_publishable_synthetic");
         const chunks = [];
         for await (const chunk of req) chunks.push(chunk);
         const b = JSON.parse(Buffer.concat(chunks));
         const routines = {
+          cmd_final_result_release_readback_v2: [
+            "p_release_run_id",
+            "p_publish_plan_hash",
+            "p_observation_text",
+          ],
           qry_final_result_query_v2: [
             "p_result_id",
             "p_result_version",
@@ -636,6 +651,7 @@ test(
         );
         return JSON.parse(stdout);
       };
+      publicEdge = async (body) => (await runEdge([body]))[0];
       const query = (row, kind, extra = {}) => ({
         mode: "final_query",
         resultId: row.uuid,
@@ -711,6 +727,65 @@ test(
       );
       assert.equal(denied[1].body.code, "SOURCE_NOT_AVAILABLE");
       assert.equal(denied[2].body.code, "RESULT_PACKAGE_NOT_AVAILABLE");
+      const exactEdge = publicEdge;
+      publicEdge = async (body) => {
+        const reply = await exactEdge(body);
+        if (
+          body.mode === "final_query" &&
+          body.query.kind === "lci" &&
+          reply.body.data?.data?.items?.length
+        )
+          reply.body.data.data.items[0].amount += 0.125;
+        return reply;
+      };
+      await assert.rejects(
+        managerCommand("readback", [
+          "--plan-dir",
+          authorityPlanDir,
+          "--final-input",
+          f.input.outDir,
+          "--out-dir",
+          path.join(f.input.root, "bad-public-readback"),
+        ]),
+        (e) =>
+          JSON.parse(e.stderr).error.code === "final_public_readback_mismatch",
+      );
+      assert.equal((await publication.run(runId)).readbackReceipt, null);
+      assert.equal((await publication.run(runId)).publication.isCurrent, true);
+      publicEdge = exactEdge;
+      const publicReadback = await managerCommand("readback", [
+        "--plan-dir",
+        authorityPlanDir,
+        "--final-input",
+        f.input.outDir,
+        "--out-dir",
+        path.join(f.input.root, "public-readback"),
+      ]);
+      assert.equal(publicReadback.publicReadbackVerified, true);
+      const verifiedRun = await publication.run(runId);
+      assert.equal(verifiedRun.status, "readback_verified");
+      assert.equal(verifiedRun.readbackReceipt.observation.resultCount, 3);
+      assert.deepEqual(verifiedRun.readbackReceipt.observation.downloads, {
+        tidas: { status: "unavailable" },
+        ilcd: { status: "unavailable" },
+      });
+      const saved = JSON.parse(
+        await readFile(
+          path.join(
+            f.input.root,
+            "public-readback",
+            "public-readback-intent.json",
+          ),
+        ),
+      );
+      assert.deepEqual(
+        await publication.recordReadback({
+          releaseRunId: runId,
+          publishPlanHash: planHash,
+          observationText: saved.observationText,
+        }),
+        verifiedRun.readbackReceipt,
+      );
       t.diagnostic(
         "Actual Edge v2: three Result overviews, complete paged LCI [-3,2.5,4.25], LCIA [0,42], absent LCIA, reader pin and actor RLS denials passed",
       );

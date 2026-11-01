@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 1a502478a67a3fbb657f352f588cc2fb14abb882
-lastReviewedNote: "Release #99: reviewed exact approval/activation intent confirmation, separate approver/executor binding, session audit fingerprint, immutable recovery and real synthetic CLI qualification. Public readback and hosted adoption remain pending."
+lastReviewedCommit: b2d88623f6454fc7cea5597d865a66cddf37d3eb
+lastReviewedNote: "Release #99: public Edge numerical and ZIP readback, immutable actor attestation and recovery are implemented; hosted/browser adoption remains separate."
 related:
   - AGENTS.md
   - ../release-candidate/README.md
@@ -704,4 +704,32 @@ approve/activate 都不盲目重试写入：先查询原审批或执行身份；
 原执行已提交后，更新会话仍可恢复读取原记录；不伪称更新后的会话执行了旧操作。
 
 激活后的回执 `publicReadbackVerified=false`，只证明独立查询确认了数据库发布状态。
-它不能替代 Edge/Platform 查询和授权 ZIP 下载的发布后检查；这些验证仍待接通。
+它不能替代下面独立的公开回读，浏览器交互验收另行执行。
+
+### 激活后公开回读
+
+```bash
+node workflows/publication/cli.mjs result-publication readback \
+  --plan-dir /absolute/path/to/selection-plan \
+  --final-input /absolute/path/to/frozen-final-input \
+  --out-dir /absolute/path/to/new-public-readback --json
+```
+
+使用与发布相同 API origin 的显式当前用户 JWT/公开客户端 key。逐一读回选择内
+所有 Result 的 overview、完整 LCI 分页和声明的 LCIA，按冻结标准文件重新投影并
+精确比较身份、参考数量、单位、正负值和零；首次 reader revision 固定到最后一页。
+不调用计算、不访问 Worker 私有接口。冷缓存最多五次、间隔两秒；单次 Edge 请求
+十五秒/2 MiB，超出后保留失败证据，另开目录重试。
+
+每个格式独立申请短期链接，对可访问的 ZIP 流式 GET 全部字节并比对长度与 SHA-256。
+单文件上限 32 GiB、GET 至多 120 秒；不转发用户认证头、不跟随重定向、不保存签名
+URL。部分选择或支持数据权限导致的明确 404 记录 `unavailable`，不冒充下载成功；
+其他错误和字节不匹配都失败。Database 记录时再次核对这两项的实时授权结果。
+
+先将完整观测文本写入新目录，再调用 manager-only 回读登记，独立 status 确认同一
+原文 SHA-256。数据库核对 current publication、Candidate、选择、reader、live role
+及至多五分钟前的结束时间，保存不可变凭证并将运行审计状态置为 `readback_verified`。
+这一状态不授予公开读取资格：首次原子激活已满足资格。失败不会撤回旧/新发布，
+也不会自动回滚。确认失败先保留 `public-readback-intent.json` 并 `status` 查询原 run；
+已有凭证只恢复历史观察，不覆盖或重新激活。该 CLI 证明 API 与文件回读，不代替
+Platform 浏览器验收、真实 hosted JWT 资格或持续可用性监控。

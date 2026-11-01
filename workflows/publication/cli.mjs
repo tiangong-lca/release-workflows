@@ -78,6 +78,7 @@ Commands:
   result-publication plan     Freeze exact Result selection and current-publication precondition
   result-publication prepare  Confirm and seal that selection using the manager session
   result-publication status   Observe one exact run without changing its authority
+  result-publication readback Verify public Edge rows and authorized ZIPs after activation
   result-publication approval-plan    Inspect exact approval intent for confirmation
   result-publication approve          Confirm intent and independently read the approval
   result-publication activation-plan  Inspect exact activation intent for confirmation
@@ -191,6 +192,10 @@ result-publication plan:
   --rollback-of <terminal-publication-uuid>, --run-id <uuid>. Defaults to all Candidate Results.
 result-publication prepare:
   --plan-dir <frozen-plan-directory> --confirm <local-plan-content-sha256> --out-dir <new-directory>
+result-publication readback:
+  --plan-dir <prepared-plan-directory> --final-input <frozen-input-directory> --out-dir <new-directory>
+  Uses the current actor, public Edge and short-lived ZIP links. Records immutable observations;
+  does not activate, roll back or withdraw. A failed observation leaves publication authority unchanged.
 result-publication status:
   --run-id <uuid> --out-dir <new-directory>
   These recipes use only explicit API origin, publishable key and actor JWT below.
@@ -245,6 +250,8 @@ async function main() {
       runFinalResultPublicationCommand("plan", options),
     "result-publication prepare": (options) =>
       runFinalResultPublicationCommand("prepare", options),
+    "result-publication readback": (options) =>
+      runFinalResultPublicationCommand("readback", options),
     "result-publication status": (options) =>
       runFinalResultPublicationCommand("status", options),
     "result-readiness verify": (options) =>

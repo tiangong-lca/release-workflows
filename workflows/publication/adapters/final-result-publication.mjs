@@ -397,6 +397,60 @@ export function createFinalResultPublication(config) {
         options,
       );
     },
+    descriptor(a, options) {
+      exact(a, ["result", "publicationId"]);
+      exact(a.result, ["uuid", "version"]);
+      required(
+        uuid(a.result.uuid) &&
+          VERSION.test(a.result.version) &&
+          uuid(a.publicationId),
+      );
+      return read(
+        "qry_final_result_query_v2",
+        {
+          p_result_id: a.result.uuid,
+          p_result_version: a.result.version,
+          p_publication_id: a.publicationId,
+        },
+        (d) => {
+          required(
+            d.publicationId === a.publicationId &&
+              d.result?.uuid === a.result.uuid &&
+              d.result?.version === a.result.version &&
+              uuid(d.runtimeRevision) &&
+              hash(d.readerSha256),
+          );
+        },
+        options,
+      );
+    },
+    recordReadback(a, options) {
+      const body = runArgs(a, ["observationText"]);
+      required(
+        typeof a.observationText === "string" &&
+          Buffer.byteLength(a.observationText) <= 16384,
+      );
+      return write(
+        "cmd_final_result_release_readback_v2",
+        { ...body, p_observation_text: a.observationText },
+        (d) => {
+          exact(d, [
+            "schemaVersion",
+            "observationSha256",
+            "observation",
+            "recordedAt",
+          ]);
+          required(
+            d.schemaVersion === "tiangong.final-result-public-readback.v1" &&
+              d.observationSha256 ===
+                sha256Bytes(Buffer.from(a.observationText)) &&
+              d.observation?.releaseRunId === a.releaseRunId &&
+              timestamp(d.recordedAt),
+          );
+        },
+        options,
+      );
+    },
     activate(a, options) {
       const body = runArgs(a, [
         "approvalId",
