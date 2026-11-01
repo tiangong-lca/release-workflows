@@ -20,8 +20,8 @@ checkPaths:
   - workflows/**
   - .docpact/config.yaml
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 2e04d0d35c6f874a0572ffb0fc2f7dee1fa06db3
-lastReviewedNote: "Release #99: reviewed opt-in final Result storage CLI, exact plan confirmation, explicit operator environment, retained safe recovery and actual CLI/SDK/isolated PostgreSQL proof. Root ownership and actor publication authority remain unchanged."
+lastReviewedCommit: 4642053e1d9fe1095af4c17296b6dbd1dc888d9e
+lastReviewedNote: "Release #99: reviewed private reader probes and frozen-content verification under Publication, bounded service/actor separation, real local Worker qualification, and pending overall readiness/activation. Root ownership and production authority remain unchanged."
 related:
   - AGENTS.md
   - docs/architecture.md

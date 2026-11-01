@@ -176,7 +176,11 @@ export function createFinalResultObjectStore({
         );
         return { ...file };
       } catch (error) {
-        if (error.code?.startsWith("final_storage_")) throw error;
+        if (
+          typeof error.code === "string" &&
+          error.code.startsWith("final_storage_")
+        )
+          throw error;
         fail(
           "final_storage_readback_failed",
           "Full object readback failed; retry the same immutable storage plan",
@@ -366,6 +370,33 @@ export function createFinalResultObjectStore({
   return {
     targetHash,
     databaseTargetHash: target.databaseTargetHash,
+    async verifyQuery(artifact, file) {
+      reference(artifact);
+      fileDescriptor(file, QUERY_NAMES);
+      if (file.name === "manifest.json")
+        requireValue(
+          file.sha256 === artifact.manifestSha256 &&
+            file.byteSize === artifact.manifestByteSize,
+        );
+      const verified = await getVerified(
+        `query-artifacts/${artifact.artifactId}/${artifact.manifestSha256}/${file.name}`,
+        file,
+      );
+      requireValue(verified, "final_storage_object_missing");
+      return { file: verified, targetHash };
+    },
+    async verifyCandidate(candidateHash, file) {
+      requireValue(HASH.test(candidateHash ?? ""));
+      fileDescriptor(file, CANDIDATE_NAMES);
+      if (file.name === "release-candidate.json")
+        requireValue(file.sha256 === candidateHash);
+      const verified = await getVerified(
+        `release-candidates/${candidateHash}/${file.name}`,
+        file,
+      );
+      requireValue(verified, "final_storage_object_missing");
+      return { file: verified, targetHash };
+    },
     async ensureQuery(artifact, file, sourcePath) {
       reference(artifact);
       fileDescriptor(file, QUERY_NAMES);

@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 2e04d0d35c6f874a0572ffb0fc2f7dee1fa06db3
-lastReviewedNote: "Release #99: reviewed opt-in final Result storage CLI, exact local plan confirmation, explicit operator environment, retained sanitized attempts and concrete recovery, actual CLI/SDK/isolated PostgreSQL qualification. Actor approval, activation and runtime policies remain separate."
+lastReviewedCommit: 4642053e1d9fe1095af4c17296b6dbd1dc888d9e
+lastReviewedNote: "Release #99: reviewed bounded signed private reader verification against frozen canonical input, live authority checks before requests and after final response, read-only full-GET probes, actual local Worker/HDF5/ZIP qualification. Probe evidence does not authorize or activate publication."
 related:
   - ../AGENTS.md
   - ../README.md
@@ -62,3 +62,7 @@ Candidate 内的最终 Result 投影和原生 HDF5 编码器拥有生成逻辑�
 Publication 的独立数据面 adapter；它只消费冻结 Candidate，不移动生成器、不
 重算内容、不写 state 120，也不取得 actor 批准或 current 激活权限。具体边界与
 恢复规则由 `publication/AGENTS.md` 维护。
+
+最终 Result 的私有 reader 验证由 Publication 消费冻结 final input 和 Candidate，
+与存储登记、后继数据库 readiness seal/actor approval 分开。单个 Result probe 成功
+不等于发布范围全部合格，也不自动授权激活；精确调用边界见 Publication 契约。

@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 2e04d0d35c6f874a0572ffb0fc2f7dee1fa06db3
-lastReviewedNote: "Release #99: reviewed opt-in final Result storage CLI, exact local plan confirmation, explicit operator environment, retained sanitized attempts and concrete recovery, actual CLI/SDK/isolated PostgreSQL qualification. Actor approval, activation and runtime policies remain separate."
+lastReviewedCommit: 4642053e1d9fe1095af4c17296b6dbd1dc888d9e
+lastReviewedNote: "Release #99: reviewed bounded signed private reader verification against frozen canonical input, live authority checks before requests and after final response, read-only full-GET probes, actual local Worker/HDF5/ZIP qualification. Probe evidence does not authorize or activate publication."
 related:
   - README.md
   - ../AGENTS.md
@@ -143,3 +143,21 @@ Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认
 - 目标 fingerprint 绑定数据库连接身份（不含密码）、存储 origin/region/bucket/prefix。配置必须指向已经治理的非公开存储；adapter 不改变 bucket policy，也不能以文件核验代替非公开环境准入。原 actor recipes 与 Portal projection 的 secret/locator 禁止仍保持。
 - CLI 只读取显式进程环境中的 `CONN` 与既有 `S3_*` 白名单，不隐式载入 `.env` 或 AWS credential provider chain，不接受凭据参数。证据输出必须位于冻结 Candidate 外部，含符号链接解析。每次 execute 使用新的输出目录：先写 attempt、成功后写 receipt；失败保留 attempt/failure，精确重试用新目录，不能删除记录伪造完成。stdout/stderr 只返回有界摘要与安全错误码；原始 provider/连接异常不外泄。
 - 该阶段只产生不可变存储登记证据，始终 `publicationAuthorized=false`。普通用户访问、完整 ZIP 授权及原子 current 切换由版本化 Database/Edge/Platform 接入另行完成。
+
+## 最终 Result reader 验证
+
+- `adapters/final-result-reader.mjs` 是受控服务验证 transport，只签名固定
+  `/internal/results/query-v2` 的 readiness scope、精确 artifact 与 Result；不接受
+  publication scope、任意 URL path、过滤器或原始 locator。每个请求及冷缓存重试前
+  必须重新通过 actor 权限检查，服务密钥与 actor session 分离，拒绝重定向。
+- `lib/final-result-reader-verification.mjs` 从与 Candidate 完全一致的冻结 final input
+  重建预期投影，逐项核对实际 reader 返回的定量参考、单位、LCI 非零项、全部分页和
+  LCIA；明确区分 LCIA 缺失与 LCIA 零。首个 LCI 页大小为 1，以覆盖有多项时的 cursor。
+  每页绑定准入 reader binary SHA、runtime revision、选择及 live manager 前置条件；
+  最后一次响应后再次核对权限。权限回调接收 AbortSignal，必须使用可取消的有界调用。
+- 新 `verifyQuery/verifyCandidate` 只完整 GET 校验，缺失或损坏时失败，不修复、不上传。
+  只读回读不能使用 `ensure*` 的缺失补传行为。
+- `tiangong.final-result-reader-probe.v1` 是单个精确 Result 的实测证据，不是发布范围
+  全覆盖、数据库 readiness seal 或批准。后继 verifier 仍需枚举全部选中 artifact、
+  完整文件集和所需 probe，绑定时间与权限，并由 Database 在激活时独立核对。
+  现阶段没有新增可执行 reader CLI、actor transport 或激活入口，不能把本库回执当成可发布状态。

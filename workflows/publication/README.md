@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 2e04d0d35c6f874a0572ffb0fc2f7dee1fa06db3
-lastReviewedNote: "Release #99: reviewed opt-in final Result storage CLI, exact local plan confirmation, explicit operator environment, retained sanitized attempts and concrete recovery, actual CLI/SDK/isolated PostgreSQL qualification. Actor approval, activation and runtime policies remain separate."
+lastReviewedCommit: 4642053e1d9fe1095af4c17296b6dbd1dc888d9e
+lastReviewedNote: "Release #99: reviewed bounded signed private reader verification against frozen canonical input, live authority checks before requests and after final response, read-only full-GET probes, actual local Worker/HDF5/ZIP qualification. Probe evidence does not authorize or activate publication."
 related:
   - AGENTS.md
   - ../release-candidate/README.md
@@ -115,6 +115,35 @@ ZIP，验证丢失 S3/数据库响应后的恢复、重试无对象写入以及�
 Calculation/Candidate 依赖不升级。条件写入依据 [S3 官方契约](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html)
 和所安装 SDK 的 `PutObject` / `CompleteMultipartUpload` 类型文档；ETag 仅用于
 multipart 协议，不充当内容摘要。
+
+### 私有 reader 验证库
+
+`createFinalResultProbeVerifier({candidateDir, inputDir, reader})` 消费同一冻结输入和
+Candidate v3；`verify(probe, {authorize})` 核对 Database 的精确 probe 描述，每次网络
+请求前和最后响应后通过 `authorize(signal)` 重查同一 actor/runtime/选择/权限上下文。
+返回单个 Result 的 `tiangong.final-result-reader-probe.v1`，始终
+`publicationAuthorized=false`。调用者必须保留 final input，不能用 HDF5 自身作为预期数值。
+
+`createFinalResultReader({endpoint, secret, timeoutMs, preparingMs})` 使用独立的服务密钥，
+只访问固定 v2 readiness 接口。默认请求/权限检查期限 30 秒，冷缓存准备窗口 5 分钟；
+响应上限 2 MiB。只允许 HTTPS，测试可用字面 loopback HTTP；不跟随重定向。
+对象 adapter 的 `verifyQuery/verifyCandidate` 只做完整 GET，与上传入口分开。
+
+库级验证不进行 Database readiness seal、审批或 current 切换。完整范围的验证编排、
+actor transport、readiness CLI 和数据库激活仍待接入，不能据此开始真实发布。
+
+合成联调使用实际 Release 编码器/Toolkit ZIP 和独立 Worker binary：
+
+```bash
+RELEASE_PAIR_TIDAS_BIN=/absolute/path/to/tidas \
+RELEASE_QUERY_WORKER_BIN=/absolute/path/to/result_query_service \
+node --test workflows/publication/test/final-result-reader.test.mjs \
+  workflows/publication/test/final-result-reader-verification.test.mjs \
+  workflows/publication/test/final-result-object-store.test.mjs
+```
+
+测试只启动本地临时 HTTP 对象服务和自有 Worker/cache，退出时关闭并清理；不需要业务
+数据库或云凭据。未提供上述 binary 的 opt-in 用例会跳过，不能记为真实链路通过。
 
 ## 发布语义
 

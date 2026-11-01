@@ -219,3 +219,33 @@ test("failed abort remains explicit even when local drift was the original failu
   assert.equal(f.objects.size, 0);
   assert.equal(f.parts.size, 1);
 });
+
+test("readiness GETs never repair missing files or alter corrupt objects", async (t) => {
+  const f = await fixture(t);
+  await assert.rejects(f.store.verifyQuery(ref, f.descriptor), {
+    code: "final_storage_object_missing",
+  });
+  f.objects.set(f.key, f.bytes);
+  assert.deepEqual(
+    (await f.store.verifyQuery(ref, f.descriptor)).file,
+    f.descriptor,
+  );
+  f.objects.set(f.key, Buffer.alloc(f.bytes.length, 7));
+  await assert.rejects(f.store.verifyQuery(ref, f.descriptor), {
+    code: "final_storage_content_conflict",
+  });
+  const candidateHash = f.descriptor.sha256;
+  const file = { ...f.descriptor, name: "release-candidate.json" };
+  await assert.rejects(f.store.verifyCandidate(candidateHash, file), {
+    code: "final_storage_object_missing",
+  });
+  f.objects.set(
+    `/synthetic-results/test-owned/release-candidates/${candidateHash}/release-candidate.json`,
+    f.bytes,
+  );
+  assert.deepEqual(
+    (await f.store.verifyCandidate(candidateHash, file)).file,
+    file,
+  );
+  assert.ok(f.requests.every((request) => request.method === "GET"));
+});
