@@ -52,7 +52,7 @@ export function finalResultStorageEnvironment(env) {
     prefix: env.S3_PREFIX?.trim() || "",
   });
 }
-async function assertExternalOutput(candidateDir, outDir) {
+export async function assertFinalResultExternalOutput(candidateDir, outDir) {
   const candidateRoot = await realpath(candidateDir);
   let ancestor = outDir;
   const suffix = [];
@@ -119,7 +119,7 @@ export async function runFinalResultStorageCommand(
     registry;
   try {
     const { target, targetHash } = finalResultStorageEnvironment(env);
-    await assertExternalOutput(candidateDir, outDir);
+    await assertFinalResultExternalOutput(candidateDir, outDir);
     const { plan, planHash } = await inspect({ candidateDir, targetHash });
     if (
       hashJson(plan) !== planHash ||

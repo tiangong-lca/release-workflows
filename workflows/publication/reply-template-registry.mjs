@@ -19,6 +19,20 @@ const portalCommandFailed = [
 ];
 
 const templates = Object.freeze({
+  "result-readiness verify": [
+    "final-result-readiness",
+    "final-result-readiness.md",
+    [
+      "command",
+      "outcome",
+      "completeness",
+      "verificationId",
+      "publicationAuthorized",
+      "expiresAt",
+      "artifacts",
+      "nextActions",
+    ],
+  ],
   "result-storage inspect": [
     "final-result-storage",
     "final-result-storage.md",

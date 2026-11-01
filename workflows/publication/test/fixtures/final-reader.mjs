@@ -179,6 +179,8 @@ async function worker(t, f, store) {
         ).ok
       )
         return {
+          endpoint,
+          secret,
           readerSha256,
           reader: createFinalResultReader({
             endpoint,

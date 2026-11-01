@@ -18,8 +18,8 @@ checkPaths:
   - .docpact/config.yaml
   - workflows/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 466d56389f1d9f0c71bd14d587bd51b0458a1801
-lastReviewedNote: "Release #99: reviewed actor-only probe admission and complete file/reader readiness with actual local SQL seals; production authority and Workflow ownership remain unchanged. Actor CLI, approval/activation and hosted adoption remain pending."
+lastReviewedCommit: a4f356f06d747b85b8d0284e2b465040a76ab5aa
+lastReviewedNote: "Release #99: reviewed the readiness CLI entrypoint and durable-before-registration evidence; ownership and publication authority remain unchanged."
 related:
   - ../AGENTS.md
   - ../README.md
@@ -42,7 +42,7 @@ Calculation -> verified Calculation Bundle
 
 Calculation 内部包含完整性验证；Result/Model 是 Materialization recipe；packaging/qualification 属于 Candidate。它们不是新增顶层 Workflow。Publication 内的 Portal LCIA recipe 从 ready V3 package / prepared projection 开始，与 Candidate dataset recipe 独立。
 
-Transformation handoff 表达目标：Unit 返回计算，Result 返回物化，最终形成新 Candidate。Materialization 通过 `materialize derived` 验证加工后字节；Candidate 的 `result` 命令族接通 Result-only Intake、结构化父血缘、登记和 v3 两包/HDF5 配对。身份登记是独立数据面动作；本地文件构建不登记身份。Publication 的 `result-storage inspect/execute` 接通 v3 的存储 adapter：本地精确计划、条件创建非公开对象、完整 GET、精确行/包登记及丢失回执恢复；整体 readiness 库以独立用户准入、完整 GET 和实测 reader 证据连接 Database seal，仍不取得 actor 发布权限；版本化选择/readiness/激活 CLI 与发布后验证待接通。不得把 producer 输出、接口字段或设计箭头当作消费者实现证据。补齐路线需要各 owner 的明确契约与真实跨节点验证。
+Transformation handoff 表达目标：Unit 返回计算，Result 返回物化，最终形成新 Candidate。Materialization 通过 `materialize derived` 验证加工后字节；Candidate 的 `result` 命令族接通 Result-only Intake、结构化父血缘、登记和 v3 两包/HDF5 配对。身份登记是独立数据面动作；本地文件构建不登记身份。Publication 的 `result-storage inspect/execute` 接通 v3 的存储 adapter：本地精确计划、条件创建非公开对象、完整 GET、精确行/包登记及丢失回执恢复；`result-readiness verify` 以独立用户准入、完整 GET、实测 reader 和不可变磁盘证据连接 Database seal，仍不取得 actor 发布权限；版本化选择/激活 CLI 与发布后验证待接通。不得把 producer 输出、接口字段或设计箭头当作消费者实现证据。补齐路线需要各 owner 的明确契约与真实跨节点验证。
 
 ## 权威来源
 

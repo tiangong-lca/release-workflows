@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 466d56389f1d9f0c71bd14d587bd51b0458a1801
-lastReviewedNote: "Release #99: reviewed actor-only bounded probe transport, complete selected-artifact/file/numeric readiness orchestration, durable-before-write evidence, immutable unknown-ACK recovery and real local PostgreSQL/Worker qualification. CLI, approval, activation and hosted adoption remain separate."
+lastReviewedCommit: a4f356f06d747b85b8d0284e2b465040a76ab5aa
+lastReviewedNote: "Release #99: reviewed readiness CLI with explicit independent credentials, private immutable flushed evidence, failure preservation and fresh-attempt recovery. Approval/activation and hosted adoption remain separate."
 related:
   - README.md
   - ../AGENTS.md
@@ -159,7 +159,7 @@ Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认
   只读回读不能使用 `ensure*` 的缺失补传行为。
 - `tiangong.final-result-reader-probe.v1` 是单个精确 Result 的实测证据，不是发布范围
   全覆盖、数据库 readiness seal 或批准。整体 verifier 按下述契约枚举选中范围并登记证据；Database 在激活时仍须独立核对。
-  现阶段没有新增可执行 readiness CLI 或激活入口，不能把本库回执当成发布完成状态。
+  `result-readiness verify` 提供整体验证入口；不能把验证回执当成发布完成状态。
 
 ## 最终 Result 整体就绪验证
 
@@ -185,3 +185,8 @@ Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认
   与隔离 PostgreSQL 的 identity/storage/selection/runtime/readiness RPC。测试用
   HTTP facade 只接收固定合成 token 并执行真实 actor SQL；不将其描述为 hosted JWT、
   Edge 或 Platform 的端到端证明。
+
+- `result-readiness verify` 仅从显式环境读取三组独立凭据，不加载 `.env`、自动登录
+  或刷新会话。命令在 Candidate/final input 外创建新的私有目录；证据使用独占创建、
+  文件模式 `0600` 与 Node `flush` 落盘，再登记远端证据。失败保留 attempt/proof，
+  新验证用新目录与 UUID；不复用历史时间戳、不修复远端文件、不批准或激活。

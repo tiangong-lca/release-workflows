@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 466d56389f1d9f0c71bd14d587bd51b0458a1801
-lastReviewedNote: "Release #99: reviewed actor-only probe admission and complete file/reader readiness with actual local SQL seals; production authority and Workflow ownership remain unchanged. Actor CLI, approval/activation and hosted adoption remain pending."
+lastReviewedCommit: a4f356f06d747b85b8d0284e2b465040a76ab5aa
+lastReviewedNote: "Release #99: reviewed the readiness CLI entrypoint and durable-before-registration evidence; ownership and publication authority remain unchanged."
 related:
   - ../README.md
   - AGENTS.md

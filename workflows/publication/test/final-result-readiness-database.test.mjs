@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import pg from "pg";
+import path from "node:path";
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { createServer } from "node:http";
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
@@ -287,5 +290,77 @@ test(
       0,
     );
     assert.equal(events.at(-1).kind, "sealed");
+    // Run the public command as a separate process with actual adapters and
+    // private, flushed evidence. This is a new verification, never a replay.
+    const { stdout: cliOut, stderr: cliErr } = await promisify(execFile)(
+      process.execPath,
+      [
+        fileURLToPath(new URL("../cli.mjs", import.meta.url)),
+        "result-readiness",
+        "verify",
+        "--candidate",
+        f.candidateDir,
+        "--final-input",
+        f.input.outDir,
+        "--run-id",
+        runId,
+        "--publish-plan-hash",
+        planHash,
+        "--out-dir",
+        path.join(f.input.root, "cli-readiness"),
+        "--json",
+      ],
+      {
+        env: {
+          PATH: process.env.PATH,
+          CONN: connectionString,
+          S3_ENDPOINT: storage.endpoint,
+          S3_REGION: "us-east-1",
+          S3_BUCKET: "synthetic-results",
+          S3_PREFIX: "test-owned",
+          S3_ACCESS_KEY_ID: "synthetic-access",
+          S3_SECRET_ACCESS_KEY: "synthetic-secret",
+          TIANGONG_LCA_API_BASE_URL: `http://127.0.0.1:${server.address().port}`,
+          TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_synthetic",
+          TIANGONG_LCA_ACCESS_TOKEN: token,
+          RESULT_QUERY_ENDPOINT: runtime.endpoint,
+          RESULT_QUERY_SERVICE_SECRET: runtime.secret,
+        },
+        timeout: 120000,
+        maxBuffer: 1024 * 1024,
+      },
+    );
+    assert.equal(cliErr, "");
+    const cliResult = JSON.parse(cliOut);
+    assert.equal(cliResult.ok, true);
+    assert.equal(cliResult.publicationAuthorized, false);
+    assert.equal(cliResult.artifactCount, 2);
+    assert.equal(cliResult.probeCount, 3);
+    assert.equal(cliResult.fileCount, 14);
+    assert.notEqual(cliResult.verificationId, verificationId);
+    const diskReceipt = JSON.parse(
+      await readFile(cliResult.artifacts.readinessReceipt),
+    );
+    assert.deepEqual(
+      (await registry.describeReadiness(cliResult.verificationId))
+        .readinessReceipt,
+      diskReceipt,
+    );
+    assert.equal(
+      (
+        await owner.query(
+          "select count(*)::int n from private.lca_release_publications",
+        )
+      ).rows[0].n,
+      0,
+    );
+    assert.equal(
+      (
+        await owner.query(
+          "select count(*)::int n from private.lca_release_approvals",
+        )
+      ).rows[0].n,
+      0,
+    );
   },
 );

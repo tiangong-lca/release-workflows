@@ -20,8 +20,8 @@ checkPaths:
   - workflows/**
   - .docpact/config.yaml
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 466d56389f1d9f0c71bd14d587bd51b0458a1801
-lastReviewedNote: "Release #99: reviewed actor-only probe admission and complete file/reader readiness with actual local SQL seals; production authority and Workflow ownership remain unchanged. Actor CLI, approval/activation and hosted adoption remain pending."
+lastReviewedCommit: a4f356f06d747b85b8d0284e2b465040a76ab5aa
+lastReviewedNote: "Release #99: reviewed readiness CLI with explicit independent credentials, private immutable flushed evidence, failure preservation and fresh-attempt recovery. Approval/activation and hosted adoption remain separate."
 related:
   - AGENTS.md
   - docs/architecture.md
@@ -57,7 +57,7 @@ Candidate 构建不构成发布授权。Publication 可选择引用完整的子�
 
 Transformation 的 inspect、freeze、execute 已实现；其 `completed` 只证明本节点产物和 handoff 已生成。Unit 聚合使旧 Result evidence 失效，需要新的计算；Result 聚合产生 Derived Result，不重新求解或补造 LifecycleModel。
 
-Materialization 的 `materialize derived` 接收精确 Derived Result handoff；Candidate 的 `result intake/inspect/register/build/verify` 接通结构化来源、全局身份登记和 Result-only 两包/HDF5 的 v3 冻结。`package build` 继续提供 legacy 四包路线。Publication 的 `result-storage inspect/execute` 接通 v3 存储计划、条件上传、完整 GET 和 Database v2 登记；整体 readiness 库已连接完整文件/reader 核验与 Database seal；发布选择、readiness CLI 和 actor 原子激活入口仍需接通，不能交给旧四包发布入口。进入后继 Workflow 前应核对其真实输入契约；不能通过重命名产物、复用旧证据或补造 Model 绕过限制。具体节点和限制由各 Workflow 文档维护。
+Materialization 的 `materialize derived` 接收精确 Derived Result handoff；Candidate 的 `result intake/inspect/register/build/verify` 接通结构化来源、全局身份登记和 Result-only 两包/HDF5 的 v3 冻结。`package build` 继续提供 legacy 四包路线。Publication 的 `result-storage inspect/execute` 接通 v3 存储计划、条件上传、完整 GET 和 Database v2 登记；`result-readiness verify` 已连接完整文件/reader 核验、不可变磁盘证据与 Database seal；发布选择和 actor 原子激活入口仍需接通，不能交给旧四包发布入口。进入后继 Workflow 前应核对其真实输入契约；不能通过重命名产物、复用旧证据或补造 Model 绕过限制。具体节点和限制由各 Workflow 文档维护。
 
 ## 开发与阅读
 

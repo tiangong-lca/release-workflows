@@ -26,8 +26,8 @@ checkPaths:
   - .node-version
   - .github/workflows/ci.yml
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 466d56389f1d9f0c71bd14d587bd51b0458a1801
-lastReviewedNote: "Release #99: reviewed actor-only bounded probe transport, complete selected-artifact/file/numeric readiness orchestration, durable-before-write evidence, immutable unknown-ACK recovery and real local PostgreSQL/Worker qualification. CLI, approval, activation and hosted adoption remain separate."
+lastReviewedCommit: a4f356f06d747b85b8d0284e2b465040a76ab5aa
+lastReviewedNote: "Release #99: reviewed readiness CLI with explicit independent credentials, private immutable flushed evidence, failure preservation and fresh-attempt recovery. Approval/activation and hosted adoption remain separate."
 related:
   - README.md
   - .docpact/config.yaml

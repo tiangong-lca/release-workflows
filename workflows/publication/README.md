@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 466d56389f1d9f0c71bd14d587bd51b0458a1801
-lastReviewedNote: "Release #99: reviewed actor-only bounded probe transport, complete selected-artifact/file/numeric readiness orchestration, durable-before-write evidence, immutable unknown-ACK recovery and real local PostgreSQL/Worker qualification. CLI, approval, activation and hosted adoption remain separate."
+lastReviewedCommit: a4f356f06d747b85b8d0284e2b465040a76ab5aa
+lastReviewedNote: "Release #99: reviewed readiness CLI with explicit independent credentials, private immutable flushed evidence, failure preservation and fresh-attempt recovery. Approval/activation and hosted adoption remain separate."
 related:
   - AGENTS.md
   - ../release-candidate/README.md
@@ -130,7 +130,7 @@ Candidate v3；`verify(probe, {authorize})` 核对 Database 的精确 probe 描�
 对象 adapter 的 `verifyQuery/verifyCandidate` 只做完整 GET，与上传入口分开。
 
 单 Result probe 不进行 Database readiness seal、审批或 current 切换。完整范围由下述
-整体 verifier 处理；readiness CLI、批准/激活操作和发布后验证仍待接入。
+整体 verifier 与 `result-readiness verify` 处理；批准/激活操作和发布后验证仍待接入。
 
 合成联调使用实际 Release 编码器/Toolkit ZIP 和独立 Worker binary：
 
@@ -582,3 +582,34 @@ probe API，不接受服务凭据、不调用批准/激活。每次由数据库�
 SQL 登记与 lost-ACK 恢复，保留不可变合成审计供 owner reset。它的 HTTP 用户认证是
 固定 token 测试 facade，不替代 hosted PostgREST/Edge/Platform 验证。不要对共享或
 业务数据库运行该测试，也不要用合成回执执行真实发布。
+
+### 整体就绪验证命令
+
+在已经登记 Candidate、封存发布选择且配置 reader runtime 的目标上运行：
+
+```bash
+node workflows/publication/cli.mjs result-readiness verify \
+  --candidate /absolute/path/to/candidate-v3 \
+  --final-input /absolute/path/to/frozen-final-input \
+  --run-id <release-run-uuid> --publish-plan-hash <exact-plan-sha256> \
+  --out-dir /absolute/path/to/new-readiness-attempt --json
+```
+
+显式环境要求 `CONN`、`S3_ENDPOINT`、`S3_REGION`、`S3_BUCKET`（可选 `S3_PREFIX`）、
+`S3_ACCESS_KEY_ID`、`S3_SECRET_ACCESS_KEY`（可选 `S3_SESSION_TOKEN`），以及
+`TIANGONG_LCA_API_BASE_URL`、`TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY`、
+`TIANGONG_LCA_ACCESS_TOKEN` 用户 JWT、`RESULT_QUERY_ENDPOINT` 和
+`RESULT_QUERY_SERVICE_SECRET`。凭据只放进进程环境；不放命令参数，命令不加载 `.env`，
+不使用 API key 自动登录。服务密钥只用于私有 reader，用户令牌只用于 probe 准入。
+
+输出目录必须在冻结 Candidate 和 final input 外，且尚不存在。命令先写
+`command-attempt.json`，之后依次保留 `readiness-attempt.json`、`readiness-header.json`、
+`proofs/<artifact-uuid>.json` 和独立 describe 确认后的 `readiness-receipt.json`。
+文件以独占创建、`0600` 和 `flush` 写入，目录为 `0700`（实际权限语义取决于系统）；
+这些设置不替代主机自身的持久化与访问控制。成功摘要包含有效期和精确 verification UUID，
+仍 `publicationAuthorized=false`，不表示已批准、激活或已完成 Platform 查询验证。
+
+失败保留已有文件与不含远端原始错误的 `failure.json`，按返回的 `nextActions` 解决原因后
+在新目录重新验证。不会上传/修复缺失文件，也不会覆盖旧证据或续期旧回执。若数据库已经
+封存但最后落盘失败，历史记录仍保留，新尝试必须使用新 UUID 和新观察。
+上述 opt-in 数据库联调同时运行真实子进程 CLI，并核对磁盘回执与数据库原记录相同。

@@ -21,12 +21,16 @@ import {
   verifyResultProcessReadback,
 } from "./lib/result-process.mjs";
 import { runFinalResultStorageCommand } from "./lib/final-result-storage-command.mjs";
+import { runFinalResultReadinessCommand } from "./lib/final-result-readiness-command.mjs";
 import { replyTemplateFor } from "./reply-template-registry.mjs";
 
 const CLI_PATH = fileURLToPath(new URL("./cli.mjs", import.meta.url));
 const COMMAND = `node ${shellQuote(CLI_PATH)}`;
 const VALUE_OPTIONS = new Set([
   "candidate",
+  "final-input",
+  "run-id",
+  "publish-plan-hash",
   "component",
   "target",
   "include",
@@ -63,6 +67,7 @@ Process, LifecycleModel and support datasets keep the existing state 100 platfor
 A plan is therefore mixed-state, not a single global state.
 
 Commands:
+  result-readiness verify  Verify all selected files and reader probes; register readiness only
   result-storage inspect  Locally verify a final Result v3 Candidate and freeze its storage plan
   result-storage execute  Confirm that plan, store/read back files and register immutable evidence
   plan prepare          Resolve dependency-safe scope into an unapproved Draft Plan
@@ -164,6 +169,15 @@ result-storage execute:
   Retry the same Candidate/target/confirmation in a NEW output directory; preserve prior attempts.
   Storage success does not authorize publication or make a result visible.
 
+result-readiness verify:
+  --candidate <v3-directory> --final-input <frozen-input-directory>
+  --run-id <uuid> --publish-plan-hash <sha256> --out-dir <new-attempt-directory>
+  Requires explicit storage CONN/S3 settings above, TIANGONG_LCA_API_BASE_URL,
+  TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY, TIANGONG_LCA_ACCESS_TOKEN (actor JWT),
+  RESULT_QUERY_ENDPOINT and RESULT_QUERY_SERVICE_SECRET. No implicit login or .env.
+  Full GET and reader checks only: no missing-file repair, approval or activation.
+  File evidence is flushed before registration. Failed attempts remain; use a new directory.
+
 Actor remote environment:
   TIANGONG_LCA_API_BASE_URL
   TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY
@@ -178,6 +192,8 @@ async function main() {
   }
   const commandName = `${command} ${actionName ?? ""}`.trim();
   const handlers = {
+    "result-readiness verify": (options) =>
+      runFinalResultReadinessCommand("verify", options),
     "result-storage inspect": (options) =>
       runFinalResultStorageCommand("inspect", options),
     "result-storage execute": (options) =>
@@ -923,7 +939,9 @@ main().catch((error) => {
       details: error.details ?? {},
     },
     nextActions:
-      commandName.startsWith("result-storage ") && error.nextActions
+      (commandName.startsWith("result-storage ") ||
+        commandName.startsWith("result-readiness ")) &&
+      error.nextActions
         ? error.nextActions
         : [
             {
