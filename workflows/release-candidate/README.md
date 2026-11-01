@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/release-candidate/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 0cbdafca34cd2a4a06b453c46bcdbaea8d781f2c
-lastReviewedNote: "Release #99: reviewed v3 conditional object transport, bounded full GET and five service-only registry RPCs, immutable receipt recovery, actual synthetic Candidate/S3/PostgreSQL proof and exact manifest fields. Actor publication authority and runtime policies remain separate and unchanged."
+lastReviewedCommit: 35824a25085dedf071930a89a8e9af542ad2a0b2
+lastReviewedNote: "Release #99: reviewed authority version planning, upstream regeneration and v2 publication continuation; runtime and dependency versions unchanged."
 related:
   - AGENTS.md
   - ../../README.md
@@ -329,13 +329,39 @@ RELEASE_PAIR_TIDAS_BIN=/absolute/path/to/tidas node --test workflows/release-can
 
 普通测试覆盖确认前零远程调用、冲突拒绝、丢失第二次登记响应后的相同输入恢复，以及直接/派生来源的错误绑定。`final-result-identity.test.mjs` 的数据库联调仅接受测试变量 `RELEASE_IDENTITY_TEST_CONN` 指向 `127.0.0.1:61432/postgres` 的任务专用合成实例；缺少变量明确 skipped。不可把业务连接放进该变量，也不能把本地联调解释为生产部署或登记授权。
 
+### 权威版本冲突的上游恢复
+
+`result versions --result-intake <verified-intake> --out-file <new-version-plan.json> --json`
+使用受保护 `CONN` 只读查询 `svc_result_identity_versions`，不会登记身份。计划写在
+intake 外，拒绝覆盖已有文件；stdout 只返回 input/plan hash、数量、路径与后继动作。
+每次最多 10000 个结果、512 个权威分页（每页最多 256 版本）；超预算整体失败，应缩小
+intake 范围。必须读取到所需最旧版本，不能把首页未显示的旧版本当作空闲。
+
+`tiangong.release.result-version-plan.v1` 绑定每个旧 UUID/version、完整 canonical/content
+hash、direct/derived、已观察最高版本及建议新版本。未占用或同内容保持版本；确切冲突
+使用 `conflict-next-major.v1`，为同 UUID 的冲突逐个分配高于已观察最高版本和本批次版本的
+新 major。登记摘要不提供语义差异，不能据此擅自断言只需 minor；原 Materialization 有
+可靠 previous manifest 时仍先执行既有 semantic/minor 规则。legacy 占用不能冒充同内容
+复用。major 用尽必须重新审视身份，不自动换 UUID。
+
+- Direct：按原物化请求增加 `--result-version-plan <file>`，重新生成完整 Result 文档、
+  URI、catalog/index/hash；若原请求生成 Model，随后重建其精确 Result 引用与版本。
+  该选项先重渲染原拟用版本核对 canonical hash；旧内容、范围不符或版本碰撞立即失败。
+  计划 hash 进入物化缓存 key、request 和 manifest，并随输出保留，不能命中旧缓存。
+- Derived：由用户显式采纳新 output version 和匹配 URI，创建新的 Transformation Draft，
+  重新 inspect/freeze/execute，然后 `materialize derived`。保留原权重/业务决定；不能把
+  Direct 的 plan 参数用于改写已冻结 Derived handoff。
+- 两条路线都重新准备 Release/Result Intake、inspect、原子 register，再 build HDF5 和两包。
+  计划是观察和提案，不是预留或登记凭证；并发再冲突时重复该上游流程，不能复用旧摘要。
+  登记响应丢失先核对/重试同一输入；同内容已登记时规划保持原版本，不自动升级。
+
 ### 已登记输入的配对 Candidate v3
 
 内部 `buildFinalResultCandidate({finalInputDir, confirmInputHash, outDir, releaseVersion, tidasBin, encoder})` 重新加载 final input，并对实际 canonical bytes 重算每个登记请求；确认后生成并核验两类文件。最终 `release-candidate.json` 使用 v3，绑定 `final-result-input.json`、`input-plan.json`、`source-lineage.json`、canonical index、`publication-catalog.json`、`query-results.json` 与 `pair/` 中的两包和查询文件。`query-results.json` 逐个保存精确 Result、登记凭证、层能力、直接/派生关联和 artifact/ordinal；不是对用户公开的 DTO。
 
 `loadFinalResultCandidate` 验证 v3 manifest/hash 链、真实包和 HDF5 bytes、结果轴完整覆盖，再允许本地消费者读取。Candidate 移动目录不会改变语义绑定。身份登记是上游独立节点，Candidate 构建不连数据库。失败时不会把部分目录标为合格，也不撤销已经登记的内容；重新构建使用同一输入和新的输出目录。
 
-Transformation 已能读取合格 v3 的 Result 包并核对实际 Process bytes；它的权重、共同 Calculation lineage、字段决定和授权约束不变。此能力通过 `result` CLI 命令族进入；后继 v2 Publication 仍需接入，不能把 v3 交给旧四包发布入口。
+Transformation 已能读取合格 v3 的 Result 包并核对实际 Process bytes；它的权重、共同 Calculation lineage、字段决定和授权约束不变。此能力通过 `result` CLI 命令族进入；后继使用 Publication 已实现的 `result-storage`、`result-readiness` 与 `result-publication` v2 命令族，不能把 v3 交给旧四包发布入口。
 
 ### Result-only 命令路线
 

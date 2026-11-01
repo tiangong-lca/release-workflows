@@ -40,6 +40,7 @@ const REPOSITORY_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const DEFAULT_FLOW_CACHE_DIR = path.join(REPOSITORY_ROOT, DEFAULT_FLOW_CACHE);
 const VALUE_OPTIONS = new Set([
   "result-intake",
+  "out-file",
   "final-input",
   "confirm-input-sha256",
   "candidate",
@@ -84,6 +85,7 @@ Commands:
   package build       Build one legacy four-package Candidate from a frozen Release Intake
   result intake       Prepare Result-only closure from direct Materialization or verified Derived handoff
   result inspect      Read-only inspection of exact final input and expected identity claims
+  result versions     Read-only authority occupancy and explicit upstream regeneration plan
   result register     Explicitly claim immutable Result identities using protected CONN; no publication
   result build        Build a paired Candidate v3 from registered input; no database access
   result verify       Verify actual ZIP/HDF5 files and all Candidate v3 bindings
@@ -93,12 +95,14 @@ result command options:
           --materialization <path> --candidate <parent> --transformation <path> --out-dir <path>
           [--spec <path>] [--parent-materialization <path>] (Derived route; legacy parents require the witness)
   inspect: --result-intake <path>
+  versions: --result-intake <path> --out-file <new-plan.json> (read-only authority)
   register: --result-intake <path> --confirm-input-sha256 <hash> --out-dir <path>
   build: --final-input <path> --confirm-input-sha256 <hash> --release-version <YYYY.MM.N> --out-dir <path>
   verify: --candidate <path>
   intake/build accept --tidas-bin and --tidas-memory-budget-mib; build also accepts --hdf5-bin.
-  Inspect precedes authorized registration. CONN is read only by result register and never included in output.
+  Inspect precedes authorized registration. CONN is used only by result versions (read-only) and result register and never included in output.
   Missing build version returns a confirmation request without generating files. v3 cannot use legacy Publication.
+  Versions: result versions --result-intake <path> --out-file <new-plan.json> --json
   Example: release-package result inspect --result-intake .release/final/intake --json
 
 intake prepare options:
@@ -182,7 +186,9 @@ async function main() {
       ["analyze", "review", "decide"].includes(action)) ||
     (command === "package" && action === "build") ||
     (command === "result" &&
-      ["intake", "inspect", "register", "build", "verify"].includes(action))
+      ["intake", "inspect", "versions", "register", "build", "verify"].includes(
+        action,
+      ))
   )) {
     throw Object.assign(
       new Error(
@@ -675,6 +681,8 @@ function respondGeneric(options, payload, title) {
       "finalInput",
       "candidate",
       "inputHash",
+      "planHash",
+      "conflictCount",
       "resultCount",
       "datasetCount",
       "derivedCount",
@@ -685,12 +693,18 @@ function respondGeneric(options, payload, title) {
       if (payload[key] !== undefined)
         process.stdout.write(`- ${key}: ${payload[key]}\n`);
     }
+    if (payload.artifacts?.versionPlan)
+      process.stdout.write(
+        `- Version plan: ${payload.artifacts.versionPlan}\n`,
+      );
     if (payload.fileNames)
       for (const file of payload.fileNames)
         process.stdout.write(`- File: ${file}\n`);
     process.stdout.write("- Publication authorized: no\n\nNext:\n");
-    for (const action of payload.nextActions)
-      process.stdout.write(`- ${action.command}\n`);
+    for (const action of payload.nextActions) {
+      if (action.description) process.stdout.write(`- ${action.description}\n`);
+      if (action.command) process.stdout.write(`  ${action.command}\n`);
+    }
     process.stdout.write("\nReply using template:\n");
     process.stdout.write(`- ${payload.replyTemplate.path}\n`);
   }
@@ -782,7 +796,7 @@ function failureNextActions(error) {
         kind: "inspect_usage",
         description:
           "Inspect the exact Result command and its recovery boundaries",
-        command: `${RELEASE_COMMAND} result ${["intake", "inspect", "register", "build", "verify"].includes(process.argv[3]) ? process.argv[3] : "inspect"} --help`,
+        command: `${RELEASE_COMMAND} result ${["intake", "inspect", "versions", "register", "build", "verify"].includes(process.argv[3]) ? process.argv[3] : "inspect"} --help`,
       },
     ];
     if (error.details?.retainedInput)

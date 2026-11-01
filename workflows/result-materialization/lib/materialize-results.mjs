@@ -1,3 +1,4 @@
+import { applyResultVersionPlan } from "./registry-version-plan.mjs";
 import {
   mkdtemp,
   mkdir,
@@ -28,6 +29,7 @@ export async function materializeResults({
   resultProcessLayer = "lci-lcia",
   firstGeneration = false,
   previousManifestPath,
+  resultVersionPlan,
   onProgress,
   context: suppliedContext,
   concurrency = 2,
@@ -95,6 +97,16 @@ export async function materializeResults({
     });
   }
   const resolutions = resolveResultVariantVersions(drafts, previous);
+  applyResultVersionPlan(
+    resultVersionPlan,
+    drafts,
+    resolutions,
+    (draft, version) =>
+      hashJson(
+        renderResultProcess(context, draft.axis, version, resultProcessLayer)
+          .document,
+      ),
+  );
   const target = path.resolve(outDir);
   const staging = await mkdtemp(`${target}.tmp-`);
   try {

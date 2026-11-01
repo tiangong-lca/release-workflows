@@ -20,8 +20,8 @@ checkPaths:
   - workflows/**
   - .docpact/config.yaml
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: b2d88623f6454fc7cea5597d865a66cddf37d3eb
-lastReviewedNote: "Release #99: reviewed public Edge numeric/ZIP observations and immutable actor recovery; hosted adoption remains separate."
+lastReviewedCommit: 35824a25085dedf071930a89a8e9af542ad2a0b2
+lastReviewedNote: "Release #99: reviewed authority version planning, upstream regeneration and v2 publication continuation; runtime and dependency versions unchanged."
 related:
   - AGENTS.md
   - docs/architecture.md

@@ -2,6 +2,7 @@ import test from "node:test";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
+import { planFinalResultVersions } from "../lib/final-result-version-plan.mjs";
 import { runFinalResultCommand } from "../lib/final-result-command.mjs";
 import assert from "node:assert/strict";
 import {
@@ -219,6 +220,37 @@ test(
     );
     assert.equal(inspected.inputHash, loaded.plan.inputHash);
     assert.equal(inspected.resultCount, 2);
+    const advisory = await runFinalResultCommand(
+      "versions",
+      {
+        "result-intake": built.path,
+        "out-file": path.join(f.root, "versions.json"),
+      },
+      { env: {}, createIdentityAuthority: registry().createAuthority },
+    );
+    assert.equal(advisory.conflictCount, 0);
+    assert.equal(advisory.identityRegistered, false);
+    assert.equal(advisory.inputHash, inspected.inputHash);
+    assert.equal(
+      JSON.parse(await readFile(advisory.artifacts.versionPlan)).entries.length,
+      2,
+    );
+    await assert.rejects(
+      runFinalResultCommand(
+        "versions",
+        {
+          "result-intake": built.path,
+          "out-file": path.join(built.path, "never-write.json"),
+        },
+        {
+          env: {},
+          createIdentityAuthority: () =>
+            assert.fail("must reject before authority"),
+        },
+      ),
+      { code: "invalid_arguments" },
+    );
+
     assert.equal(inspected.nextActions[0].kind, "register_final_identity");
     await assert.rejects(
       runFinalResultCommand(
@@ -369,11 +401,12 @@ test(
     assert.equal(derived.results.length, 1);
     assert.equal(derived.plan.lineage.results[0].relationKind, "derived");
     assert.equal(derived.plan.lineage.results[0].sources.length, 2);
+    const derivedRegistry = registry();
     const registered = await prepareFinalResultInput({
       ...derived,
       confirmInputHash: derived.plan.inputHash,
       outDir: path.join(f.root, "derived-registered"),
-      createAuthority: registry().createAuthority,
+      createAuthority: derivedRegistry.createAuthority,
     });
     const newCandidate = await buildFinalResultCandidate({
       finalInputDir: registered.path,
@@ -399,8 +432,10 @@ test(
     assert.equal(verified.publicationAuthorized, false);
     assert.equal(
       verified.publicationIntegration,
-      "versioned-publication-adapter-required",
+      "final-result-publication-v2",
     );
+    assert.equal(verified.nextActions[0].kind, "inspect_final_result_storage");
+    assert.ok(verified.nextActions[0].argv.includes(newCandidate.path));
     const finalDocument = JSON.parse(
       await readFile(
         path.join(materialized.path, materialized.catalog.datasets[0].path),
@@ -414,6 +449,115 @@ test(
       (e) => e["@dataSetInternalID"] !== "0",
     );
     assert.equal(Number(inventory.resultingAmount), 1.25);
+    async function regenerate(draftValue, suffix) {
+      const dslFile = path.join(f.root, `${suffix}-draft.json`);
+      await writeFile(dslFile, canonicalJson(draftValue));
+      const analysis = await analyzeTransformation({
+        candidateDir: candidate.path,
+        dslFile,
+        outDir: path.join(f.root, `${suffix}-analysis`),
+      });
+      assert.equal(analysis.analysis.status, "ready");
+      const spec = await freezeTransformation({
+        candidateDir: candidate.path,
+        dslFile,
+        analysisDir: analysis.path,
+        outDir: path.join(f.root, `${suffix}-spec`),
+      });
+      const execution = await executeTransformation({
+        candidateDir: candidate.path,
+        specDir: spec.path,
+        outDir: path.join(f.root, `${suffix}-execution`),
+      });
+      const materialization = await materializeDerivedResult({
+        candidateDir: candidate.path,
+        transformationDir: execution.path,
+        outDir: path.join(f.root, `${suffix}-materialization`),
+      });
+      const intake = await prepareFinalResultIntake({
+        materializationDir: materialization.path,
+        candidateDir: candidate.path,
+        transformationDir: execution.path,
+        outDir: path.join(f.root, `${suffix}-intake`),
+        tidasBin: process.env.RELEASE_PAIR_TIDAS_BIN,
+      });
+      return {
+        materialization,
+        intake: await loadFinalResultIntake(intake.path),
+      };
+    }
+    // Changed processed values initially collide with the registered version.
+    const changedDraft = structuredClone(draft);
+    changedDraft.operation.weighting.values = {
+      [inputs[0]]: 0.25,
+      [inputs[1]]: 0.75,
+    };
+    const changed = await regenerate(changedDraft, "changed");
+    await assert.rejects(
+      prepareFinalResultInput({
+        ...changed.intake,
+        confirmInputHash: changed.intake.plan.inputHash,
+        outDir: path.join(f.root, "conflicting-input"),
+        createAuthority: derivedRegistry.createAuthority,
+      }),
+      { code: "final_input_version_occupied" },
+    );
+    const allocation = await planFinalResultVersions({
+      inputPlan: changed.intake.plan,
+      createAuthority: derivedRegistry.createAuthority,
+    });
+    assert.equal(allocation.entries[0].toVersion, "02.00.000");
+    assert.equal(allocation.entries[0].relationKind, "derived");
+    changedDraft.output.identity.version = allocation.entries[0].toVersion;
+    changedDraft.output.identity.uri = `https://example.test/process?uuid=${output}&version=02.00.000`;
+    const regenerated = await regenerate(changedDraft, "reversioned");
+    assert.notEqual(
+      regenerated.intake.plan.inputHash,
+      changed.intake.plan.inputHash,
+    );
+    assert.equal(regenerated.intake.results[0].version, "02.00.000");
+    const newInput = await prepareFinalResultInput({
+      ...regenerated.intake,
+      confirmInputHash: regenerated.intake.plan.inputHash,
+      outDir: path.join(f.root, "reversioned-input"),
+      createAuthority: derivedRegistry.createAuthority,
+    });
+    const newPair = await buildFinalResultCandidate({
+      finalInputDir: newInput.path,
+      confirmInputHash: newInput.input.inputHash,
+      outDir: path.join(f.root, "reversioned-candidate"),
+      releaseVersion: "2026.11.2",
+      tidasBin: process.env.RELEASE_PAIR_TIDAS_BIN,
+      encoder: fileURLToPath(
+        new URL("../native/target/debug/release-result-hdf5", import.meta.url),
+      ),
+    });
+    assert.equal(newPair.candidate.candidateQualified, true);
+    const reversionedDocument = JSON.parse(
+      await readFile(
+        path.join(
+          regenerated.materialization.path,
+          regenerated.materialization.catalog.datasets[0].path,
+        ),
+      ),
+    );
+    assert.equal(
+      Number(
+        reversionedDocument.processDataSet.LCIAResults.LCIAResult[0].meanAmount,
+      ),
+      10.5,
+    );
+    assert.equal(
+      reversionedDocument.processDataSet.administrativeInformation
+        .publicationAndOwnership["common:dataSetVersion"],
+      "02.00.000",
+    );
+    assert.equal(derivedRegistry.claims.size, 2);
+    // Earlier frozen inputs remain valid and retain their old identity/numbers.
+    assert.equal(
+      (await loadFinalResultIntake(derivedIntake.path)).results[0].version,
+      "01.00.000",
+    );
     await writeFile(
       path.join(f.sourceIntakeDir, "calculation-bundle", "lcia.ndjson"),
       "",

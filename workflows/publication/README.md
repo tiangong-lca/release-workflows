@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: b2d88623f6454fc7cea5597d865a66cddf37d3eb
-lastReviewedNote: "Release #99: public Edge numerical and ZIP readback, immutable actor attestation and recovery are implemented; hosted/browser adoption remains separate."
+lastReviewedCommit: 35824a25085dedf071930a89a8e9af542ad2a0b2
+lastReviewedNote: "Release #99: reviewed authority version planning, upstream regeneration and v2 publication continuation; runtime and dependency versions unchanged."
 related:
   - AGENTS.md
   - ../release-candidate/README.md
@@ -130,7 +130,7 @@ Candidate v3；`verify(probe, {authorize})` 核对 Database 的精确 probe 描�
 对象 adapter 的 `verifyQuery/verifyCandidate` 只做完整 GET，与上传入口分开。
 
 单 Result probe 不进行 Database readiness seal、审批或 current 切换。完整范围由下述
-整体 verifier 与 `result-readiness verify` 处理；发布选择由下述 `result-publication` 入口处理；批准/激活使用下述独立意图确认入口；公开查询的发布后验证仍待接入。
+整体 verifier 与 `result-readiness verify` 处理；发布选择由下述 `result-publication` 入口处理；批准/激活使用下述独立意图确认入口；公开查询的发布后验证使用独立的 `result-publication readback`，见下文。
 
 合成联调使用实际 Release 编码器/Toolkit ZIP 和独立 Worker binary：
 

@@ -1,4 +1,7 @@
 import path from "node:path";
+import { writeFile } from "node:fs/promises";
+import { canonicalJson, hashJson } from "./common.mjs";
+import { planFinalResultVersions } from "./final-result-version-plan.mjs";
 import { fileURLToPath } from "node:url";
 import { fail } from "./common.mjs";
 import {
@@ -14,6 +17,12 @@ import {
 import { RESULT_PACKAGE_PROFILE } from "./package-build.mjs";
 import { replyTemplateFor } from "../reply-template-registry.mjs";
 const CLI = fileURLToPath(new URL("../cli.mjs", import.meta.url));
+const PUBLICATION = fileURLToPath(
+  new URL("../../publication/cli.mjs", import.meta.url),
+);
+const MATERIALIZE = fileURLToPath(
+  new URL("../../result-materialization/cli.mjs", import.meta.url),
+);
 const TRANSFORM = fileURLToPath(
   new URL("../../dataset-transformation/cli.mjs", import.meta.url),
 );
@@ -38,6 +47,7 @@ const OPTIONS = {
     "tidas-memory-budget-mib",
   ],
   inspect: ["result-intake"],
+  versions: ["result-intake", "out-file"],
   register: ["result-intake", "confirm-input-sha256", "out-dir"],
   build: [
     "final-input",
@@ -70,7 +80,11 @@ function versionSuggestion() {
 export async function runFinalResultCommand(
   action,
   options,
-  { env = process.env } = {},
+  {
+    env = process.env,
+    createIdentityAuthority = () =>
+      createFinalResultIdentityStore({ connectionString: env.CONN }),
+  } = {},
 ) {
   if (!OPTIONS[action]) fail("unknown_command", "Unknown final Result command");
   for (const key of Object.keys(options))
@@ -123,6 +137,60 @@ export async function runFinalResultCommand(
       ],
     };
   }
+  if (action === "versions") {
+    required(options, ["result-intake", "out-file"]);
+    const intake = await loadFinalResultIntake(options["result-intake"]);
+    const output = path.resolve(options["out-file"]);
+    if (
+      output === intake.root ||
+      output.startsWith(`${intake.root}${path.sep}`)
+    )
+      fail(
+        "invalid_arguments",
+        "Write the advisory version plan outside the immutable intake",
+      );
+    const plan = await planFinalResultVersions({
+      inputPlan: intake.plan,
+      createAuthority: createIdentityAuthority,
+    });
+    await writeFile(output, canonicalJson(plan), { flag: "wx", mode: 0o600 });
+    const conflicts = plan.entries.filter((e) => e.reason === "conflict");
+    return {
+      ...base,
+      outcome: "final_result_versions_planned",
+      completeness: "advisory-occupancy-snapshot",
+      inputHash: plan.inputHash,
+      planHash: hashJson(plan),
+      resultCount: plan.entries.length,
+      conflictCount: conflicts.length,
+      identityRegistered: false,
+      artifacts: { versionPlan: output },
+      nextActions: conflicts.length
+        ? [
+            {
+              kind: "regenerate_upstream",
+              description:
+                "Direct: rerun the same Materialization request with --result-version-plan and this file. Derived: explicitly adopt toVersion and its matching URI in a new Transformation Draft, then inspect/freeze/execute and materialize derived. Rebuild Result Intake, inspect, register and build; never edit frozen artifacts or relabel existing HDF5/ZIP.",
+              versionPlan: output,
+              argv: conflicts.some((e) => e.relationKind === "derived")
+                ? ["node", TRANSFORM, "dsl", "inspect", "--help"]
+                : ["node", MATERIALIZE, "materialize", "--help"],
+              command: command(
+                conflicts.some((e) => e.relationKind === "derived")
+                  ? ["node", TRANSFORM, "dsl", "inspect", "--help"]
+                  : ["node", MATERIALIZE, "materialize", "--help"],
+              ),
+            },
+          ]
+        : [
+            next(
+              "inspect_final_input",
+              "Occupancy is advisory; atomic registration still rechecks exact content",
+              ["result", "inspect", "--result-intake", intake.root, "--json"],
+            ),
+          ],
+    };
+  }
   if (action === "inspect" || action === "register") {
     required(options, [
       "result-intake",
@@ -170,8 +238,7 @@ export async function runFinalResultCommand(
       ...intake,
       confirmInputHash: options["confirm-input-sha256"],
       outDir: options["out-dir"],
-      createAuthority: () =>
-        createFinalResultIdentityStore({ connectionString: env.CONN }),
+      createAuthority: createIdentityAuthority,
     });
     return {
       ...base,
@@ -288,8 +355,35 @@ export async function runFinalResultCommand(
     queryArtifactCount: checked.candidate.queryArtifacts.length,
     candidateQualified: true,
     artifacts: { candidate: path.join(checked.root, "release-candidate.json") },
-    publicationIntegration: "versioned-publication-adapter-required",
+    publicationIntegration: "final-result-publication-v2",
     nextActions: [
+      {
+        kind: "inspect_final_result_storage",
+        description:
+          "Inspect the exact Candidate storage plan locally; explicit target settings are required. Upload, readiness, approval, activation and public readback remain separate authorized steps.",
+        argv: [
+          "node",
+          PUBLICATION,
+          "result-storage",
+          "inspect",
+          "--candidate",
+          checked.root,
+          "--out-dir",
+          `${checked.root}.storage-plan`,
+          "--json",
+        ],
+        command: command([
+          "node",
+          PUBLICATION,
+          "result-storage",
+          "inspect",
+          "--candidate",
+          checked.root,
+          "--out-dir",
+          `${checked.root}.storage-plan`,
+          "--json",
+        ]),
+      },
       {
         kind: "inspect_transformation",
         description:
@@ -326,9 +420,9 @@ export function finalResultFailure(error) {
             "final_identity_legacy_occupied",
             "final_input_version_occupied",
           ].includes(code)
-        ? "The exact Result version is occupied. Regenerate version-dependent upstream content and inspect a new input."
+        ? "The exact Result version is occupied. Use result versions for a read-only plan, regenerate upstream content, and inspect a new input."
         : code === "final_identity_connection_required"
-          ? "Identity registration requires the protected CONN environment setting; never pass credentials as CLI arguments."
+          ? "Identity authority access requires the protected CONN environment setting; never pass credentials as CLI arguments."
           : code.includes("confirmation")
             ? "The confirmation hash must equal the inspected immutable input hash."
             : [

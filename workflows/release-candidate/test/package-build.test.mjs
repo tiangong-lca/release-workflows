@@ -1604,6 +1604,7 @@ test("every Release CLI outcome maps to an existing bounded reply template", asy
     "failure decide",
     "result intake",
     "result inspect",
+    "result versions",
     "result register",
     "result build",
     "result verify",

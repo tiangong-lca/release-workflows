@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/result-materialization/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: e417d3adbd28878ee05218b992b5f1f700dcfada
-lastReviewedNote: "Release #99: Derived Result handoff consumer verifies exact producer evidence and canonical bytes, pins SDK validation, and preserves v2 parent Result lineage with pending source association; paired Candidate qualification remains separate."
+lastReviewedCommit: 35824a25085dedf071930a89a8e9af542ad2a0b2
+lastReviewedNote: "Release #99: reviewed authority version planning, upstream regeneration and v2 publication continuation; runtime and dependency versions unchanged."
 related:
   - README.md
   - design/result-process-and-lifecycle-model.md
@@ -99,6 +99,7 @@ related:
 - Bundle 路线 Identity 由稳定语义输入和 recipe profile 派生，不使用随机 UUID。Derived 路线保留用户已冻结的 Transformation identity/version，不能在接收时另分配身份；跨发布冲突由后续身份登记 fail closed。
 - Generated `R(P)` UUIDv5 name 只包含 `U(P)` UUID 和 reference flow UUID，不包含 schema/version 字段，也不依赖 `M(P)` UUID、Result profile、方法集或结果内容；算法与 namespace 只保存在外层 identity evidence。
 - 版本规划必须考虑 semantic hash、version-significant hash 和引用版本。
+- 权威版本冲突可显式消费 Candidate `result versions` 的 `--result-version-plan`：先重渲染核对原版本完整内容 hash，再应用 direct 新 major，重新生成 Result 与 Model 引用。计划 hash 进入缓存 key/request/manifest，原文件不可修改；它不是登记凭证。Derived 只接受生产者重新冻结的版本，不能在物化阶段套用版本方案。
 - 先统一解析并冻结 Result UUID/version set，再生成绑定精确 `R(Q)`/`R(P)` references 的 Model version set。
 - 同一 Result UUID lineage 可以包含多个 exact source Process revisions；每个 revision 必须获得独立 dataset version，并由 process index/source provenance 精确绑定，不能按 UUID 折叠。
 - 同一 LifecycleModel UUID lineage 也可以包含多个 exact source Process revisions；Model 必须沿用相同的批次级 variant 规划，为每个 revision 分配独立 dataset version，而不是把 source version 加入 UUID。

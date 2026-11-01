@@ -1,3 +1,4 @@
+import { readResultVersionPlan } from "./registry-version-plan.mjs";
 import {
   mkdir,
   mkdtemp,
@@ -34,6 +35,7 @@ export async function prepareMaterialization({
   resultProcessLayer,
   firstGeneration = false,
   previousManifestPath,
+  resultVersionPlanPath,
 }) {
   validateChoices(outputType, resultProcessLayer);
   if (outDir && artifactRoot)
@@ -55,6 +57,9 @@ export async function prepareMaterialization({
         JSON.parse(await readFile(path.resolve(previousManifestPath), "utf8")),
       )
     : null;
+  const resultVersionPlan = resultVersionPlanPath
+    ? await readResultVersionPlan(resultVersionPlanPath)
+    : null;
   const identity = buildMaterializationIdentity({
     context,
     selectedAxes,
@@ -63,6 +68,9 @@ export async function prepareMaterialization({
     resultProcessLayer,
     firstGeneration,
     previousManifestSha256,
+    resultVersionPlanSha256: resultVersionPlan
+      ? hashJson(resultVersionPlan)
+      : null,
   });
   const root = resolveArtifactRoot(artifactRoot);
   const recommendedCanonicalPath = canonicalMaterializationPath(
@@ -74,6 +82,7 @@ export async function prepareMaterialization({
   return {
     context,
     selectedAxes,
+    resultVersionPlan,
     identity,
     target,
     artifactRoot: root,
@@ -93,6 +102,7 @@ export async function materialize({
   resultProcessLayer,
   firstGeneration = false,
   previousManifestPath,
+  resultVersionPlanPath,
   onProgress,
   concurrency = 2,
   prepared,
@@ -108,6 +118,7 @@ export async function materialize({
       resultProcessLayer,
       firstGeneration,
       previousManifestPath,
+      resultVersionPlanPath,
     }));
   const target = plan.target;
   if (!outDir) {
@@ -139,6 +150,7 @@ export async function materialize({
       resultProcessLayer,
       firstGeneration,
       previousManifestPath,
+      resultVersionPlan: plan.resultVersionPlan,
       onProgress,
       context,
       concurrency,
@@ -178,6 +190,16 @@ export async function materialize({
         previousManifestPath,
         firstGeneration,
       });
+    }
+    if (plan.resultVersionPlan) {
+      request.resultVersionPlanSha256 = hashJson(plan.resultVersionPlan);
+      completed.manifest.inputs.resultVersionPlanSha256 =
+        request.resultVersionPlanSha256;
+      await writeFile(
+        path.join(completed.path, "result-version-plan.json"),
+        canonicalJson(plan.resultVersionPlan),
+        { flag: "wx" },
+      );
     }
     completed.manifest.inputs.materializationRequestSha256 = hashJson(request);
     await onProgress?.({ phase: "validating", completed: 0, total: 1 });

@@ -39,6 +39,7 @@ export function buildMaterializationIdentity({
   resultProcessLayer,
   firstGeneration,
   previousManifestSha256,
+  resultVersionPlanSha256,
 }) {
   const key = {
     schemaVersion: MATERIALIZATION_KEY_SCHEMA,
@@ -67,6 +68,7 @@ export function buildMaterializationIdentity({
     },
     metadataPolicySha256: hashJson(METADATA_POLICY),
     recipeContractVersion: RECIPE_CONTRACT_VERSION,
+    ...(resultVersionPlanSha256 ? { resultVersionPlanSha256 } : {}),
   };
   return { key, sha256: sha256Bytes(Buffer.from(canonicalJson(key))) };
 }
@@ -109,6 +111,21 @@ export async function verifyExistingMaterialization(target, expected) {
     index.schemaVersion === "tiangong.release.canonical-dataset-index.v1" &&
     index.datasetCount === index.datasets?.length;
   if (!valid) return false;
+  if (expected.resultVersionPlanSha256) {
+    try {
+      if (
+        hashJson(
+          await readJson(path.join(target, "result-version-plan.json")),
+        ) !== expected.resultVersionPlanSha256 ||
+        request.resultVersionPlanSha256 !== expected.resultVersionPlanSha256 ||
+        manifest.inputs.resultVersionPlanSha256 !==
+          expected.resultVersionPlanSha256
+      )
+        return false;
+    } catch {
+      return false;
+    }
+  }
   for (const dataset of index.datasets) {
     const file = path.resolve(target, String(dataset.path ?? ""));
     if (!file.startsWith(`${path.resolve(target)}${path.sep}`)) return false;

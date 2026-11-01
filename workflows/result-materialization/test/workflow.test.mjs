@@ -26,6 +26,10 @@ import {
 import { resolveReferencePivot, sourceKey } from "../lib/context.mjs";
 import { modelIdentity, resultIdentity } from "../lib/identity.mjs";
 import { materializeModels } from "../lib/materialize-models.mjs";
+import {
+  REGISTRY_VERSION_PLAN,
+  REGISTRY_VERSION_POLICY,
+} from "../lib/registry-version-plan.mjs";
 import { materialize } from "../lib/materialize.mjs";
 import {
   materializeResults,
@@ -613,6 +617,127 @@ test("intake, Result Catalog, and resolved one-hop Model complete locally", asyn
   assert.equal(
     reusedDelivery.artifactIdentity.materializationKeySha256,
     canonicalDelivery.artifactIdentity.materializationKeySha256,
+  );
+
+  const originalManifest = JSON.parse(
+    await readFile(
+      path.join(canonicalDelivery.path, "materialization-manifest.json"),
+    ),
+  );
+  const originalResult = originalManifest.datasets.find(
+    (d) => d.role === "result_process",
+  );
+  const versionPlan = {
+    schemaVersion: REGISTRY_VERSION_PLAN,
+    policy: REGISTRY_VERSION_POLICY,
+    inputHash: "a".repeat(64),
+    registrationAuthorized: false,
+    publicationAuthorized: false,
+    entries: [
+      {
+        uuid: originalResult.uuid,
+        fromVersion: originalResult.version,
+        toVersion: "08.00.000",
+        canonicalContentHash: originalResult.canonicalContentHash,
+        contentHash: "b".repeat(64),
+        relationKind: "direct",
+        reason: "conflict",
+        highestObservedVersion: "07.03.002",
+      },
+    ],
+  };
+  const versionPlanPath = path.join(temp, "registry-version-plan.json");
+  await writeFile(versionPlanPath, canonicalJson(versionPlan));
+  const regenerated = await materialize({
+    ...canonicalRequest,
+    resultVersionPlanPath: versionPlanPath,
+  });
+  assert.notEqual(regenerated.path, canonicalDelivery.path);
+  const regeneratedManifest = JSON.parse(
+    await readFile(
+      path.join(regenerated.path, "materialization-manifest.json"),
+    ),
+  );
+  const regeneratedResult = regeneratedManifest.datasets.find(
+    (d) => d.role === "result_process",
+  );
+  assert.equal(regeneratedResult.version, "08.00.000");
+  assert.notEqual(
+    regeneratedResult.canonicalContentHash,
+    originalResult.canonicalContentHash,
+  );
+  assert.equal(
+    regeneratedManifest.inputs.resultVersionPlanSha256,
+    hashJson(versionPlan),
+  );
+  const regeneratedDocument = JSON.parse(
+    await readFile(path.join(regenerated.path, regeneratedResult.path)),
+  );
+  assert.equal(
+    regeneratedDocument.processDataSet.administrativeInformation
+      .publicationAndOwnership["common:dataSetVersion"],
+    "08.00.000",
+  );
+  assert.match(
+    regeneratedDocument.processDataSet.administrativeInformation
+      .publicationAndOwnership["common:permanentDataSetURI"],
+    /version=08.00.000$/,
+  );
+  assert.equal(
+    (
+      await materialize({
+        ...canonicalRequest,
+        resultVersionPlanPath: versionPlanPath,
+      })
+    ).disposition,
+    "reused_existing",
+  );
+  const originalBytes = await readFile(
+    path.join(canonicalDelivery.path, originalResult.path),
+  );
+  assert.equal(
+    hashJson(JSON.parse(originalBytes)),
+    originalResult.canonicalContentHash,
+  );
+  const regeneratedModel = await materialize({
+    ...canonicalRequest,
+    outputType: "lifecycle-model",
+    resultVersionPlanPath: versionPlanPath,
+  });
+  const modelManifest = JSON.parse(
+    await readFile(
+      path.join(regeneratedModel.path, "materialization-manifest.json"),
+    ),
+  );
+  const modelEntry = modelManifest.datasets.find(
+    (d) => d.datasetType === "lifecyclemodel",
+  );
+  const modelBytes = await readFile(
+    path.join(regeneratedModel.path, modelEntry.path),
+    "utf8",
+  );
+  assert.match(modelBytes, /08\.00\.000/);
+  const driftedPlan = structuredClone(versionPlan);
+  driftedPlan.entries[0].canonicalContentHash = "0".repeat(64);
+  await writeFile(versionPlanPath, canonicalJson(driftedPlan));
+  await assert.rejects(
+    materialize({
+      ...canonicalRequest,
+      resultVersionPlanPath: versionPlanPath,
+    }),
+    { code: "result_version_plan_input_drift" },
+  );
+  await writeFile(versionPlanPath, canonicalJson(versionPlan));
+  await writeFile(
+    path.join(regenerated.path, "result-version-plan.json"),
+    "{}",
+  );
+  await assert.rejects(
+    materialize({
+      ...canonicalRequest,
+      resultVersionPlanPath: versionPlanPath,
+    }),
+    { code: "artifact_path_conflict" },
   );
 
   const alternateLayer = await materialize({

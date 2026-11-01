@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/result-materialization/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: e417d3adbd28878ee05218b992b5f1f700dcfada
-lastReviewedNote: "Release #99: Derived Result handoff consumer verifies exact producer evidence and canonical bytes, pins SDK validation, and preserves v2 parent Result lineage with pending source association; paired Candidate qualification remains separate."
+lastReviewedCommit: 35824a25085dedf071930a89a8e9af542ad2a0b2
+lastReviewedNote: "Release #99: reviewed authority version planning, upstream regeneration and v2 publication continuation; runtime and dependency versions unchanged."
 related:
   - AGENTS.md
   - design/result-process-and-lifecycle-model.md
@@ -204,6 +204,15 @@ Runner 在 phase/progress 更新以及每 5 秒记录结构化资源采样。`jo
 `materialize` 与 `materialize start` 使用同一个确定性 engine，冻结相同的 `materialization-request.json`，并根据 `outputType` 选择内部执行图。Result-only 路线只生成 selected `R(P)`；LifecycleModel 路线自动完成 direct provider Result 扩展、Result Catalog 冻结和 requested-root `M(P)` 生成。用户不需要、也不应该先单独运行一次 Result Process 生成。`R(P)` 的 UUIDv5 name 只包含 `U(P) UUID + reference flow UUID`，其他变化由 profile、semantic hash、dataset version 和 provenance 表达。
 
 生成命令必须二选一提供 `--first-generation` 或 `--previous-manifest <path>`。相同 semantic hash 与 version-significant hash 复用版本；语义变化升 major；仅 metadata 等公开内容变化升 minor；同一 UUID/version 出现不同 canonical content时 fail closed。
+
+权威登记发现版本冲突时，可按原请求显式增加 `--result-version-plan <file>`，消费 Release Candidate
+`result versions` 产生的内容绑定提案。它在冻结版本集合前按旧版本重渲染并校验 canonical hash，
+只对匹配的 direct Results 应用严格升 major 的方案；未消费条目、Derived 条目、内容漂移或版本
+碰撞均失败。Result 文档与 URI 重新生成，Model 随后基于新 Result Catalog 生成精确引用。
+计划文件及 hash 随 materialization 保存，并进入内容寻址 key，防止复用旧版本缓存。输出仍须
+重新进入 Result Intake 和权威原子登记，计划不提供远端预留或发布资格。前台与后台入口共用
+此参数。Derived 必须先在新的 Transformation Draft 中确认版本和 URI，再重放生产者流程；
+`materialize derived` 本身继续原样冻结经过验证的字节。
 
 同一次请求中多个 exact axes 可以共享一个 Result UUID lineage。Workflow 不按 UUID 去重，而是为每个 exact source Process revision 分配独立 dataset version；previous manifest 按 source UUID@version 精确匹配，LifecycleModel 也按 process index 引用对应的 Result UUID@version。first generation 和新增 revision 使用确定性顺序分配未占用的 major version。
 
