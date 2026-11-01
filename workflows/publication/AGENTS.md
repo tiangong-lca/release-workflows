@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: a4f356f06d747b85b8d0284e2b465040a76ab5aa
-lastReviewedNote: "Release #99: reviewed readiness CLI with explicit independent credentials, private immutable flushed evidence, failure preservation and fresh-attempt recovery. Approval/activation and hosted adoption remain separate."
+lastReviewedCommit: 14d686f86565f97f3aa69cdfc11a792115a00dbe
+lastReviewedNote: "Release #99: reviewed actor-only selection plans, exact confirmation, bounded recovery transport and separate synthetic activation qualification. Approval/activation intent CLI and hosted adoption remain pending."
 related:
   - README.md
   - ../AGENTS.md
@@ -190,3 +190,20 @@ Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认
   或刷新会话。命令在 Candidate/final input 外创建新的私有目录；证据使用独占创建、
   文件模式 `0600` 与 Node `flush` 落盘，再登记远端证据。失败保留 attempt/proof，
   新验证用新目录与 UUID；不复用历史时间戳、不修复远端文件、不批准或激活。
+
+## 最终 Result 用户发布控制面
+
+- `result-publication plan/prepare/status` 只使用显式用户 JWT 与公开客户端 key，
+  不读取数据面凭据、不自动登录。probe adapter 仍只读；共享 HTTP 实现只允许固定
+  v2 routine，响应受期限/大小约束，写调用不明结果必须独立精确回读。
+- 本地计划是 F4 envelope：绑定 actor、API origin hash、冻结 Candidate 本地路径、
+  exact members 与数据库计划原始文本。`localPlanHash` 确认本地 envelope，
+  `publishPlanHash` 标识 Database plan bytes，两者不可互代。未知字段和漂移拒绝。
+- 选择可缩小 Result 集合但不添加 Candidate 外成员、父 Result 或修改内容；
+  全部默认范围也必须显式确认。current 前置条件在 plan 时冻结，后续不得自动重基。
+- prepare 先落盘意图和有界成员批次，再调用 actor RPC；run/selection seal 必须
+  独立回读。历史 sealed run 只观察，不重开、不续期。普通用户的状态只由 Database
+  当次权限决定。status 的 run 状态与 publication 当前性必须分开表达。
+- approve/activate 传输原语不构成用户授权，也不绕过上层 intent 的精确确认；
+  它们不接受 client-supplied actor。真正批准/激活仍由 Database 原子检查，
+  release-specific 确认入口和独立发布后观察另行接入。

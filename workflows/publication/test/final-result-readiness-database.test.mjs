@@ -12,6 +12,11 @@ import { candidate, worker, id } from "./fixtures/final-reader.mjs";
 import { fixture as storageFixture } from "./fixtures/final-storage.mjs";
 import { createFinalResultIdentityStore } from "../../release-candidate/lib/final-result-identity.mjs";
 import { createFinalResultRegistry } from "../adapters/final-result-registry.mjs";
+import { createFinalResultPublication } from "../adapters/final-result-publication.mjs";
+import {
+  buildFinalResultPublicationPlan,
+  prepareFinalResultPublication,
+} from "../lib/final-result-publication-plan.mjs";
 import { createFinalResultActor } from "../adapters/final-result-actor.mjs";
 import {
   inspectFinalResultStorage,
@@ -21,7 +26,7 @@ import { verifyFinalResultReadiness } from "../lib/final-result-readiness.mjs";
 const sha = (value) => createHash("sha256").update(value).digest("hex");
 
 test(
-  "actual registered Candidate and Worker evidence seals in isolated PostgreSQL without approval",
+  "actual Candidate/Worker/CLI readiness and explicit synthetic actor lifecycle qualify in isolated PostgreSQL",
   {
     skip:
       !process.env.RELEASE_READINESS_TEST_CONN ||
@@ -132,26 +137,6 @@ test(
       reason: "synthetic aggregate verification",
     });
     const planHash = sha(planText);
-    await owner.query("begin;set local role authenticated");
-    await owner.query("select set_config('request.jwt.claim.sub',$1,true)", [
-      actorId,
-    ]);
-    for (const [sql, args] of [
-      [
-        "select api.cmd_final_result_release_prepare_v2($1,'synthetic-aggregate') r",
-        [planText],
-      ],
-      [
-        "select api.cmd_final_result_release_members_v2($1,$2,$3) r",
-        [runId, planHash, JSON.stringify(members)],
-      ],
-      [
-        "select api.cmd_final_result_release_seal_v2($1,$2) r",
-        [runId, planHash],
-      ],
-    ])
-      assert.equal((await owner.query(sql, args)).rows[0].r.ok, true);
-    await owner.query("commit");
     // A deliberately synthetic authenticated HTTP facade. It admits only this
     // fixture token, then executes actual actor-only SQL under its fixed identity.
     // This proves transport/wire/SQL interoperability, not hosted JWT verification.
@@ -177,36 +162,76 @@ test(
         const chunks = [];
         for await (const chunk of req) chunks.push(chunk);
         const b = JSON.parse(Buffer.concat(chunks));
-        const page =
-          req.url === "/rest/v1/rpc/qry_final_result_release_probe_page_v2";
-        assert.ok(
-          page || req.url === "/rest/v1/rpc/qry_final_result_release_probe_v2",
-        );
+        const routines = {
+          qry_final_result_release_probe_page_v2: [
+            "p_release_run_id",
+            "p_publish_plan_hash",
+            "p_runtime_revision",
+            "p_after_artifact_id",
+            "p_limit",
+          ],
+          qry_final_result_release_probe_v2: [
+            "p_release_run_id",
+            "p_publish_plan_hash",
+            "p_runtime_revision",
+            "p_result_id",
+            "p_result_version",
+          ],
+          qry_final_result_publication_head_v2: [],
+          qry_final_result_release_v2: ["p_release_run_id"],
+          qry_final_result_release_approval_v2: [
+            "p_release_run_id",
+            "p_approval_id",
+          ],
+          cmd_final_result_release_prepare_v2: [
+            "p_plan_text",
+            "p_idempotency_key",
+          ],
+          cmd_final_result_release_members_v2: [
+            "p_release_run_id",
+            "p_publish_plan_hash",
+            "p_rows",
+          ],
+          cmd_final_result_release_seal_v2: [
+            "p_release_run_id",
+            "p_publish_plan_hash",
+          ],
+          cmd_final_result_release_approve_v2: [
+            "p_release_run_id",
+            "p_publish_plan_hash",
+            "p_verification_id",
+            "p_approval_id",
+            "p_expected_approval_id",
+            "p_expires_at",
+            "p_reason",
+          ],
+          cmd_final_result_release_activate_v2: [
+            "p_release_run_id",
+            "p_publish_plan_hash",
+            "p_approval_id",
+            "p_approval_hash",
+            "p_verification_id",
+            "p_idempotency_key",
+            "p_credential_fingerprint",
+          ],
+        };
+        const routine = req.url.replace("/rest/v1/rpc/", "");
+        assert.ok(Object.hasOwn(routines, routine));
+        const fields = routines[routine];
+        assert.deepEqual(Object.keys(b).sort(), [...fields].sort());
         client = await pool.connect();
-        await client.query("begin read only;set local role authenticated");
+        await client.query(
+          routine.startsWith("qry_")
+            ? "begin read only;set local role authenticated"
+            : "begin;set local role authenticated",
+        );
         await client.query(
           "select set_config('request.jwt.claim.sub',$1,true)",
           [actorId],
         );
         const reply = await client.query(
-          page
-            ? "select api.qry_final_result_release_probe_page_v2($1,$2,$3,$4,$5) r"
-            : "select api.qry_final_result_release_probe_v2($1,$2,$3,$4,$5) r",
-          page
-            ? [
-                b.p_release_run_id,
-                b.p_publish_plan_hash,
-                b.p_runtime_revision,
-                b.p_after_artifact_id,
-                b.p_limit,
-              ]
-            : [
-                b.p_release_run_id,
-                b.p_publish_plan_hash,
-                b.p_runtime_revision,
-                b.p_result_id,
-                b.p_result_version,
-              ],
+          `select api.${routine}(${fields.map((_, i) => `$${i + 1}`).join(",")}) r`,
+          fields.map((k) => (k === "p_rows" ? JSON.stringify(b[k]) : b[k])),
         );
         await client.query("commit");
         res.writeHead(200, { "content-type": "application/json" });
@@ -229,6 +254,28 @@ test(
       publishableKey: "sb_publishable_synthetic",
       accessToken: token,
     });
+    const publication = createFinalResultPublication({
+      endpoint: `http://127.0.0.1:${server.address().port}`,
+      publishableKey: "sb_publishable_synthetic",
+      accessToken: token,
+    });
+    assert.equal(await publication.head(), null);
+    assert.equal(await publication.run(runId), null);
+    assert.equal(
+      await publication.approval({ releaseRunId: runId, approvalId: id(405) }),
+      null,
+    );
+    await publication.prepare({
+      planText,
+      idempotencyKey: "synthetic-aggregate",
+    });
+    await publication.members({
+      releaseRunId: runId,
+      publishPlanHash: planHash,
+      rows: members,
+    });
+    await publication.seal({ releaseRunId: runId, publishPlanHash: planHash });
+    assert.equal((await publication.run(runId)).selectionSealed, true);
     const events = [];
     const lost = new Set();
     const uncertain = { ...registry };
@@ -361,6 +408,152 @@ test(
         )
       ).rows[0].n,
       0,
+    );
+    // A separate explicitly synthetic authority exercise. This is the only
+    // phase here that approves/activates; readiness above performs neither.
+    const builtPlan = await buildFinalResultPublicationPlan({
+      candidateDir: f.candidateDir,
+      targetHash: storage.store.targetHash,
+      actor: publication,
+      releaseRunId: id(410),
+      releaseVersion: "2026.11.1",
+      reason: "synthetic selection command",
+    });
+    const planEvents = [];
+    const prepared = await prepareFinalResultPublication({
+      local: builtPlan.local,
+      confirmLocalPlanHash: builtPlan.localPlanHash,
+      actor: publication,
+      record: async (e) => planEvents.push(e),
+    });
+    assert.equal(prepared.selectionHash, selectionHash);
+    assert.equal(prepared.selectionCount, 3);
+    assert.equal((await publication.run(id(410))).selectionSealed, true);
+    const approvalArgs = {
+      releaseRunId: runId,
+      publishPlanHash: planHash,
+      verificationId: cliResult.verificationId,
+      approvalId: id(405),
+      expectedApprovalId: null,
+      expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      reason: "explicit synthetic integration approval",
+    };
+    const approved = await publication.approve(approvalArgs);
+    const observedApproval = await publication.approval({
+      releaseRunId: runId,
+      approvalId: id(405),
+    });
+    assert.equal(approved.approvalHash, observedApproval.approvalHash);
+    assert.equal(observedApproval.status, "approved");
+    const activationArgs = {
+      releaseRunId: runId,
+      publishPlanHash: planHash,
+      approvalId: id(405),
+      approvalHash: approved.approvalHash,
+      verificationId: cliResult.verificationId,
+      idempotencyKey: "synthetic-activation",
+      credentialFingerprint: sha("synthetic-actor-identity"),
+    };
+    const activated = await publication.activate(activationArgs);
+    const current = await publication.head(),
+      observedRun = await publication.run(runId);
+    assert.equal(current.publicationId, activated.publicationId);
+    assert.equal(current.format, "final-result-pair.v2");
+    assert.equal(
+      observedRun.publication.publicationId,
+      activated.publicationId,
+    );
+    assert.equal(observedRun.activeApproval, null);
+    assert.equal(observedRun.publication.isCurrent, true);
+    assert.equal(
+      observedRun.publication.verificationId,
+      cliResult.verificationId,
+    );
+    assert.equal(
+      (await publication.approval({ releaseRunId: runId, approvalId: id(405) }))
+        .status,
+      "consumed",
+    );
+    assert.equal((await publication.approve(approvalArgs)).status, "consumed");
+    assert.equal((await publication.activate(activationArgs)).reused, true);
+    assert.equal(
+      (
+        await owner.query(
+          "select count(*)::int n from private.lca_release_publications",
+        )
+      ).rows[0].n,
+      1,
+    );
+
+    const managerEnv = {
+      PATH: process.env.PATH,
+      TIANGONG_LCA_API_BASE_URL: `http://127.0.0.1:${server.address().port}`,
+      TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_synthetic",
+      TIANGONG_LCA_ACCESS_TOKEN: token,
+    };
+    const managerCommand = async (action, args) => {
+      const reply = await promisify(execFile)(
+        process.execPath,
+        [
+          fileURLToPath(new URL("../cli.mjs", import.meta.url)),
+          "result-publication",
+          action,
+          ...args,
+          "--json",
+        ],
+        { env: managerEnv, timeout: 30000, maxBuffer: 1024 * 1024 },
+      );
+      assert.equal(reply.stderr, "");
+      return JSON.parse(reply.stdout);
+    };
+    const planDir = path.join(f.input.root, "cli-publication-plan"),
+      prepareDir = path.join(f.input.root, "cli-publication-prepare");
+    const planned = await managerCommand("plan", [
+      "--candidate",
+      f.candidateDir,
+      "--target-hash",
+      storage.store.targetHash,
+      "--run-id",
+      id(411),
+      "--release-version",
+      "2026.11.2",
+      "--reason",
+      "synthetic actor CLI selection",
+      "--out-dir",
+      planDir,
+    ]);
+    assert.equal(planned.expectedCurrentPublicationId, activated.publicationId);
+    assert.equal(planned.selectionCount, 3);
+    const selected = await managerCommand("prepare", [
+      "--plan-dir",
+      planDir,
+      "--confirm",
+      planned.localPlanHash,
+      "--out-dir",
+      prepareDir,
+    ]);
+    assert.equal(selected.publicationAuthorized, false);
+    assert.equal(selected.selectionCount, 3);
+    const status = await managerCommand("status", [
+      "--run-id",
+      id(411),
+      "--out-dir",
+      path.join(f.input.root, "cli-publication-status"),
+    ]);
+    assert.equal(status.selectionSealed, true);
+    assert.equal(status.status, "prepared");
+    assert.equal(status.currentPublicationId, null);
+    const observation = JSON.parse(
+      await readFile(status.artifacts.observation),
+    );
+    assert.equal(observation.snapshot.publishPlanHash, planned.publishPlanHash);
+    assert.equal(
+      (
+        await owner.query(
+          "select count(*)::int n from private.lca_release_publications",
+        )
+      ).rows[0].n,
+      1,
     );
   },
 );

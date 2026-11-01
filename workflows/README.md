@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: a4f356f06d747b85b8d0284e2b465040a76ab5aa
-lastReviewedNote: "Release #99: reviewed the readiness CLI entrypoint and durable-before-registration evidence; ownership and publication authority remain unchanged."
+lastReviewedCommit: 14d686f86565f97f3aa69cdfc11a792115a00dbe
+lastReviewedNote: "Release #99: reviewed actor-only selection plans, exact confirmation, bounded recovery transport and separate synthetic activation qualification. Approval/activation intent CLI and hosted adoption remain pending."
 related:
   - ../README.md
   - AGENTS.md

@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: a4f356f06d747b85b8d0284e2b465040a76ab5aa
-lastReviewedNote: "Release #99: reviewed readiness CLI with explicit independent credentials, private immutable flushed evidence, failure preservation and fresh-attempt recovery. Approval/activation and hosted adoption remain separate."
+lastReviewedCommit: 14d686f86565f97f3aa69cdfc11a792115a00dbe
+lastReviewedNote: "Release #99: reviewed actor-only selection plans, exact confirmation, bounded recovery transport and separate synthetic activation qualification. Approval/activation intent CLI and hosted adoption remain pending."
 related:
   - AGENTS.md
   - ../release-candidate/README.md
@@ -130,7 +130,7 @@ Candidate v3；`verify(probe, {authorize})` 核对 Database 的精确 probe 描�
 对象 adapter 的 `verifyQuery/verifyCandidate` 只做完整 GET，与上传入口分开。
 
 单 Result probe 不进行 Database readiness seal、审批或 current 切换。完整范围由下述
-整体 verifier 与 `result-readiness verify` 处理；批准/激活操作和发布后验证仍待接入。
+整体 verifier 与 `result-readiness verify` 处理；发布选择由下述 `result-publication` 入口处理；批准/激活的确认命令和发布后验证仍待接入。
 
 合成联调使用实际 Release 编码器/Toolkit ZIP 和独立 Worker binary：
 
@@ -613,3 +613,48 @@ node workflows/publication/cli.mjs result-readiness verify \
 在新目录重新验证。不会上传/修复缺失文件，也不会覆盖旧证据或续期旧回执。若数据库已经
 封存但最后落盘失败，历史记录仍保留，新尝试必须使用新 UUID 和新观察。
 上述 opt-in 数据库联调同时运行真实子进程 CLI，并核对磁盘回执与数据库原记录相同。
+
+### 最终 Result 发布选择与状态
+
+`result-publication` 使用用户 API origin、publishable key 和 actor JWT，
+不读取 `CONN`、S3、Worker 服务密钥或 API key，不加载 `.env`、自动登录或刷新会话。
+先在已登记的精确存储目标上冻结选择：
+
+```bash
+node workflows/publication/cli.mjs result-publication plan \
+  --candidate /absolute/path/to/candidate-v3 \
+  --target-hash <registered-storage-target-sha256> --reason '发布范围说明' \
+  --out-dir /absolute/path/to/new-plan --json
+node workflows/publication/cli.mjs result-publication prepare \
+  --plan-dir /absolute/path/to/new-plan --confirm <local-plan-content-sha256> \
+  --out-dir /absolute/path/to/new-selection-attempt --json
+node workflows/publication/cli.mjs result-publication status \
+  --run-id <release-run-uuid> --out-dir /absolute/path/to/new-observation --json
+```
+
+plan 默认选择 Candidate 的全部 Result，可用 `--selection` 指向只含 `{uuid, version}`
+的 JSON 数组缩小范围；重复、空集合和 Candidate 外的成员被拒绝，不隐式选择 Derived
+的父结果。`--release-version` 可指定新发布版本，默认使用 Candidate 的版本；
+`--rollback-of` 指定历史 publication，Database 仍核对历史 Candidate 和精确选择。
+计划读取当时的 current publication 并把它固化为 CAS 条件，不在执行时重新替换。
+
+`publication-plan.json` 绑定用户、API origin hash、本地冻结 Candidate 路径和选中列表。
+本地 `localPlanHash` 为完整 envelope 的 canonical content hash（无末尾换行），
+`publishPlanHash` 是内嵌 Database plan 的原始 UTF-8 bytes hash（含 canonical LF）；
+两个 hash 不互换。prepare 确认前者，后续 readiness 使用后者。计划目录和 Candidate
+目录不可作为新证据目录；迁移本地路径需创建并确认新计划，不静默改写已冻结 envelope。
+
+prepare 先持久化意图，再登记 run、按每批 500 条登记选择、封存并独立读取状态。
+原始响应丢失时先读取同一 run，成员批次只精确幂等重试一次；缺少明确回读时停止。
+重试使用同一计划与确认 hash、新输出目录。已经封存的历史 run 只回读，不恢复批准
+或发布。失败保留证据并提供精确 status 命令。三条命令都 `publicationAuthorized=false`。
+status 分别显示 run 状态、publicationStatus 和 isCurrent，不能仅凭 run 曾 published
+就称其仍为当前发布；完整观察保存在本地文件中。
+
+`adapters/final-result-publication.mjs` 提供固定 manager RPC 的传输与响应校验，
+包含 prepare/members/seal、独立 run/head/approval 观察及 approve/activate 原语。
+它不自动重试批准或激活，不把丢失响应当作回滚；需要独立查询原身份后恢复。
+这些原语尚不替代后续的精确批准/激活 intent 确认命令。只读 probe adapter 仍未暴露写方法。
+合成数据库 opt-in 测试先证明 readiness 不发布，然后在明确独立的测试阶段批准/激活
+合成记录、读取审批消费状态并验证幂等；它还运行 plan/prepare/status 真正 CLI，环境
+只有用户凭据。所有这些写入仅限任务测试库，不证明线上部署或 Platform 查询已通过。

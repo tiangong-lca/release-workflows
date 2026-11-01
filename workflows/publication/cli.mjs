@@ -21,6 +21,7 @@ import {
   verifyResultProcessReadback,
 } from "./lib/result-process.mjs";
 import { runFinalResultStorageCommand } from "./lib/final-result-storage-command.mjs";
+import { runFinalResultPublicationCommand } from "./lib/final-result-publication-command.mjs";
 import { runFinalResultReadinessCommand } from "./lib/final-result-readiness-command.mjs";
 import { replyTemplateFor } from "./reply-template-registry.mjs";
 
@@ -28,6 +29,10 @@ const CLI_PATH = fileURLToPath(new URL("./cli.mjs", import.meta.url));
 const COMMAND = `node ${shellQuote(CLI_PATH)}`;
 const VALUE_OPTIONS = new Set([
   "candidate",
+  "target-hash",
+  "selection",
+  "release-version",
+  "rollback-of",
   "final-input",
   "run-id",
   "publish-plan-hash",
@@ -67,6 +72,9 @@ Process, LifecycleModel and support datasets keep the existing state 100 platfor
 A plan is therefore mixed-state, not a single global state.
 
 Commands:
+  result-publication plan     Freeze exact Result selection and current-publication precondition
+  result-publication prepare  Confirm and seal that selection using the manager session
+  result-publication status   Observe one exact run without changing its authority
   result-readiness verify  Verify all selected files and reader probes; register readiness only
   result-storage inspect  Locally verify a final Result v3 Candidate and freeze its storage plan
   result-storage execute  Confirm that plan, store/read back files and register immutable evidence
@@ -169,6 +177,19 @@ result-storage execute:
   Retry the same Candidate/target/confirmation in a NEW output directory; preserve prior attempts.
   Storage success does not authorize publication or make a result visible.
 
+result-publication plan:
+  --candidate <v3-directory> --target-hash <registered-storage-target-sha256>
+  --reason <text> --out-dir <new-directory>
+  Optional --selection <JSON-array-of-uuid/version>, --release-version <YYYY.MM.N>,
+  --rollback-of <terminal-publication-uuid>, --run-id <uuid>. Defaults to all Candidate Results.
+result-publication prepare:
+  --plan-dir <frozen-plan-directory> --confirm <local-plan-content-sha256> --out-dir <new-directory>
+result-publication status:
+  --run-id <uuid> --out-dir <new-directory>
+  These recipes use only explicit API origin, publishable key and actor JWT below.
+  No CONN/S3/Worker secrets, implicit login or .env. Selection preparation is not approval.
+  localPlanHash binds the local envelope; publishPlanHash binds exact database plan bytes.
+
 result-readiness verify:
   --candidate <v3-directory> --final-input <frozen-input-directory>
   --run-id <uuid> --publish-plan-hash <sha256> --out-dir <new-attempt-directory>
@@ -192,6 +213,12 @@ async function main() {
   }
   const commandName = `${command} ${actionName ?? ""}`.trim();
   const handlers = {
+    "result-publication plan": (options) =>
+      runFinalResultPublicationCommand("plan", options),
+    "result-publication prepare": (options) =>
+      runFinalResultPublicationCommand("prepare", options),
+    "result-publication status": (options) =>
+      runFinalResultPublicationCommand("status", options),
     "result-readiness verify": (options) =>
       runFinalResultReadinessCommand("verify", options),
     "result-storage inspect": (options) =>
@@ -940,7 +967,8 @@ main().catch((error) => {
     },
     nextActions:
       (commandName.startsWith("result-storage ") ||
-        commandName.startsWith("result-readiness ")) &&
+        commandName.startsWith("result-readiness ") ||
+        commandName.startsWith("result-publication ")) &&
       error.nextActions
         ? error.nextActions
         : [
@@ -956,7 +984,7 @@ main().catch((error) => {
     process.stderr.write(`${JSON.stringify(payload)}\n`);
   else
     process.stderr.write(
-      `${payload.error.code}: ${payload.error.message}\n\nNext:\n- ${payload.nextActions[0].command}\n\nReply using template:\n- ${payload.replyTemplate.path}\n`,
+      `${payload.error.code}: ${payload.error.message}\n\nNext:\n- ${payload.nextActions[0]?.command ?? `${COMMAND} --help`}\n\nReply using template:\n- ${payload.replyTemplate.path}\n`,
     );
   process.exitCode = 1;
 });
