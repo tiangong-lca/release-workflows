@@ -14,7 +14,7 @@ whenToUpdate:
 checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 405533c249c7cb40e24c422a3522188755191a50
+lastReviewedCommit: 1a502478a67a3fbb657f352f588cc2fb14abb882
 lastReviewedNote: "Release #99: reviewed exact approval/activation intent confirmation, separate approver/executor binding, session audit fingerprint, immutable recovery and real synthetic CLI qualification. Public readback and hosted adoption remain pending."
 related:
   - AGENTS.md
@@ -582,6 +582,12 @@ probe API，不接受服务凭据、不调用批准/激活。每次由数据库�
 SQL 登记与 lost-ACK 恢复，保留不可变合成审计供 owner reset。它的 HTTP 用户认证是
 固定 token 测试 facade，不替代 hosted PostgREST/Edge/Platform 验证。不要对共享或
 业务数据库运行该测试，也不要用合成回执执行真实发布。
+
+增加 `RELEASE_QUERY_EDGE_ROOT`（明确的 Edge checkout）和可选 `RELEASE_QUERY_DENO_BIN`
+可同时运行 Edge 的 `test/fixtures/final-result-gateway.ts`：真实 handler 和 Supabase SDK
+通过上述 SQL facade 查询已激活的合成结果，并由真实 Worker 从 Release HDF5 读取全部
+LCI 分页和 LCIA。测试还验证 runtime pin、源数据及 ZIP 权限拒绝；临时输入只有合成 token，
+随 fixture 删除。该资格证明跨仓库数值/协议与数据库鉴权，不证明 hosted JWT 或生产发布。
 
 ### 整体就绪验证命令
 

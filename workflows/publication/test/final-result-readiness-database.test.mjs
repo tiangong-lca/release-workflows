@@ -164,6 +164,19 @@ test(
         for await (const chunk of req) chunks.push(chunk);
         const b = JSON.parse(Buffer.concat(chunks));
         const routines = {
+          qry_final_result_query_v2: [
+            "p_result_id",
+            "p_result_version",
+            "p_publication_id",
+          ],
+          qry_source_final_results_v2: [
+            "p_source_id",
+            "p_source_version",
+            "p_after_key",
+            "p_limit",
+            "p_publication_id",
+          ],
+          qry_final_result_download_v2: ["p_publication_id", "p_format"],
           qry_final_result_release_probe_page_v2: [
             "p_release_run_id",
             "p_publish_plan_hash",
@@ -583,6 +596,125 @@ test(
       path.join(f.input.root, "activation-recovery"),
     ]);
     assert.equal(recovered.publicationId, activated.publicationId);
+
+    // Optional exact Edge checkout executes its real handler, SDK actor transport
+    // and Worker v2 wire against the above SQL facade. Fixed synthetic auth only.
+    if (process.env.RELEASE_QUERY_EDGE_ROOT) {
+      const edgeRoot = path.resolve(process.env.RELEASE_QUERY_EDGE_ROOT);
+      const edgeInput = path.join(f.input.root, "synthetic-edge-input.json");
+      const runEdge = async (requests) => {
+        await writeFile(
+          edgeInput,
+          JSON.stringify({
+            actorEndpoint: `http://127.0.0.1:${server.address().port}`,
+            actorId,
+            token,
+            readerEndpoint: runtime.endpoint,
+            readerSecret: runtime.secret,
+            requests,
+          }),
+          { mode: 0o600 },
+        );
+        const { stdout } = await promisify(execFile)(
+          process.env.RELEASE_QUERY_DENO_BIN || "deno",
+          [
+            "run",
+            "--config",
+            path.join(edgeRoot, "supabase/functions/deno.json"),
+            "--allow-env",
+            "--allow-read",
+            "--allow-net=127.0.0.1",
+            path.join(edgeRoot, "test/fixtures/final-result-gateway.ts"),
+            edgeInput,
+          ],
+          {
+            cwd: edgeRoot,
+            env: { PATH: process.env.PATH },
+            timeout: 60000,
+            maxBuffer: 2 * 1024 * 1024,
+          },
+        );
+        return JSON.parse(stdout);
+      };
+      const query = (row, kind, extra = {}) => ({
+        mode: "final_query",
+        resultId: row.uuid,
+        resultVersion: row.version,
+        publicationId: activated.publicationId,
+        runtimeRevision: revision,
+        query: { kind, ...(kind === "lci" ? { limit: 1 } : {}), ...extra },
+      });
+      const rows = f.loaded.queryCatalog.results;
+      const requests = rows.flatMap((row) => [
+        query(row, "overview"),
+        query(row, "lci"),
+        query(row, "lcia"),
+      ]);
+      const replies = await runEdge(requests);
+      const amounts = [],
+        impacts = [],
+        continuations = [];
+      for (const [i, row] of rows.entries()) {
+        const [overview, lci, lcia] = replies.slice(i * 3, i * 3 + 3);
+        assert.equal(overview.status, 200);
+        assert.equal(overview.body.data.result.uuid, row.uuid);
+        assert.equal(
+          overview.body.data.data.result.relationKind,
+          row.relationKind,
+        );
+        assert.equal(overview.body.data.runtimeRevision, revision);
+        assert.equal(lci.status, 200);
+        amounts.push(...lci.body.data.data.items.map((item) => item.amount));
+        if (lci.body.data.data.nextCursor)
+          continuations.push(
+            query(row, "lci", { cursor: lci.body.data.data.nextCursor }),
+          );
+        if (row.layer === "lci-lcia") {
+          assert.equal(lcia.status, 200);
+          impacts.push(
+            ...lcia.body.data.data.impacts.map((item) => item.amount),
+          );
+        } else {
+          assert.equal(lcia.status, 404);
+          assert.equal(lcia.body.code, "RESULT_LCIA_NOT_AVAILABLE");
+        }
+      }
+      for (const reply of await runEdge(continuations)) {
+        assert.equal(reply.status, 200);
+        amounts.push(...reply.body.data.data.items.map((item) => item.amount));
+        assert.equal(reply.body.data.data.nextCursor, null);
+      }
+      assert.deepEqual(
+        amounts.sort((a, b) => a - b),
+        [-3, 2.5, 4.25],
+      );
+      assert.deepEqual(
+        impacts.sort((a, b) => a - b),
+        [0, 42],
+      );
+      const denied = await runEdge([
+        { ...query(rows[0], "overview"), runtimeRevision: id(499) },
+        {
+          mode: "source_results",
+          sourceId: id(999),
+          sourceVersion: "01.00.000",
+        },
+        {
+          mode: "final_download",
+          publicationId: activated.publicationId,
+          format: "tidas",
+        },
+      ]);
+      assert.deepEqual(
+        denied.map((r) => r.status),
+        [409, 404, 404],
+      );
+      assert.equal(denied[1].body.code, "SOURCE_NOT_AVAILABLE");
+      assert.equal(denied[2].body.code, "RESULT_PACKAGE_NOT_AVAILABLE");
+      t.diagnostic(
+        "Actual Edge v2: three Result overviews, complete paged LCI [-3,2.5,4.25], LCIA [0,42], absent LCIA, reader pin and actor RLS denials passed",
+      );
+    }
 
     assert.equal(
       (
