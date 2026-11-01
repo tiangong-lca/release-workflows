@@ -665,7 +665,7 @@ async function failPackageVerification({
   fail(code, message, failure);
 }
 
-async function assembleCanonicalCollection({
+export async function assembleCanonicalCollection({
   materializationRoot,
   materializedIndex,
   intakeRoot,
@@ -673,10 +673,25 @@ async function assembleCanonicalCollection({
   dependencyArtifacts = [],
   canonicalRoot,
   excludedPaths = new Set(),
+  metadataBudgetBytes = Infinity,
+  recordBudgetBytes = Infinity,
 }) {
   const entries = [];
   const identities = new Map();
   const paths = new Set();
+  let metadataBytes = 0;
+  const add = (entry) => {
+    metadataBytes += Buffer.byteLength(canonicalJson(entry));
+    if (
+      metadataBytes > metadataBudgetBytes ||
+      entry.byteSize > recordBudgetBytes
+    )
+      fail(
+        "canonical_collection_budget",
+        "Canonical collection exceeds its metadata or document budget",
+      );
+    addEntry(entries, identities, paths, entry);
+  };
   for (const dataset of materializedIndex.datasets) {
     const sourcePath = resolveContained(materializationRoot, dataset.path);
     const relativePath = stripCanonicalPrefix(dataset.path);
@@ -687,7 +702,7 @@ async function assembleCanonicalCollection({
     if (sha256Bytes(bytes) !== dataset.sha256)
       fail("materialized_dataset_hash_mismatch", `Hash drift: ${dataset.path}`);
     await writeFile(destination, bytes, { flag: "wx" });
-    addEntry(entries, identities, paths, {
+    add({
       ...dataset,
       path: relativePath,
       byteSize: bytes.length,
@@ -709,8 +724,8 @@ async function assembleCanonicalCollection({
       "Intake contains no source_closure artifact",
     );
   for (const artifact of sourceArtifacts) {
-    const artifactBytes = await readFile(artifact.resolvedPath);
-    if (sha256Bytes(artifactBytes) !== artifact.sha256)
+    const artifactIntegrity = await inspectFile(artifact.resolvedPath);
+    if (artifactIntegrity.sha256 !== artifact.sha256)
       fail(
         "source_closure_artifact_hash_mismatch",
         `Hash drift: ${artifact.path}`,
@@ -750,7 +765,7 @@ async function assembleCanonicalCollection({
       const destination = resolveContained(canonicalRoot, relativePath);
       await mkdir(path.dirname(destination), { recursive: true });
       await writeFile(destination, content, { flag: "wx" });
-      addEntry(entries, identities, paths, entry);
+      add(entry);
     }
     if (recordCount !== artifact.recordCount)
       fail(
@@ -792,7 +807,7 @@ async function assembleCanonicalCollection({
       const destination = resolveContained(canonicalRoot, relativePath);
       await mkdir(path.dirname(destination), { recursive: true });
       await writeFile(destination, content, { flag: "wx" });
-      addEntry(entries, identities, paths, entry);
+      add(entry);
     }
   }
   return entries;
@@ -819,7 +834,7 @@ function validateScopeDecisionBindings({
     );
 }
 
-function validateReleaseIntakeBindings(
+export function validateReleaseIntakeBindings(
   releaseIntake,
   materializationManifest,
   materializedIndex,
@@ -849,7 +864,7 @@ function addEntry(entries, identities, paths, entry) {
   entries.push(entry);
 }
 
-function buildIndex(entries) {
+export function buildIndex(entries) {
   const datasets = [...entries].sort((left, right) =>
     left.path.localeCompare(right.path),
   );

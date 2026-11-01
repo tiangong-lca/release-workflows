@@ -23,6 +23,11 @@ import { prepareReleaseIntake } from "./lib/release-intake.mjs";
 import { replyTemplateFor } from "./reply-template-registry.mjs";
 import { candidateNextDecision } from "./lib/next-decision.mjs";
 
+import {
+  runFinalResultCommand,
+  finalResultFailure,
+} from "./lib/final-result-command.mjs";
+
 const COMMAND = "package build";
 const RELEASE_CLI_PATH = fileURLToPath(new URL("./cli.mjs", import.meta.url));
 const RELEASE_COMMAND = `node ${shellQuote(RELEASE_CLI_PATH)}`;
@@ -34,6 +39,14 @@ const REPOSITORY_ENV = fileURLToPath(new URL("../../.env", import.meta.url));
 const REPOSITORY_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const DEFAULT_FLOW_CACHE_DIR = path.join(REPOSITORY_ROOT, DEFAULT_FLOW_CACHE);
 const VALUE_OPTIONS = new Set([
+  "result-intake",
+  "final-input",
+  "confirm-input-sha256",
+  "candidate",
+  "transformation",
+  "spec",
+  "parent-materialization",
+  "hdf5-bin",
   "materialization",
   "source-intake",
   "release-intake",
@@ -68,7 +81,25 @@ Commands:
   failure analyze     Compute the complete exclusion impact of exact validation failures
   failure review      Generate the human-review Excel workbook from one impact report
   failure decide      Record repair, hash-confirmed exclusion, or stop against one impact report
-  package build       Build one local, unapproved Release Candidate from a frozen Release Intake
+  package build       Build one legacy four-package Candidate from a frozen Release Intake
+  result intake       Prepare Result-only closure from direct Materialization or verified Derived handoff
+  result inspect      Read-only inspection of exact final input and expected identity claims
+  result register     Explicitly claim immutable Result identities using protected CONN; no publication
+  result build        Build a paired Candidate v3 from registered input; no database access
+  result verify       Verify actual ZIP/HDF5 files and all Candidate v3 bindings
+
+result command options:
+  intake: --release-intake <path> --out-dir <path> (direct route), OR
+          --materialization <path> --candidate <parent> --transformation <path> --out-dir <path>
+          [--spec <path>] [--parent-materialization <path>] (Derived route; legacy parents require the witness)
+  inspect: --result-intake <path>
+  register: --result-intake <path> --confirm-input-sha256 <hash> --out-dir <path>
+  build: --final-input <path> --confirm-input-sha256 <hash> --release-version <YYYY.MM.N> --out-dir <path>
+  verify: --candidate <path>
+  intake/build accept --tidas-bin and --tidas-memory-budget-mib; build also accepts --hdf5-bin.
+  Inspect precedes authorized registration. CONN is read only by result register and never included in output.
+  Missing build version returns a confirmation request without generating files. v3 cannot use legacy Publication.
+  Example: release-package result inspect --result-intake .release/final/intake --json
 
 intake prepare options:
   --materialization <path>  Completed Result Materialization directory
@@ -149,7 +180,9 @@ async function main() {
     (command === "intake" && action === "prepare") ||
     (command === "failure" &&
       ["analyze", "review", "decide"].includes(action)) ||
-    (command === "package" && action === "build")
+    (command === "package" && action === "build") ||
+    (command === "result" &&
+      ["intake", "inspect", "register", "build", "verify"].includes(action))
   )) {
     throw Object.assign(
       new Error(
@@ -163,6 +196,11 @@ async function main() {
   const options = parseArgs(tokens);
   if (options.help) {
     process.stdout.write(HELP);
+    return;
+  }
+  if (command === "result") {
+    const result = await runFinalResultCommand(action, options);
+    respondGeneric(options, result, "Final Result workflow");
     return;
   }
   const flowCacheDir = path.resolve(
@@ -632,6 +670,24 @@ function respondGeneric(options, payload, title) {
   else {
     process.stdout.write(`${title}\n\nSummary:\n`);
     process.stdout.write(`- Outcome: ${payload.outcome}\n`);
+    for (const key of [
+      "resultIntake",
+      "finalInput",
+      "candidate",
+      "inputHash",
+      "resultCount",
+      "datasetCount",
+      "derivedCount",
+      "packageCount",
+      "queryArtifactCount",
+      "recommendedVersion",
+    ]) {
+      if (payload[key] !== undefined)
+        process.stdout.write(`- ${key}: ${payload[key]}\n`);
+    }
+    if (payload.fileNames)
+      for (const file of payload.fileNames)
+        process.stdout.write(`- File: ${file}\n`);
     process.stdout.write("- Publication authorized: no\n\nNext:\n");
     for (const action of payload.nextActions)
       process.stdout.write(`- ${action.command}\n`);
@@ -720,6 +776,24 @@ function shellQuote(value) {
 }
 
 function failureNextActions(error) {
+  if (process.argv[2] === "result") {
+    const actions = [
+      {
+        kind: "inspect_usage",
+        description:
+          "Inspect the exact Result command and its recovery boundaries",
+        command: `${RELEASE_COMMAND} result ${["intake", "inspect", "register", "build", "verify"].includes(process.argv[3]) ? process.argv[3] : "inspect"} --help`,
+      },
+    ];
+    if (error.details?.retainedInput)
+      actions.unshift({
+        kind: "reconcile_identity_claims",
+        description:
+          "Compare exact requests with received receipts before an identical-input retry; do not allocate new versions after an unknown outcome",
+        command: `jq . ${shellQuote(path.join(error.details.retainedInput, "input-plan.json"))}`,
+      });
+    return actions;
+  }
   if (error.code === "tidas_memory_budget_exceeded") {
     const retained = error.details?.retainedBuild;
     const selectedBudget = Number(
@@ -898,6 +972,7 @@ if (existsSync(REPOSITORY_ENV)) loadEnvFile(REPOSITORY_ENV);
 
 main().catch((error) => {
   const command = process.argv.slice(2, 4).join(" ") || COMMAND;
+  if (process.argv[2] === "result") error = finalResultFailure(error);
   const retainedBuild = error.details?.retainedBuild;
   const payload = {
     ok: false,

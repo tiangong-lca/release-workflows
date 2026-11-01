@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - workflows/dataset-transformation/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 96aaeb903d6901986e7f0436f817df6e2b7c47e8
-lastReviewedNote: "Release #99: Derived Result handoff consumer verifies exact producer evidence and canonical bytes, pins SDK validation, and preserves v2 parent Result lineage with pending source association; paired Candidate qualification remains separate."
+lastReviewedCommit: b972a085d013ebb24b72a44b9ece549b782d46f5
+lastReviewedNote: "Release #99: reviewed direct/Derived Result Intake, explicit inspect/register/build/verify commands, parent replay, final Candidate consumers and marker-last recovery; publication remains separate."
 related:
   - AGENTS.md
   - dsl-v0.md
@@ -109,7 +109,7 @@ result-process.weighted-aggregate.v0
 
 Unit Process 路线改变过程清单语义，因此父 Candidate 中已有 Result Process/LifecycleModel evidence 标记为 `invalidated`。Result Process 路线把输入 Result evidence 标记为 `derived`，不重新调用 Worker，也不隐式聚合 LifecycleModel。父 Candidate 不被覆盖；新 Candidate 必须绑定 Transformation Frozen Spec、Execution Receipt 和对应的新计算或物化证据。
 
-**当前限制：** Materialization 已提供 `materialize derived --candidate <parent> --transformation <output>` 消费精确 Derived Result；旧 output 额外提供 `--spec <frozen-spec>`；Candidate 只接受 LifecycleModel full-closure profile，Result-only 输入会被拒绝。Unit handoff 也不能直接作为 Calculation API 输入，必须先满足其业务对象和授权契约。不要将目标路线当作自动可执行闭环。
+**当前限制：** Materialization 已提供 `materialize derived --candidate <parent> --transformation <output>` 消费精确 Derived Result；旧 output 额外提供 `--spec <frozen-spec>`；Candidate 的 `result intake` 消费该物化、精确父 Candidate 与 Transformation output，再经 inspect、授权登记、build 和 verify 生成 Result-only 配对 v3；legacy 父 Candidate 还须提供原 Package Plan 绑定的 Materialization witness。v3 不能使用旧四包发布入口。Unit handoff 也不能直接作为 Calculation API 输入，必须先满足其业务对象和授权契约。不要将目标路线当作自动可执行闭环。
 
 ## CLI
 

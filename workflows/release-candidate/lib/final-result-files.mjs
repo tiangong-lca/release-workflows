@@ -1,4 +1,12 @@
-import { readFile, stat, realpath } from "node:fs/promises";
+import {
+  readFile,
+  stat,
+  realpath,
+  mkdir,
+  readdir,
+  rename,
+  rm,
+} from "node:fs/promises";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
 import { createHash } from "node:crypto";
@@ -76,4 +84,26 @@ export async function readLocalJson(root, relative, limit = MAX_INDEX) {
   if (bytes.length !== size)
     fail("final_metadata_drift", "Final metadata changed while reading");
   return JSON.parse(bytes);
+}
+
+// Commit the qualification marker last. If a move fails, preserve both owned
+// directories so identity receipts and successful files are never deleted.
+export async function commitFrozenDirectory(
+  staging,
+  target,
+  marker,
+  { move = rename } = {},
+) {
+  await safeFile(staging, marker);
+  await mkdir(target);
+  try {
+    for (const name of await readdir(staging))
+      if (name !== marker)
+        await move(path.join(staging, name), path.join(target, name));
+    await move(path.join(staging, marker), path.join(target, marker));
+  } catch (error) {
+    error.details = { ...error.details, incompleteTarget: target };
+    throw error;
+  }
+  await rm(staging, { recursive: true, force: true }).catch(() => {});
 }

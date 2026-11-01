@@ -5,7 +5,6 @@ import {
   readFile,
   writeFile,
   readdir,
-  rename,
   rm,
 } from "node:fs/promises";
 import path from "node:path";
@@ -24,6 +23,8 @@ import {
   spawnBounded,
   tidasSpawnOptions,
 } from "./package-build.mjs";
+
+import { commitFrozenDirectory } from "./final-result-files.mjs";
 
 export function successful(report, schema) {
   if (
@@ -89,7 +90,6 @@ export async function buildFinalResultPair({
   const frozen = path.join(staging, "canonical");
   const packages = path.join(staging, "packages");
   const readback = path.join(staging, "validation-readback");
-  let targetReserved = false;
   try {
     await mkdir(frozen);
     for (const entry of index.datasets) {
@@ -245,14 +245,9 @@ export async function buildFinalResultPair({
     );
     await rm(frozen, { recursive: true, force: true });
     await rm(readback, { recursive: true, force: true });
-    await mkdir(target);
-    targetReserved = true;
-    for (const entry of await readdir(staging))
-      await rename(path.join(staging, entry), path.join(target, entry));
-    await rm(staging, { recursive: true, force: true });
+    await commitFrozenDirectory(staging, target, "paired-result-receipt.json");
     return { path: target, receipt };
   } catch (error) {
-    if (targetReserved) await rm(target, { recursive: true, force: true });
     await writeFile(
       path.join(staging, "failed-pair.json"),
       canonicalJson({

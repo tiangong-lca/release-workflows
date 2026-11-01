@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/release-candidate/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 96aaeb903d6901986e7f0436f817df6e2b7c47e8
-lastReviewedNote: "Release #99: reviewed final identity RPC isolation, structured direct/derived lineage, immutable input receipts and unknown-outcome recovery; Candidate orchestration and publication remain separate."
+lastReviewedCommit: b972a085d013ebb24b72a44b9ece549b782d46f5
+lastReviewedNote: "Release #99: reviewed direct/Derived Result Intake, explicit inspect/register/build/verify commands, parent replay, final Candidate consumers and marker-last recovery; publication remains separate."
 related:
   - README.md
   - ../AGENTS.md
@@ -71,7 +71,7 @@ related:
 - 输出目录不可覆盖。legacy 路线只有四包回读校验全部通过才能原子提交可见 Candidate；包已经生成但 qualification 失败时，必须把 ZIP、结构化失败清单、已有验证报告和逐包回读目录保留为唯一 sibling failed build，并明确 `candidateCreated=false`、`publicationAuthorized=false`。它是诊断产物，不是 Candidate，也不得被发布。
 - `tidas release build-packages --format json` 非零退出时，必须把有界 stdout 解析为结构化 operation report 并写入 failed-build diagnostics；只有 stdout 不是有效 JSON 时才保留有界文本尾部。不得只保留 stderr 而丢失字段级 validation evidence。
 - CLI 的人类输出必须包含有界 `Summary / Next / Reply using template`；JSON 输出必须保持单对象、可解析，并携带 `outcome`、`completeness`、artifact 引用、`nextActions[]` 和 `replyTemplate`。
-- Candidate 成功结果还必须携带结构化 `nextDecision`，列出 Publication planning 和已可用的 Dataset Transformation inspect/freeze/execute 入口，同时披露 Derived Result 消费与 Result-only package 的能力缺口；不把可执行的本地节点描述成已完成的端到端路线。
+- legacy `package build` 成功结果还必须携带结构化 `nextDecision`，列出 Publication planning 和已可用的 Dataset Transformation inspect/freeze/execute 入口，同时说明 Derived Result 的显式接收步骤和 v3 发布接入限制；不把可执行的本地节点描述成已完成的端到端路线。
 - cache refresh 的 CLI 输出和错误不得包含连接串、S3 secret 或 presigned URL。成功结果可以披露 execution mode 与 SSH host，但不能披露临时 object locator。
 - CLI 返回的自身命令和跨 Result Materialization 命令必须使用由 `import.meta.url` 生成的绝对入口，确保从任意 cwd 可复制执行。Release Intake 准备成功后应返回确定的 Candidate 输出目录，不把 `<CANDIDATE_DIR>` 留给 Agent 猜测。
 - CLI 必须拒绝未知和重复参数。失败使用非零退出码，并区分人类可读 stderr 与 `--json` 结构化 stderr。
@@ -135,3 +135,11 @@ Release Candidate 只有在以下条件同时成立时完成：
 - v3 明确使用 Result-only 两包 profile，绑定 final input、输入计划、来源、canonical index、publication closure catalog、配对回读证据、各 query artifact 与完整 Result→artifact/ordinal catalog。缺少任何行、身份凭证或真实文件完整性即失败。
 - 候选标记最后提交，已存在的输出目录（包括空目录）不可覆盖；失败保留工作目录及不完整目标，均不得作为 Candidate。v3 `candidateQualified=true` 仅证明本地资格，`publicationAuthorized=false` 保持不变。
 - `loadFinalResultCandidate` 按显式 v3 重验绑定、实际 ZIP/HDF5 文件和结果轴。Transformation 可消费这种候选的 Result 包；无 Unit 包时不能进入 Unit 聚合。legacy Publication 不接受 v3，必须经后继版本化发布契约。
+
+### Result-only Intake 与 CLI
+
+- `result intake` 明确区分 direct Release Intake 与 Derived Materialization/parent/Transformation 路线。直接 expected methods 从冻结源轴读取；派生必须调用 producer replay，legacy 父包需要原始 Materialization witness。
+- 复用 publication reference catalog 选择 Result component，标准闭包与 TIDAS qualification 仍委托 Toolkit；不能截取工具有界摘要中的前 256 个 keys 当作完整闭包。
+- `result inspect` 只读并重新校验 producer 证据；`result register` 是唯一身份远程写入动作，使用既有受保护 CONN 和精确 confirmation hash。`result build` 只消费已登记输入，`result verify` 只检验候选文件。
+- build 缺少 release version 返回两包版本确认，不启动生成。每个动作拒绝其他动作的参数；JSON 单对象并返回 workflow-local 模板与 cwd-independent continuation。
+- 不完整目录保留已移动文件；最终资格文件最后提交。CLI 不显示原始 provider/SQL 错误，登记响应不明的恢复首先核对原请求和已收到凭证。

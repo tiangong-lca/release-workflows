@@ -4,9 +4,6 @@ import {
   lstat,
   readFile,
   writeFile,
-  rename,
-  readdir,
-  rm,
   appendFile,
 } from "node:fs/promises";
 import path from "node:path";
@@ -22,7 +19,7 @@ import {
   identityRegistrationRequest,
   verifyIdentityReceipt,
 } from "./final-result-identity.mjs";
-import { readLocalJson } from "./final-result-files.mjs";
+import { readLocalJson, commitFrozenDirectory } from "./final-result-files.mjs";
 const MAX_METADATA = 128 * 1024 * 1024;
 function requireValue(value, code = "final_input_invalid") {
   if (!value)
@@ -166,7 +163,6 @@ export async function prepareFinalResultInput({
   const staging = await mkdtemp(`${target}.work-`);
   const frozenRoot = path.join(staging, "canonical");
   let authority;
-  let reserved = false;
   try {
     await mkdir(frozenRoot);
     for (const entry of index.datasets) {
@@ -261,14 +257,9 @@ export async function prepareFinalResultInput({
       canonicalJson(finalInput),
       { flag: "wx" },
     );
-    await mkdir(target);
-    reserved = true;
-    for (const name of await readdir(staging))
-      await rename(path.join(staging, name), path.join(target, name));
-    await rm(staging, { recursive: true, force: true });
+    await commitFrozenDirectory(staging, target, "final-result-input.json");
     return { path: target, input: finalInput };
   } catch (error) {
-    if (reserved) await rm(target, { recursive: true, force: true });
     await writeFile(
       path.join(staging, "failed-input.json"),
       canonicalJson({

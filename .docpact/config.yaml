@@ -1,8 +1,8 @@
 version: 1
 layout: repo
 lastReviewedAt: "2026-11-01"
-lastReviewedCommit: "96aaeb903d6901986e7f0436f817df6e2b7c47e8"
-lastReviewedNote: "Release #99: reviewed final identity RPC isolation, structured direct/derived lineage, immutable input receipts and unknown-outcome recovery; Candidate orchestration and publication remain separate."
+lastReviewedCommit: "b972a085d013ebb24b72a44b9ece549b782d46f5"
+lastReviewedNote: "Release #99: reviewed direct/Derived Result Intake, explicit inspect/register/build/verify commands, parent replay, final Candidate consumers and marker-last recovery; publication remains separate."
 
 catalog:
   repos:

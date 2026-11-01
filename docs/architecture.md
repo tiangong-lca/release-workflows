@@ -18,8 +18,8 @@ checkPaths:
   - .docpact/config.yaml
   - workflows/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 96aaeb903d6901986e7f0436f817df6e2b7c47e8
-lastReviewedNote: "Release #99: reviewed final identity RPC isolation, structured direct/derived lineage, immutable input receipts and unknown-outcome recovery; Candidate orchestration and publication remain separate."
+lastReviewedCommit: b972a085d013ebb24b72a44b9ece549b782d46f5
+lastReviewedNote: "Release #99: reviewed direct/Derived Result Intake, explicit inspect/register/build/verify commands, parent replay, final Candidate consumers and marker-last recovery; publication remains separate."
 related:
   - ../AGENTS.md
   - ../README.md
@@ -42,7 +42,7 @@ Calculation -> verified Calculation Bundle
 
 Calculation 内部包含完整性验证；Result/Model 是 Materialization recipe；packaging/qualification 属于 Candidate。它们不是新增顶层 Workflow。Publication 内的 Portal LCIA recipe 从 ready V3 package / prepared projection 开始，与 Candidate dataset recipe 独立。
 
-Transformation handoff 表达目标：Unit 返回计算，Result 返回物化，最终形成新 Candidate。**当前接收边界未闭合**：Materialization 已提供独立 `materialize derived` 路线，验证并冻结加工后字节；原过程关联仍需结构化父血缘；既有 Candidate CLI 仍拒绝 Result-only profile；内部 Candidate v3 已绑定登记输入、来源与实际两包/HDF5 配对证据，CLI/Intake 和发布编排仍需接通。不得把 producer 输出、接口字段或设计箭头当作消费者实现证据。补齐路线需要各 owner 的明确契约与真实跨节点验证。
+Transformation handoff 表达目标：Unit 返回计算，Result 返回物化，最终形成新 Candidate。Materialization 通过 `materialize derived` 验证加工后字节；Candidate 的 `result` 命令族接通 Result-only Intake、结构化父血缘、登记和 v3 两包/HDF5 配对。身份登记是独立数据面动作；本地文件构建不登记身份。v3 Publication adapter 仍需接通。不得把 producer 输出、接口字段或设计箭头当作消费者实现证据。补齐路线需要各 owner 的明确契约与真实跨节点验证。
 
 ## 权威来源
 

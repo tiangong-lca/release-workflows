@@ -1,12 +1,4 @@
-import {
-  mkdir,
-  lstat,
-  mkdtemp,
-  writeFile,
-  readdir,
-  rename,
-  rm,
-} from "node:fs/promises";
+import { mkdir, lstat, mkdtemp, writeFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { canonicalJson, hashJson, fail } from "./common.mjs";
 import {
@@ -23,6 +15,7 @@ import {
   verifiedBytes,
   verifyLargeFile,
   indexFile,
+  commitFrozenDirectory,
 } from "./final-result-files.mjs";
 import { RESULT_PACKAGE_PROFILE } from "./package-build.mjs";
 const MAX_METADATA = 128 * 1024 * 1024;
@@ -164,7 +157,6 @@ export async function buildFinalResultCandidate({
     if (e.code !== "ENOENT") throw e;
   }
   const staging = await mkdtemp(`${target}.work-`);
-  let reserved = false;
   try {
     for (const [name, value] of Object.entries({
       "final-result-input.json": frozen.input,
@@ -263,18 +255,7 @@ export async function buildFinalResultCandidate({
       { flag: "wx" },
     );
     await loadFinalResultCandidate(staging);
-    // Reserve without replacing even an empty directory. The qualification marker
-    // is moved last; incomplete directories can never be loaded as Candidates.
-    await mkdir(target);
-    reserved = true;
-    for (const name of await readdir(staging))
-      if (name !== "release-candidate.json")
-        await rename(path.join(staging, name), path.join(target, name));
-    await rename(
-      path.join(staging, "release-candidate.json"),
-      path.join(target, "release-candidate.json"),
-    );
-    await rm(staging, { recursive: true, force: true }).catch(() => {});
+    await commitFrozenDirectory(staging, target, "release-candidate.json");
     return { path: target, candidate };
   } catch (error) {
     await rm(path.join(staging, "release-candidate.json"), { force: true });
@@ -292,7 +273,6 @@ export async function buildFinalResultCandidate({
     error.details = {
       ...error.details,
       retainedCandidateBuild: staging,
-      ...(reserved ? { incompleteTarget: target } : {}),
     };
     throw error;
   }

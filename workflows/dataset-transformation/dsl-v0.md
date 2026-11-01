@@ -17,8 +17,8 @@ checkPaths:
   - workflows/dataset-transformation/cli.mjs
   - workflows/dataset-transformation/test/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 96aaeb903d6901986e7f0436f817df6e2b7c47e8
-lastReviewedNote: "Release #99: Derived Result handoff consumer verifies exact producer evidence and canonical bytes, pins SDK validation, and preserves v2 parent Result lineage with pending source association; paired Candidate qualification remains separate."
+lastReviewedCommit: b972a085d013ebb24b72a44b9ece549b782d46f5
+lastReviewedNote: "Release #99: reviewed direct/Derived Result Intake, explicit inspect/register/build/verify commands, parent replay, final Candidate consumers and marker-last recovery; publication remains separate."
 related:
   - README.md
   - contracts/dataset-transformation-dsl.v0.schema.json
@@ -57,7 +57,7 @@ Transformed Process + Execution Receipt + Handoff
   -> intended Result consumer: Result Materialization
 ```
 
-handoff 描述目标与绑定证据，不证明消费者已实现。Materialization 已通过 `materialize derived` 消费精确 Derived Result handoff；Candidate 配对 Result-only 路线尚待接通；实际接收限制见 [Workflow README](README.md#result-evidence-与返回路径)。不得为打通路线补造 Model、改写输入类型或复用无效证据。
+handoff 描述目标与绑定证据，不证明消费者已实现。Materialization 已通过 `materialize derived` 消费精确 Derived Result handoff；Candidate 的 `result` 命令族支持后续 Result-only 配对；登记与构建是分别确认的动作，版本化发布接入仍独立；实际接收限制见 [Workflow README](README.md#result-evidence-与返回路径)。不得为打通路线补造 Model、改写输入类型或复用无效证据。
 
 `needs_decision` 是正常业务状态。只有 malformed contract、Candidate/input drift、运行时故障或生成结果违反确定性检查时才返回 system error / `needs_repair`。
 

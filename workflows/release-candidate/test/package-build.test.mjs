@@ -1602,6 +1602,11 @@ test("every Release CLI outcome maps to an existing bounded reply template", asy
     "failure analyze",
     "failure review",
     "failure decide",
+    "result intake",
+    "result inspect",
+    "result register",
+    "result build",
+    "result verify",
     "package build",
   ]);
   for (const template of [

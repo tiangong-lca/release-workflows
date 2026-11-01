@@ -20,8 +20,8 @@ checkPaths:
   - workflows/**
   - .docpact/config.yaml
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 96aaeb903d6901986e7f0436f817df6e2b7c47e8
-lastReviewedNote: "Release #99: reviewed final identity RPC isolation, structured direct/derived lineage, immutable input receipts and unknown-outcome recovery; Candidate orchestration and publication remain separate."
+lastReviewedCommit: b972a085d013ebb24b72a44b9ece549b782d46f5
+lastReviewedNote: "Release #99: reviewed direct/Derived Result Intake, explicit inspect/register/build/verify commands, parent replay, final Candidate consumers and marker-last recovery; publication remains separate."
 related:
   - AGENTS.md
   - docs/architecture.md
@@ -57,7 +57,7 @@ Candidate 构建不构成发布授权。Publication 可选择引用完整的子�
 
 Transformation 的 inspect、freeze、execute 已实现；其 `completed` 只证明本节点产物和 handoff 已生成。Unit 聚合使旧 Result evidence 失效，需要新的计算；Result 聚合产生 Derived Result，不重新求解或补造 LifecycleModel。
 
-**后继路线不是现成的自动闭环。** Materialization 已提供 `materialize derived` 接收精确 Derived Result handoff，并保留未完成的结构化原过程关联门禁；现有 `package build` CLI 仍要求 LifecycleModel full-closure 输入；内部已支持登记输入、结构化来源和 Result-only 两包/HDF5 的 Candidate v3 冻结；CLI/Intake 与后继发布尚未接通。进入后继 Workflow 前应核对其真实输入契约；不能通过重命名产物、复用旧证据或补造 Model 绕过限制。具体节点和限制由各 Workflow 文档维护。
+Materialization 的 `materialize derived` 接收精确 Derived Result handoff；Candidate 的 `result intake/inspect/register/build/verify` 接通结构化来源、全局身份登记和 Result-only 两包/HDF5 的 v3 冻结。`package build` 继续提供 legacy 四包路线。v3 的后继发布需要版本化 Publication adapter，不能交给旧四包发布入口。进入后继 Workflow 前应核对其真实输入契约；不能通过重命名产物、复用旧证据或补造 Model 绕过限制。具体节点和限制由各 Workflow 文档维护。
 
 ## 开发与阅读
 

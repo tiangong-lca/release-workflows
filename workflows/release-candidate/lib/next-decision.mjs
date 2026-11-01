@@ -25,7 +25,7 @@ export function candidateNextDecision() {
         workflow: "dataset-transformation",
         availability: "available",
         description:
-          "Inspect, freeze and execute weighted Unit/Result Transformation after the required user decisions. Completion produces local output and a handoff, not a new Candidate: Derived Result consumption by Materialization and Result-only Candidate packaging are not implemented. Unit outputs require new calculation through its supported input and authorization contract.",
+          "Inspect, freeze and execute weighted Unit/Result Transformation after the required user decisions. Completion produces local output and a handoff, not a new Candidate: Use materialize derived followed by the explicit result intake/inspect/register/build route for a paired Result-only Candidate; its v2 publication adapter remains required. Unit outputs require new calculation through its supported input and authorization contract.",
         ...transformation,
       },
     ],

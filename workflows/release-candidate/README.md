@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/release-candidate/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 96aaeb903d6901986e7f0436f817df6e2b7c47e8
-lastReviewedNote: "Release #99: reviewed final identity RPC isolation, structured direct/derived lineage, immutable input receipts and unknown-outcome recovery; Candidate orchestration and publication remain separate."
+lastReviewedCommit: b972a085d013ebb24b72a44b9ece549b782d46f5
+lastReviewedNote: "Release #99: reviewed direct/Derived Result Intake, explicit inspect/register/build/verify commands, parent replay, final Candidate consumers and marker-last recovery; publication remains separate."
 related:
   - AGENTS.md
   - ../../README.md
@@ -50,7 +50,7 @@ Release Candidate Workflow 先从冻结的 Materialization Intake 和 materializ
 
 Materialization evidence 与实际 dataset bytes 不一致时，返回 Result Materialization Workflow 修复。
 
-Candidate 成功后的 `nextDecision` 提供 Publication 与 Transformation 的绝对 CLI help 入口。Transformation 本地 inspect/freeze/execute 已可用，但 handoff 不代表新 Candidate 已生成；Derived Result 消费与 Result-only package 的限制见 [Transformation](../dataset-transformation/README.md#result-evidence-与返回路径)。
+Candidate 成功后的 `nextDecision` 提供 Publication 与 Transformation 的绝对 CLI help 入口。Transformation 本地 inspect/freeze/execute 已可用，但 handoff 不代表新 Candidate 已生成；Derived Result 消费与 Result-only 配对步骤见 [Transformation](../dataset-transformation/README.md#result-evidence-与返回路径)。
 
 ## 包的组织维度
 
@@ -333,4 +333,47 @@ RELEASE_PAIR_TIDAS_BIN=/absolute/path/to/tidas node --test workflows/release-can
 
 `loadFinalResultCandidate` 验证 v3 manifest/hash 链、真实包和 HDF5 bytes、结果轴完整覆盖，再允许本地消费者读取。Candidate 移动目录不会改变语义绑定。身份登记是上游独立节点，Candidate 构建不连数据库。失败时不会把部分目录标为合格，也不撤销已经登记的内容；重新构建使用同一输入和新的输出目录。
 
-Transformation 已能读取合格 v3 的 Result 包并核对实际 Process bytes；它的权重、共同 Calculation lineage、字段决定和授权约束不变。当前此构建能力仍为内部 API；final-input CLI/Intake 编排与后继 v2 Publication 尚待接入，不能把 v3 交给旧四包发布入口。
+Transformation 已能读取合格 v3 的 Result 包并核对实际 Process bytes；它的权重、共同 Calculation lineage、字段决定和授权约束不变。此能力通过 `result` CLI 命令族进入；后继 v2 Publication 仍需接入，不能把 v3 交给旧四包发布入口。
+
+### Result-only 命令路线
+
+直接结果先复用 `intake prepare` 补齐冻结的 LCIA Method Flow 依赖；它接受 Result-only Materialization，不要求虚构 Model。随后使用新路线：
+
+```bash
+node workflows/release-candidate/cli.mjs result intake \
+  --release-intake <release-intake-dir> --out-dir <final-intake-dir> \
+  --tidas-bin <capability-complete-tidas> --json
+node workflows/release-candidate/cli.mjs result inspect \
+  --result-intake <final-intake-dir> --json
+```
+
+派生结果在 `materialize derived` 之后，从真实父包继承所需支持数据：
+
+```bash
+node workflows/release-candidate/cli.mjs result intake \
+  --materialization <derived-materialization-dir> \
+  --candidate <parent-candidate-dir> --transformation <transformation-output-dir> \
+  --out-dir <final-intake-dir> --tidas-bin <capability-complete-tidas> --json
+```
+
+legacy 父 Candidate 还必须提供 `--parent-materialization <original-materialization-dir>`；旧 Transformation output 若未带 frozen spec，显式提供 `--spec <spec-dir>`。Intake 重新执行 producer replay，核对加工后的实际 bytes 和父关联；不从文字说明建立原过程映射。真实 ZIP 成员逐项按 index 校验，原有 publication reference catalog 用于选择 Result component，Toolkit 负责完整标准闭包与 TIDAS qualification。未被 Result 引用的 Unit、Model 或其他支持内容不进入新输入；缺失依赖直接失败，不猜 latest。
+
+直接路线的层来自 producer catalog，预期方法来自同一 hash-bound source intake 的 process axis/LCIA records；不会通过读取不完整最终文档缩小期望集合。派生路线使用 producer replay 后的层/方法契约。Intake、inspect、build、verify 都不连接身份数据库；inspect 会重新核对原始 producer 证据及必要的 replay。运行时路径保存在权限受限 `runtime-locators.json`，不进入语义 input hash。
+
+inspection 返回精确 hash 后，只有在身份登记获得明确授权时执行：
+
+```bash
+# CONN 通过受保护环境或项目 ignored .env 提供；不要放入命令参数。
+node workflows/release-candidate/cli.mjs result register \
+  --result-intake <final-intake-dir> --confirm-input-sha256 <inspected-hash> \
+  --out-dir <registered-input-dir> --json
+node workflows/release-candidate/cli.mjs result build \
+  --final-input <registered-input-dir> --confirm-input-sha256 <inspected-hash> \
+  --release-version <confirmed-YYYY.MM.N> --out-dir <candidate-dir> \
+  --tidas-bin <capability-complete-tidas> --hdf5-bin <release-result-hdf5> --json
+node workflows/release-candidate/cli.mjs result verify --candidate <candidate-dir> --json
+```
+
+省略 build 的 release version 会返回两包文件名和版本确认，且不启动构建；推荐值不是确认。CONN 所指数据库必须已具备身份登记 RPC，源码开发通过不表示这些迁移已部署。版本冲突回到上游重新生成全部相关内容，不能在 Candidate 打包时改版本；响应不明只核对/重试原输入。失败保留请求凭证、成功文件和不完整目标，资格标记最后提交；不通过删除部分输出掩盖登记事实。
+
+CLI 返回有界状态、产物路径、input hash 和下一步命令，不输出 provider 错误正文、连接串或服务 secret。`result verify` 证明本地资格；上传、readiness、审批与原子生效由后继版本化 Publication 流程负责。

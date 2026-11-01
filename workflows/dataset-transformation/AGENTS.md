@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/dataset-transformation/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 96aaeb903d6901986e7f0436f817df6e2b7c47e8
-lastReviewedNote: "Release #99: Derived Result handoff consumer verifies exact producer evidence and canonical bytes, pins SDK validation, and preserves v2 parent Result lineage with pending source association; paired Candidate qualification remains separate."
+lastReviewedCommit: b972a085d013ebb24b72a44b9ece549b782d46f5
+lastReviewedNote: "Release #99: reviewed direct/Derived Result Intake, explicit inspect/register/build/verify commands, parent replay, final Candidate consumers and marker-last recovery; publication remains separate."
 related:
   - README.md
   - dsl-v0.md
@@ -25,7 +25,7 @@ related:
 
 ## 当前实现
 
-本 Workflow 已实现两类加权语义：Unit Process 聚合构造新过程并生成以 Calculation 为目标的 handoff；Result Process 聚合组合已有 LCI/LCIA Result 并生成以 Result Materialization 为目标的 handoff。handoff 不证明接收端支持：Materialization 已提供 `materialize derived` 验证并冻结原样结果；Candidate 的 Result-only 配对入口尚待接通，不得补造 Model 或改写输入契约绕过限制。`process.weighted-aggregate.v0` 继续作为旧 Unit Process operation 兼容入口，新 Draft 使用显式目标选择和清晰 operation type。
+本 Workflow 已实现两类加权语义：Unit Process 聚合构造新过程并生成以 Calculation 为目标的 handoff；Result Process 聚合组合已有 LCI/LCIA Result 并生成以 Result Materialization 为目标的 handoff。handoff 不证明接收端支持：Materialization 已提供 `materialize derived` 验证并冻结原样结果；Candidate 通过显式 `result intake/inspect/register/build/verify` 形成新配对 v3；其发布仍需版本化 adapter，不得补造 Model 或改写输入契约绕过限制。`process.weighted-aggregate.v0` 继续作为旧 Unit Process operation 兼容入口，新 Draft 使用显式目标选择和清晰 operation type。
 
 进入目标动作前读取 `workflows/AGENTS.md`、[README](README.md) 的对应章节；设计或执行 DSL 时读取 [DSL v0](dsl-v0.md)。只按 CLI 指针读取回复模板。
 
