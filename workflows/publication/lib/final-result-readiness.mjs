@@ -35,7 +35,7 @@ const keys = (o, k) =>
   !Array.isArray(o) &&
   same(Object.keys(o).sort(), [...k].sort());
 const resultKey = (r) => `${r.uuid}@${r.version}`;
-function contextOf(value, extra) {
+export function finalResultReadinessContext(value, extra) {
   required(keys(value, [...CONTEXT, ...extra]));
   const context = Object.fromEntries(CONTEXT.map((k) => [k, value[k]]));
   required(
@@ -164,7 +164,10 @@ export async function verifyFinalResultReadiness({
         { signal },
       ),
     );
-    const observed = contextOf(page, ["artifacts", "nextArtifactCursor"]);
+    const observed = finalResultReadinessContext(page, [
+      "artifacts",
+      "nextArtifactCursor",
+    ]);
     required(
       observed.releaseRunId === releaseRunId &&
         observed.publishPlanHash === publishPlanHash &&
@@ -288,7 +291,7 @@ export async function verifyFinalResultReadiness({
       const probe = await authority(authorize);
       required(
         same(
-          contextOf(probe, [
+          finalResultReadinessContext(probe, [
             "artifact",
             "result",
             "contentHash",
@@ -334,7 +337,13 @@ export async function verifyFinalResultReadiness({
     ),
   );
   required(
-    same(contextOf(finalPage, ["artifacts", "nextArtifactCursor"]), context),
+    same(
+      finalResultReadinessContext(finalPage, [
+        "artifacts",
+        "nextArtifactCursor",
+      ]),
+      context,
+    ),
   );
   await exactWrite(() => registry.sealReadiness(verificationId));
   described = await registry.describeReadiness(verificationId);
@@ -344,7 +353,7 @@ export async function verifyFinalResultReadiness({
       described.registeredArtifactCount === selected.length &&
       described.publicationAuthorized === false &&
       same(
-        contextOf(receipt, [
+        finalResultReadinessContext(receipt, [
           "schemaVersion",
           "verificationId",
           "artifactCount",

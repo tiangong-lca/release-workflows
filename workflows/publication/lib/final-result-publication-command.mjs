@@ -4,6 +4,15 @@ import { fileURLToPath } from "node:url";
 import { canonicalJson, fail } from "./common.mjs";
 import { assertAbsent } from "./io.mjs";
 import { assertFinalResultExternalOutput } from "./final-result-storage-command.mjs";
+import { createFinalResultActor } from "../adapters/final-result-actor.mjs";
+import {
+  buildFinalResultApprovalIntent,
+  validateFinalResultApprovalIntent,
+  approveFinalResultPublication,
+  buildFinalResultActivationIntent,
+  validateFinalResultActivationIntent,
+  activateFinalResultPublication,
+} from "./final-result-publication-authority.mjs";
 import { createFinalResultPublication } from "../adapters/final-result-publication.mjs";
 import {
   buildFinalResultPublicationPlan,
@@ -32,6 +41,16 @@ const allowed = {
     "run-id",
   ],
   prepare: ["plan-dir", "confirm"],
+  "approval-plan": [
+    "plan-dir",
+    "readiness-receipt",
+    "expires-at",
+    "reason",
+    "approval-id",
+  ],
+  approve: ["plan-dir", "intent-dir", "confirm"],
+  "activation-plan": ["plan-dir", "readiness-receipt", "approval-id"],
+  activate: ["plan-dir", "intent-dir", "confirm"],
   status: ["run-id"],
 };
 function value(env, name) {
@@ -41,11 +60,11 @@ function value(env, name) {
   );
   return env[name].trim();
 }
-async function boundedJson(file) {
+async function boundedJson(file, maxBytes = 256 * 1024 ** 2) {
   const handle = await open(file, "r");
   try {
     const size = (await handle.stat()).size;
-    required(size >= 1 && size <= 256 * 1024 ** 2);
+    required(size >= 1 && size <= maxBytes);
     // Bound the read itself, including files that grow after stat.
     const data = Buffer.alloc(size + 1);
     let offset = 0;
@@ -75,6 +94,11 @@ export async function runFinalResultPublicationCommand(
   {
     env = process.env,
     createActor = createFinalResultPublication,
+    createProbeActor = createFinalResultActor,
+    approvalPlan = buildFinalResultApprovalIntent,
+    approve = approveFinalResultPublication,
+    activationPlan = buildFinalResultActivationIntent,
+    activate = activateFinalResultPublication,
     build = buildFinalResultPublicationPlan,
     prepare = prepareFinalResultPublication,
   } = {},
@@ -85,12 +109,15 @@ export async function runFinalResultPublicationCommand(
       [...allowed[action], "out-dir", "json", "help"].includes(k),
       "invalid_arguments",
     );
-  const needed =
-    action === "plan"
-      ? ["candidate", "target-hash", "reason"]
-      : action === "prepare"
-        ? ["plan-dir", "confirm"]
-        : ["run-id"];
+  const needed = {
+    plan: ["candidate", "target-hash", "reason"],
+    prepare: ["plan-dir", "confirm"],
+    status: ["run-id"],
+    "approval-plan": ["plan-dir", "readiness-receipt", "expires-at", "reason"],
+    approve: ["plan-dir", "intent-dir", "confirm"],
+    "activation-plan": ["plan-dir", "readiness-receipt", "approval-id"],
+    activate: ["plan-dir", "intent-dir", "confirm"],
+  }[action];
   for (const k of [...needed, "out-dir"])
     required(typeof options[k] === "string" && options[k].trim());
   if (options["run-id"] !== undefined) required(UUID.test(options["run-id"]));
@@ -104,18 +131,19 @@ export async function runFinalResultPublicationCommand(
       flush: true,
     });
   try {
-    const actor = createActor({
+    const actorConfig = {
       endpoint: value(env, "TIANGONG_LCA_API_BASE_URL"),
       publishableKey: value(env, "TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY"),
       accessToken: value(env, "TIANGONG_LCA_ACCESS_TOKEN"),
-    });
+    };
+    const actor = createActor(actorConfig);
     await assertAbsent(outDir);
     if (action === "plan")
       await assertFinalResultExternalOutput(
         path.resolve(options.candidate),
         outDir,
       );
-    if (action === "prepare") {
+    if (options["plan-dir"]) {
       const planDir = path.resolve(options["plan-dir"]);
       await assertFinalResultExternalOutput(planDir, outDir);
       const local = await boundedJson(
@@ -123,16 +151,54 @@ export async function runFinalResultPublicationCommand(
       );
       const checked = validateFinalResultPublicationPlan(local);
       await assertFinalResultExternalOutput(local.candidateDir, outDir);
-      required(
-        options.confirm === checked.localPlanHash,
-        "final_publication_confirmation_mismatch",
-      );
-      required(
-        actor.actorId === local.actorId &&
+      if (action === "prepare") {
+        required(
+          options.confirm === checked.localPlanHash,
+          "final_publication_confirmation_mismatch",
+        );
+        required(
+          actor.actorId === local.actorId &&
+            actor.apiTargetHash === local.apiTargetHash,
+          "final_publication_actor_target_mismatch",
+        );
+      } else
+        required(
           actor.apiTargetHash === local.apiTargetHash,
-        "final_publication_actor_target_mismatch",
-      );
+          "final_publication_actor_target_mismatch",
+        );
       context = { local, ...checked };
+    }
+    let authorityIntent, readiness;
+    if (options["intent-dir"]) {
+      const intentDir = path.resolve(options["intent-dir"]);
+      await assertFinalResultExternalOutput(intentDir, outDir);
+      authorityIntent = await boundedJson(
+        path.join(
+          intentDir,
+          action === "approve"
+            ? "approval-intent.json"
+            : "activation-intent.json",
+        ),
+        65536,
+      );
+      const checked = (
+        action === "approve"
+          ? validateFinalResultApprovalIntent
+          : validateFinalResultActivationIntent
+      )(authorityIntent, context.local);
+      required(
+        checked.intentHash === options.confirm,
+        "final_authority_confirmation_mismatch",
+      );
+      required(
+        authorityIntent.actorId === actor.actorId,
+        "final_authority_actor_target_mismatch",
+      );
+    }
+    if (options["readiness-receipt"]) {
+      const file = path.resolve(options["readiness-receipt"]);
+      await assertFinalResultExternalOutput(path.dirname(file), outDir);
+      readiness = await boundedJson(file, 32768);
     }
     await mkdir(path.dirname(outDir), { recursive: true });
     await mkdir(outDir, { mode: 0o700 });
@@ -224,6 +290,129 @@ export async function runFinalResultPublicationCommand(
           next("inspect_final_result_release", "status", [
             "--run-id",
             receipt.releaseRunId,
+            "--out-dir",
+            `${outDir}-status`,
+          ]),
+        ],
+      };
+    }
+    if (
+      ["approval-plan", "approve", "activation-plan", "activate"].includes(
+        action,
+      )
+    ) {
+      const probeActor = createProbeActor(actorConfig);
+      if (action.endsWith("-plan")) {
+        const planned =
+          action === "approval-plan"
+            ? await approvalPlan({
+                local: context.local,
+                readiness,
+                actor,
+                probeActor,
+                expiresAt: options["expires-at"],
+                reason: options.reason,
+                ...(options["approval-id"]
+                  ? { approvalId: options["approval-id"] }
+                  : {}),
+              })
+            : await activationPlan({
+                local: context.local,
+                readiness,
+                actor,
+                probeActor,
+                approvalId: options["approval-id"],
+              });
+        const approvedAction =
+          action === "approval-plan" ? "approve" : "activate";
+        const file =
+          action === "approval-plan"
+            ? "approval-intent.json"
+            : "activation-intent.json";
+        await write(file, planned.intent);
+        return {
+          ok: true,
+          command: `result-publication ${action}`,
+          outcome: "final_result_authority_intent_prepared",
+          completeness: "exact_authority_confirmation_pending",
+          releaseRunId: context.plan.releaseRunId,
+          publishPlanHash: context.local.publishPlanHash,
+          intentHash: planned.intentHash,
+          approvalId: planned.intent.approvalId,
+          verificationId: planned.intent.readiness.verificationId,
+          publicationAuthorized: false,
+          artifacts: { intent: path.join(outDir, file) },
+          nextActions: [
+            next("confirm_final_result_authority", approvedAction, [
+              "--plan-dir",
+              path.resolve(options["plan-dir"]),
+              "--intent-dir",
+              outDir,
+              "--confirm",
+              planned.intentHash,
+              "--out-dir",
+              `${outDir}-execute`,
+            ]),
+          ],
+        };
+      }
+      const observe = action === "approve" ? approve : activate;
+      const receipt = await observe({
+        local: context.local,
+        intent: authorityIntent,
+        confirmIntentHash: options.confirm,
+        actor,
+        probeActor,
+        record: async (e) => {
+          const kinds =
+            action === "approve"
+              ? ["approval-execution-intent", "approval-observation"]
+              : ["activation-execution-intent", "activation-observation"];
+          required(kinds.includes(e.kind));
+          await write(`${e.kind}.json`, e.receipt ?? e);
+        },
+      });
+      return {
+        ok: true,
+        command: `result-publication ${action}`,
+        outcome:
+          action === "approve"
+            ? "final_result_approval_observed"
+            : "final_result_activation_observed",
+        completeness:
+          action === "approve"
+            ? "approval_observed_activation_not_executed"
+            : "activation_observed_public_readback_pending",
+        releaseRunId: context.plan.releaseRunId,
+        publishPlanHash: context.local.publishPlanHash,
+        approvalId:
+          action === "approve"
+            ? receipt.approval.approvalId
+            : receipt.publication.approvalId,
+        status:
+          action === "approve"
+            ? receipt.approval.status
+            : receipt.publication.status,
+        ...(action === "approve"
+          ? { expiresAt: receipt.approval.expiresAt }
+          : {
+              publicationId: receipt.publication.publicationId,
+              isCurrent: receipt.publication.isCurrent,
+              publicReadbackVerified: false,
+            }),
+        publicationAuthorized: false,
+        artifacts: {
+          observation: path.join(
+            outDir,
+            action === "approve"
+              ? "approval-observation.json"
+              : "activation-observation.json",
+          ),
+        },
+        nextActions: [
+          next("inspect_final_result_release", "status", [
+            "--run-id",
+            context.plan.releaseRunId,
             "--out-dir",
             `${outDir}-status`,
           ]),

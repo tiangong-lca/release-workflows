@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import pg from "pg";
+import { canonicalJson } from "../lib/common.mjs";
 import path from "node:path";
-import { readFile } from "node:fs/promises";
+import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { createServer } from "node:http";
 import { createHash } from "node:crypto";
@@ -124,7 +125,7 @@ test(
     const selectionHash = sha(
       `tiangong.final-result-selection.v1\n${sha(members.map((r) => `${r.uuid}@${r.version}\n`).join(""))}\n`,
     );
-    const planText = JSON.stringify({
+    const planText = canonicalJson({
       schemaVersion: "tiangong.final-result-publish-plan.v2",
       releaseRunId: runId,
       releaseVersion: "2026.11.0",
@@ -409,6 +410,27 @@ test(
       ).rows[0].n,
       0,
     );
+    const managerEnv = {
+      PATH: process.env.PATH,
+      TIANGONG_LCA_API_BASE_URL: `http://127.0.0.1:${server.address().port}`,
+      TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_synthetic",
+      TIANGONG_LCA_ACCESS_TOKEN: token,
+    };
+    const managerCommand = async (action, args) => {
+      const reply = await promisify(execFile)(
+        process.execPath,
+        [
+          fileURLToPath(new URL("../cli.mjs", import.meta.url)),
+          "result-publication",
+          action,
+          ...args,
+          "--json",
+        ],
+        { env: managerEnv, timeout: 30000, maxBuffer: 1024 * 1024 },
+      );
+      assert.equal(reply.stderr, "");
+      return JSON.parse(reply.stdout);
+    };
     // A separate explicitly synthetic authority exercise. This is the only
     // phase here that approves/activates; readiness above performs neither.
     const builtPlan = await buildFinalResultPublicationPlan({
@@ -438,23 +460,86 @@ test(
       expiresAt: new Date(Date.now() + 3600000).toISOString(),
       reason: "explicit synthetic integration approval",
     };
-    const approved = await publication.approve(approvalArgs);
+    const authorityPlanDir = path.join(f.input.root, "authority-plan"),
+      approvalDir = path.join(f.input.root, "approval-intent"),
+      activationDir = path.join(f.input.root, "activation-intent");
+    await mkdir(authorityPlanDir);
+    await writeFile(
+      path.join(authorityPlanDir, "publication-plan.json"),
+      canonicalJson({
+        schemaVersion: "tiangong.final-result-publication-local-plan.v1",
+        actorId,
+        apiTargetHash: publication.apiTargetHash,
+        candidateDir: f.candidateDir,
+        planText,
+        publishPlanHash: planHash,
+        members,
+        publicationAuthorized: false,
+      }),
+    );
+    const approvalPlanned = await managerCommand("approval-plan", [
+      "--plan-dir",
+      authorityPlanDir,
+      "--readiness-receipt",
+      cliResult.artifacts.readinessReceipt,
+      "--approval-id",
+      id(405),
+      "--expires-at",
+      approvalArgs.expiresAt,
+      "--reason",
+      approvalArgs.reason,
+      "--out-dir",
+      approvalDir,
+    ]);
+    const approvalObserved = await managerCommand("approve", [
+      "--plan-dir",
+      authorityPlanDir,
+      "--intent-dir",
+      approvalDir,
+      "--confirm",
+      approvalPlanned.intentHash,
+      "--out-dir",
+      path.join(f.input.root, "approval-execution"),
+    ]);
     const observedApproval = await publication.approval({
       releaseRunId: runId,
       approvalId: id(405),
     });
-    assert.equal(approved.approvalHash, observedApproval.approvalHash);
+    assert.equal(approvalObserved.status, "approved");
     assert.equal(observedApproval.status, "approved");
+    const activationPlanned = await managerCommand("activation-plan", [
+      "--plan-dir",
+      authorityPlanDir,
+      "--readiness-receipt",
+      cliResult.artifacts.readinessReceipt,
+      "--approval-id",
+      id(405),
+      "--out-dir",
+      activationDir,
+    ]);
+    const activationIntent = JSON.parse(
+      await readFile(activationPlanned.artifacts.intent),
+    );
     const activationArgs = {
       releaseRunId: runId,
       publishPlanHash: planHash,
       approvalId: id(405),
-      approvalHash: approved.approvalHash,
+      approvalHash: observedApproval.approvalHash,
       verificationId: cliResult.verificationId,
-      idempotencyKey: "synthetic-activation",
-      credentialFingerprint: sha("synthetic-actor-identity"),
+      idempotencyKey: activationIntent.idempotencyKey,
+      credentialFingerprint: activationIntent.credentialFingerprint,
     };
-    const activated = await publication.activate(activationArgs);
+    const activated = await managerCommand("activate", [
+      "--plan-dir",
+      authorityPlanDir,
+      "--intent-dir",
+      activationDir,
+      "--confirm",
+      activationPlanned.intentHash,
+      "--out-dir",
+      path.join(f.input.root, "activation-execution"),
+    ]);
+    assert.equal(activated.publicReadbackVerified, false);
     const current = await publication.head(),
       observedRun = await publication.run(runId);
     assert.equal(current.publicationId, activated.publicationId);
@@ -476,6 +561,29 @@ test(
     );
     assert.equal((await publication.approve(approvalArgs)).status, "consumed");
     assert.equal((await publication.activate(activationArgs)).reused, true);
+    const oldApproval = await managerCommand("approve", [
+      "--plan-dir",
+      authorityPlanDir,
+      "--intent-dir",
+      approvalDir,
+      "--confirm",
+      approvalPlanned.intentHash,
+      "--out-dir",
+      path.join(f.input.root, "approval-recovery"),
+    ]);
+    assert.equal(oldApproval.status, "consumed");
+    const recovered = await managerCommand("activate", [
+      "--plan-dir",
+      authorityPlanDir,
+      "--intent-dir",
+      activationDir,
+      "--confirm",
+      activationPlanned.intentHash,
+      "--out-dir",
+      path.join(f.input.root, "activation-recovery"),
+    ]);
+    assert.equal(recovered.publicationId, activated.publicationId);
+
     assert.equal(
       (
         await owner.query(
@@ -485,27 +593,6 @@ test(
       1,
     );
 
-    const managerEnv = {
-      PATH: process.env.PATH,
-      TIANGONG_LCA_API_BASE_URL: `http://127.0.0.1:${server.address().port}`,
-      TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_synthetic",
-      TIANGONG_LCA_ACCESS_TOKEN: token,
-    };
-    const managerCommand = async (action, args) => {
-      const reply = await promisify(execFile)(
-        process.execPath,
-        [
-          fileURLToPath(new URL("../cli.mjs", import.meta.url)),
-          "result-publication",
-          action,
-          ...args,
-          "--json",
-        ],
-        { env: managerEnv, timeout: 30000, maxBuffer: 1024 * 1024 },
-      );
-      assert.equal(reply.stderr, "");
-      return JSON.parse(reply.stdout);
-    };
     const planDir = path.join(f.input.root, "cli-publication-plan"),
       prepareDir = path.join(f.input.root, "cli-publication-prepare");
     const planned = await managerCommand("plan", [

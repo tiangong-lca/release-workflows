@@ -1,8 +1,8 @@
 version: 1
 layout: repo
 lastReviewedAt: "2026-11-01"
-lastReviewedCommit: "14d686f86565f97f3aa69cdfc11a792115a00dbe"
-lastReviewedNote: "Release #99: reviewed actor-only selection plans, exact confirmation, bounded recovery transport and separate synthetic activation qualification. Approval/activation intent CLI and hosted adoption remain pending."
+lastReviewedCommit: "405533c249c7cb40e24c422a3522188755191a50"
+lastReviewedNote: "Release #99: reviewed exact approval/activation intent confirmation, separate approver/executor binding, session audit fingerprint, immutable recovery and real synthetic CLI qualification. Public readback and hosted adoption remain pending."
 
 catalog:
   repos:

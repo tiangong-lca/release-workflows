@@ -33,6 +33,10 @@ const finalPublication = [
 ];
 const templates = Object.freeze({
   "result-publication plan": finalPublication,
+  "result-publication approval-plan": finalPublication,
+  "result-publication approve": finalPublication,
+  "result-publication activation-plan": finalPublication,
+  "result-publication activate": finalPublication,
   "result-publication prepare": finalPublication,
   "result-publication status": finalPublication,
   "result-readiness verify": [

@@ -219,3 +219,29 @@ test("legacy current format is observed explicitly without inventing v2 hashes",
   const f = await fixture(t, (_, res) => send(res, d));
   assert.deepEqual(await f.actor.head(), d);
 });
+
+test("session audit fingerprints change on token renewal without storing or exposing raw tokens", async (t) => {
+  const f = await fixture(t, (_, res) => send(res, null));
+  const claims = JSON.parse(Buffer.from(token.split(".")[1], "base64url"));
+  const renewed = [
+    "header",
+    Buffer.from(JSON.stringify({ ...claims, exp: claims.exp + 60 })).toString(
+      "base64url",
+    ),
+    "synthetic-new",
+  ].join(".");
+  const other = createFinalResultPublication({
+    ...f.config,
+    accessToken: renewed,
+  });
+  assert.equal(other.actorId, f.actor.actorId);
+  assert.equal(other.apiTargetHash, f.actor.apiTargetHash);
+  assert.match(f.actor.credentialFingerprint, /^[0-9a-f]{64}$/u);
+  assert.notEqual(other.credentialFingerprint, f.actor.credentialFingerprint);
+  assert.equal(
+    createFinalResultActor(f.config).credentialFingerprint,
+    undefined,
+  );
+  assert.ok(!JSON.stringify(f.actor).includes(token));
+  assert.ok(!JSON.stringify(other).includes(renewed));
+});

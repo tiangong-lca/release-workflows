@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 14d686f86565f97f3aa69cdfc11a792115a00dbe
-lastReviewedNote: "Release #99: reviewed actor-only selection plans, exact confirmation, bounded recovery transport and separate synthetic activation qualification. Approval/activation intent CLI and hosted adoption remain pending."
+lastReviewedCommit: 405533c249c7cb40e24c422a3522188755191a50
+lastReviewedNote: "Release #99: reviewed exact approval/activation intent confirmation, separate approver/executor binding, session audit fingerprint, immutable recovery and real synthetic CLI qualification. Public readback and hosted adoption remain pending."
 related:
   - ../AGENTS.md
   - ../README.md
@@ -43,7 +43,7 @@ Candidate 成功冻结后不可原地修改。Publication 可规划引用完整�
 
 - 不修改其他仓库或导入其内部源码；控制面调用公开 actor-scoped API/CLI。
 - 所属 Workflow 可通过受控 adapter 使用 ignored `.env` 数据库/S3 配置；SQL 参数化、有界并声明读写模式。canonical 写入须同时具备 Workflow 契约和用户明确授权；批量写入采用 staging、验证及原子提升边界。
-- 不解码、输出、持久化用户凭据；不把数据库/S3/Supabase secret 放入命令参数、日志或证据。signed URL 不持久化。
+- 不输出或持久化用户凭据，不以解码 claims 判定权限；不把数据库/S3/Supabase secret 放入命令参数、日志或证据。signed URL 不持久化。
 - 外部能力不足时报告明确 blocker；transport success 不证明 domain validity 或发布完成。
 
 ## 维护与验证

@@ -1,4 +1,4 @@
-import { fail, hashJson } from "../lib/common.mjs";
+import { fail, hashJson, sha256Bytes } from "../lib/common.mjs";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const MAX_RESPONSE = 2 * 1024 ** 2;
@@ -178,6 +178,9 @@ export function createFinalResultActorTransport({
   }
   return {
     actorId: actor.sub,
+    credentialFingerprint: sha256Bytes(
+      Buffer.from(`tiangong.final-result-actor-session.v1\n${accessToken}`),
+    ),
     apiTargetHash: hashJson({
       hashDomain: "tiangong.final-result-actor-target.v1",
       origin: origin.origin,

@@ -26,8 +26,8 @@ checkPaths:
   - .node-version
   - .github/workflows/ci.yml
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 14d686f86565f97f3aa69cdfc11a792115a00dbe
-lastReviewedNote: "Release #99: reviewed actor-only selection plans, exact confirmation, bounded recovery transport and separate synthetic activation qualification. Approval/activation intent CLI and hosted adoption remain pending."
+lastReviewedCommit: 405533c249c7cb40e24c422a3522188755191a50
+lastReviewedNote: "Release #99: reviewed exact approval/activation intent confirmation, separate approver/executor binding, session audit fingerprint, immutable recovery and real synthetic CLI qualification. Public readback and hosted adoption remain pending."
 related:
   - README.md
   - .docpact/config.yaml
@@ -55,7 +55,7 @@ related:
 - 使用精确 identity、version、hash 和 target；不得通过 mutable `latest` 补齐缺失证据。
 - Candidate 与冻结证据不可原地改写。内容、identity、version 或 package 变化必须生成新 Candidate；Publication 只可选择引用完整的子集。
 - 发布必须绑定精确内容、target 和审批，并以独立回读证明完成。transport success、本地打包成功均不能替代发布事实。具体授权与执行规则只按 Publication 契约实施。
-- 凭据不得进入源码、stdout、命令参数或恢复产物；用户凭据不得解码、打印或持久化，signed URL 只可存于当前进程。ignored `.env` 的数据库/S3 配置只能由所属 Workflow 的受控 adapter 使用；SQL 参数化、有界并声明模式，canonical 写入需要契约及明确授权。
+- 凭据不得进入源码、stdout、命令参数或恢复产物；用户凭据不得打印或持久化，不得把解码 claims 当作权限依据，signed URL 只可存于当前进程。ignored `.env` 的数据库/S3 配置只能由所属 Workflow 的受控 adapter 使用；SQL 参数化、有界并声明模式，canonical 写入需要契约及明确授权。
 - 大型产物保存为文件或对象；stdout 只返回有界摘要及引用。本地运行产物默认放在 gitignored `.release/`。
 
 ## 开发与验证

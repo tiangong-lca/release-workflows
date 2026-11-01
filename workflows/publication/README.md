@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 14d686f86565f97f3aa69cdfc11a792115a00dbe
-lastReviewedNote: "Release #99: reviewed actor-only selection plans, exact confirmation, bounded recovery transport and separate synthetic activation qualification. Approval/activation intent CLI and hosted adoption remain pending."
+lastReviewedCommit: 405533c249c7cb40e24c422a3522188755191a50
+lastReviewedNote: "Release #99: reviewed exact approval/activation intent confirmation, separate approver/executor binding, session audit fingerprint, immutable recovery and real synthetic CLI qualification. Public readback and hosted adoption remain pending."
 related:
   - AGENTS.md
   - ../release-candidate/README.md
@@ -130,7 +130,7 @@ Candidate v3；`verify(probe, {authorize})` 核对 Database 的精确 probe 描�
 对象 adapter 的 `verifyQuery/verifyCandidate` 只做完整 GET，与上传入口分开。
 
 单 Result probe 不进行 Database readiness seal、审批或 current 切换。完整范围由下述
-整体 verifier 与 `result-readiness verify` 处理；发布选择由下述 `result-publication` 入口处理；批准/激活的确认命令和发布后验证仍待接入。
+整体 verifier 与 `result-readiness verify` 处理；发布选择由下述 `result-publication` 入口处理；批准/激活使用下述独立意图确认入口；公开查询的发布后验证仍待接入。
 
 合成联调使用实际 Release 编码器/Toolkit ZIP 和独立 Worker binary：
 
@@ -654,7 +654,48 @@ status 分别显示 run 状态、publicationStatus 和 isCurrent，不能仅凭 
 `adapters/final-result-publication.mjs` 提供固定 manager RPC 的传输与响应校验，
 包含 prepare/members/seal、独立 run/head/approval 观察及 approve/activate 原语。
 它不自动重试批准或激活，不把丢失响应当作回滚；需要独立查询原身份后恢复。
-这些原语尚不替代后续的精确批准/激活 intent 确认命令。只读 probe adapter 仍未暴露写方法。
+这些原语由下述精确 intent 确认命令编排。只读 probe adapter 仍未暴露写方法。
 合成数据库 opt-in 测试先证明 readiness 不发布，然后在明确独立的测试阶段批准/激活
 合成记录、读取审批消费状态并验证幂等；它还运行 plan/prepare/status 真正 CLI，环境
 只有用户凭据。所有这些写入仅限任务测试库，不证明线上部署或 Platform 查询已通过。
+
+### 精确批准与原子激活
+
+批准与激活分别生成不可变意图，并用返回的 `intentHash` 确认，不能把选择确认或
+readiness 回执当作这两步的授权。下列操作使用同一显式用户环境；无需数据面凭据。
+
+```bash
+node workflows/publication/cli.mjs result-publication approval-plan \
+  --plan-dir /absolute/path/to/selection-plan \
+  --readiness-receipt /absolute/path/to/readiness/readiness-receipt.json \
+  --expires-at <future-ISO-timestamp-within-24-hours> --reason '批准说明' \
+  --out-dir /absolute/path/to/new-approval-intent --json
+node workflows/publication/cli.mjs result-publication approve \
+  --plan-dir /absolute/path/to/selection-plan --intent-dir /absolute/path/to/new-approval-intent \
+  --confirm <approval-intent-hash> --out-dir /absolute/path/to/new-approval-attempt --json
+node workflows/publication/cli.mjs result-publication activation-plan \
+  --plan-dir /absolute/path/to/selection-plan \
+  --readiness-receipt /absolute/path/to/readiness/readiness-receipt.json \
+  --approval-id <exact-approval-uuid> --out-dir /absolute/path/to/new-activation-intent --json
+node workflows/publication/cli.mjs result-publication activate \
+  --plan-dir /absolute/path/to/selection-plan --intent-dir /absolute/path/to/new-activation-intent \
+  --confirm <activation-intent-hash> --out-dir /absolute/path/to/new-activation-attempt --json
+```
+
+审批人可与选择计划创建人不同，但 readiness 必须属于审批人。批准意图绑定当前 active
+approval 的精确 UUID（首次为 null）、有效期、原因、全部就绪上下文及精确计划。
+执行先落盘，再重新检查 live manager/runtime/选择/权限和替换前置条件；Database
+是实际批准权威。`approval-plan` 可通过 `--approval-id` 指定新 UUID，默认生成新值。
+
+执行人可与审批人不同；激活必须使用审批人产生的有效 readiness，或相同批准上下文下
+新验证得到的回执。激活意图绑定 approval hash、verification UUID、执行人、唯一执行
+key 和会话指纹。指纹是带版本域的用户 JWT SHA-256，仅作不可逆审计绑定，不保存令牌
+或用指纹授予权限。新执行要求仍使用规划时的会话；刷新会话后须生成并确认新激活意图。
+
+approve/activate 都不盲目重试写入：先查询原审批或执行身份；提交响应丢失后再独立查询，
+只有精确内容匹配才记录观察。回读仍无记录时停止，按 status 排查后在新目录重试同一
+意图。原审批已使用/撤回/过期，或发布已被替换/撤回时，只返回历史状态，不恢复它。
+原执行已提交后，更新会话仍可恢复读取原记录；不伪称更新后的会话执行了旧操作。
+
+激活后的回执 `publicReadbackVerified=false`，只证明独立查询确认了数据库发布状态。
+它不能替代 Edge/Platform 查询和授权 ZIP 下载的发布后检查；这些验证仍待接通。

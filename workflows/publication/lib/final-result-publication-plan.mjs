@@ -189,7 +189,7 @@ export async function buildFinalResultPublicationPlan({
   const checked = validateFinalResultPublicationPlan(local);
   return { local, ...checked, candidateDir: path.resolve(candidateDir) };
 }
-function assertSnapshot(snapshot, plan, local) {
+export function assertFinalResultPublicationSnapshot(snapshot, plan, local) {
   required(
     snapshot &&
       snapshot.releaseRunId === plan.releaseRunId &&
@@ -255,7 +255,7 @@ export async function prepareFinalResultPublication({
     snapshot = await actor.run(plan.releaseRunId);
     required(snapshot, "final_publication_outcome_unknown");
   }
-  assertSnapshot(snapshot, plan, local);
+  assertFinalResultPublicationSnapshot(snapshot, plan, local);
   if (!snapshot.selectionSealed) {
     required(
       snapshot.status === "prepared",
@@ -270,7 +270,11 @@ export async function prepareFinalResultPublication({
         if (e.code !== "final_publication_outcome_unknown") throw e;
         // Reobserve immutable run before the single exact idempotent retry. Counts
         // alone do not establish which members were written, so replay the same batch.
-        assertSnapshot(await actor.run(plan.releaseRunId), plan, local);
+        assertFinalResultPublicationSnapshot(
+          await actor.run(plan.releaseRunId),
+          plan,
+          local,
+        );
         await actor.members({ ...args, rows });
       }
     }
@@ -281,7 +285,7 @@ export async function prepareFinalResultPublication({
       if (e.code !== "final_publication_outcome_unknown") throw e;
     }
     snapshot = await actor.run(plan.releaseRunId);
-    assertSnapshot(snapshot, plan, local);
+    assertFinalResultPublicationSnapshot(snapshot, plan, local);
   }
   required(
     snapshot.selectionSealed &&

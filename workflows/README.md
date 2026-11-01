@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 14d686f86565f97f3aa69cdfc11a792115a00dbe
-lastReviewedNote: "Release #99: reviewed actor-only selection plans, exact confirmation, bounded recovery transport and separate synthetic activation qualification. Approval/activation intent CLI and hosted adoption remain pending."
+lastReviewedCommit: 405533c249c7cb40e24c422a3522188755191a50
+lastReviewedNote: "Release #99: reviewed exact approval/activation intent confirmation, separate approver/executor binding, session audit fingerprint, immutable recovery and real synthetic CLI qualification. Public readback and hosted adoption remain pending."
 related:
   - ../README.md
   - AGENTS.md
@@ -36,4 +36,4 @@ related:
 
 最终 Result 的查询投影与原生 HDF5 编码由 [Release Candidate](release-candidate/README.md) 拥有。它与计算解耦；本地编码证据不替代 ZIP、Candidate 或 Publication 门禁。
 
-Publication 的最终 Result v3 `result-storage inspect/execute` 消费冻结 Candidate，负责精确计划确认、不可覆盖上传、完整 GET 和 Database v2 存储登记；尚未提供 actor 激活，详见其 README 的独立 recipe 边界。
+Publication 的最终 Result v3 `result-storage inspect/execute` 消费冻结 Candidate，负责精确计划确认、不可覆盖上传、完整 GET 和 Database v2 存储登记；用户发布选择、批准和激活通过独立意图确认入口执行，公开查询的发布后验证仍需接通，详见其 README 的 recipe 边界。

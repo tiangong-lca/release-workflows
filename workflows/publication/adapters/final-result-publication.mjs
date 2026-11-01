@@ -67,6 +67,7 @@ export function createFinalResultPublication(config) {
   }
   return {
     actorId: transport.actorId,
+    credentialFingerprint: transport.credentialFingerprint,
     apiTargetHash: transport.apiTargetHash,
     head(options) {
       return read(

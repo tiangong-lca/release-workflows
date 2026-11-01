@@ -30,6 +30,9 @@ const COMMAND = `node ${shellQuote(CLI_PATH)}`;
 const VALUE_OPTIONS = new Set([
   "candidate",
   "target-hash",
+  "readiness-receipt",
+  "intent-dir",
+  "approval-id",
   "selection",
   "release-version",
   "rollback-of",
@@ -75,6 +78,10 @@ Commands:
   result-publication plan     Freeze exact Result selection and current-publication precondition
   result-publication prepare  Confirm and seal that selection using the manager session
   result-publication status   Observe one exact run without changing its authority
+  result-publication approval-plan    Inspect exact approval intent for confirmation
+  result-publication approve          Confirm intent and independently read the approval
+  result-publication activation-plan  Inspect exact activation intent for confirmation
+  result-publication activate         Confirm intent, activate and independently read authority
   result-readiness verify  Verify all selected files and reader probes; register readiness only
   result-storage inspect  Locally verify a final Result v3 Candidate and freeze its storage plan
   result-storage execute  Confirm that plan, store/read back files and register immutable evidence
@@ -190,6 +197,19 @@ result-publication status:
   No CONN/S3/Worker secrets, implicit login or .env. Selection preparation is not approval.
   localPlanHash binds the local envelope; publishPlanHash binds exact database plan bytes.
 
+result-publication approval-plan:
+  --plan-dir <directory> --readiness-receipt <file> --expires-at <timestamp> --reason <text>
+  --out-dir <new-directory>; optional --approval-id <uuid>
+result-publication activation-plan:
+  --plan-dir <directory> --readiness-receipt <file> --approval-id <uuid> --out-dir <new-directory>
+result-publication approve / activate:
+  --plan-dir <directory> --intent-dir <directory> --confirm <intent-content-sha256>
+  --out-dir <new-directory>
+  These are separate confirmed authority operations. Unknown responses are resolved by
+  exact identity reads, never blind repeat activation. Old consumed/withdrawn history is not revived.
+  Activation observation does not prove public Edge/Platform readback. A new session requires
+  a new unexecuted activation intent; existing execution history remains recoverable.
+
 result-readiness verify:
   --candidate <v3-directory> --final-input <frozen-input-directory>
   --run-id <uuid> --publish-plan-hash <sha256> --out-dir <new-attempt-directory>
@@ -213,6 +233,14 @@ async function main() {
   }
   const commandName = `${command} ${actionName ?? ""}`.trim();
   const handlers = {
+    "result-publication approval-plan": (options) =>
+      runFinalResultPublicationCommand("approval-plan", options),
+    "result-publication approve": (options) =>
+      runFinalResultPublicationCommand("approve", options),
+    "result-publication activation-plan": (options) =>
+      runFinalResultPublicationCommand("activation-plan", options),
+    "result-publication activate": (options) =>
+      runFinalResultPublicationCommand("activate", options),
     "result-publication plan": (options) =>
       runFinalResultPublicationCommand("plan", options),
     "result-publication prepare": (options) =>

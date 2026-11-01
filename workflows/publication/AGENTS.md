@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 14d686f86565f97f3aa69cdfc11a792115a00dbe
-lastReviewedNote: "Release #99: reviewed actor-only selection plans, exact confirmation, bounded recovery transport and separate synthetic activation qualification. Approval/activation intent CLI and hosted adoption remain pending."
+lastReviewedCommit: 405533c249c7cb40e24c422a3522188755191a50
+lastReviewedNote: "Release #99: reviewed exact approval/activation intent confirmation, separate approver/executor binding, session audit fingerprint, immutable recovery and real synthetic CLI qualification. Public readback and hosted adoption remain pending."
 related:
   - README.md
   - ../AGENTS.md
@@ -206,4 +206,21 @@ Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认
   当次权限决定。status 的 run 状态与 publication 当前性必须分开表达。
 - approve/activate 传输原语不构成用户授权，也不绕过上层 intent 的精确确认；
   它们不接受 client-supplied actor。真正批准/激活仍由 Database 原子检查，
-  release-specific 确认入口和独立发布后观察另行接入。
+  确认入口按下节执行，独立公开查询的发布后观察另行接入。
+
+## 最终 Result 批准与激活意图
+
+- Approval Intent 与 Activation Intent 均为 F4：拒绝未知字段，绑定精确本地计划
+  hash、用户/API target、就绪回执和操作身份；意图准备只读，执行必须确认该意图 hash。
+- 批准人可不同于计划创建人，执行人可不同于批准人；readiness 必须绑定批准人，
+  不能把执行人的 probe 权限冒充批准人的就绪证明。数据库执行时仍检查两者资格。
+- 批准意图冻结 expected active approval、原因与至多 24 小时的未来有效期；
+  激活意图冻结精确 approval hash、verification、执行 key 和会话指纹。
+  指纹是版本域分离的 JWT SHA-256，仅用于审计绑定；原令牌和解码 claims 不落盘。
+- 新执行在落盘后重新校验上下文，首次激活要求会话指纹未变；用户会话续期不自动
+  改写旧意图。恢复已提交操作允许同一用户以新会话查询原审计，但不能产生新写入。
+- 写响应不明必须独立读取原 identity，无精确观察则停止；不自动重试批准或激活。
+  历史 consumed/expired/revoked approval 和非 current publication 只恢复观察，
+  不复活授权。记录失败时保留意图和已有证据，新尝试仍用原操作身份查询恢复。
+- 数据库激活观察不是公开读取完成；回执必须保持 `publicReadbackVerified=false`，
+  不能在未通过真实 Edge/Platform/下载链路检查时宣称发布验证完成。
