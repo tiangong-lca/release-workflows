@@ -1,10 +1,7 @@
 // Qualify the actual archive contents and actual encoded matrices. No solver,
 // mutable database reads, version allocation or publication side effects.
-import { readFile, stat, open, rm, realpath } from "node:fs/promises";
+import { readFile, stat, open, rm } from "node:fs/promises";
 import path from "node:path";
-import { gunzipSync } from "node:zlib";
-import { createHash } from "node:crypto";
-import { createReadStream } from "node:fs";
 import { canonicalJson, hashJson, sha256Bytes, fail } from "./common.mjs";
 import {
   frozenDocument,
@@ -19,73 +16,18 @@ import {
 } from "./final-result-projection.mjs";
 
 const MAX_INDEX = 128 * 1024 * 1024;
-const MAX_RECORD = 8 * 1024 * 1024;
 const MAX_NUMERIC = 32 * 1024 * 1024 * 1024;
+const MAX_RECORD = 8 * 1024 * 1024;
+import {
+  safeFile,
+  verifiedBytes,
+  verifyLargeFile,
+  indexFile,
+} from "./final-result-files.mjs";
 function same(actual, expected, code) {
   if (canonicalJson(actual) !== canonicalJson(expected))
     fail(code, "Final Result archive/query pairing differs from frozen input");
 }
-async function safeFile(root, relative) {
-  if (
-    typeof relative !== "string" ||
-    path.isAbsolute(relative) ||
-    relative.includes("\\") ||
-    relative.split("/").some((p) => !p || p === "." || p === "..")
-  )
-    fail("final_pair_path_invalid", "Invalid paired artifact path");
-  const base = await realpath(root);
-  const file = await realpath(path.join(base, relative));
-  if (!file.startsWith(`${base}${path.sep}`))
-    fail("final_pair_path_escape", "Paired file escapes root");
-  return file;
-}
-async function verifiedBytes(root, descriptor, limit) {
-  const file = await safeFile(root, descriptor.name);
-  const size = (await stat(file)).size;
-  if (
-    !Number.isSafeInteger(descriptor.byteSize) ||
-    size !== descriptor.byteSize ||
-    size > limit
-  )
-    fail("final_pair_file_size", "Paired file size mismatch");
-  const bytes = await readFile(file);
-  if (sha256Bytes(bytes) !== descriptor.sha256)
-    fail("final_pair_file_hash", "Paired file hash mismatch");
-  return bytes;
-}
-async function verifyLargeFile(root, descriptor) {
-  const file = await safeFile(root, descriptor.name);
-  const hash = createHash("sha256");
-  let size = 0;
-  for await (const bytes of createReadStream(file)) {
-    size += bytes.length;
-    if (size > MAX_NUMERIC || size > descriptor.byteSize)
-      fail("final_pair_file_size", "Paired file exceeds size");
-    hash.update(bytes);
-  }
-  if (size !== descriptor.byteSize || hash.digest("hex") !== descriptor.sha256)
-    fail("final_pair_file_hash", "Paired matrix integrity mismatch");
-}
-async function indexFile(root, manifest, name) {
-  const descriptor = manifest.files.find((f) => f.name === name);
-  if (
-    !descriptor ||
-    !Number.isSafeInteger(descriptor.plainByteSize) ||
-    descriptor.plainByteSize < 1 ||
-    descriptor.plainByteSize > MAX_INDEX
-  )
-    fail("final_pair_index_size", "Invalid paired index size");
-  const bytes = gunzipSync(await verifiedBytes(root, descriptor, MAX_INDEX), {
-    maxOutputLength: descriptor.plainByteSize + 1,
-  });
-  if (bytes.length !== descriptor.plainByteSize)
-    fail("final_pair_index_size", "Paired index length mismatch");
-  const result = JSON.parse(bytes);
-  if (!Array.isArray(result))
-    fail("final_pair_index_shape", "Paired index must be an array");
-  return result;
-}
-
 // archiveRoot is the isolated, validated TIDAS ZIP extraction, never the input
 // canonical directory. Every frozen index member must be present, exact and
 // canonical-content-equivalent, including semantic support dependencies.

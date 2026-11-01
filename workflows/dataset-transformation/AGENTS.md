@@ -13,7 +13,7 @@ whenToUpdate:
 checkPaths:
   - workflows/dataset-transformation/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: e417d3adbd28878ee05218b992b5f1f700dcfada
+lastReviewedCommit: 96aaeb903d6901986e7f0436f817df6e2b7c47e8
 lastReviewedNote: "Release #99: Derived Result handoff consumer verifies exact producer evidence and canonical bytes, pins SDK validation, and preserves v2 parent Result lineage with pending source association; paired Candidate qualification remains separate."
 related:
   - README.md
@@ -83,3 +83,7 @@ Agent 不得代替用户决定 aggregation target、weighting mode、weights/ann
 ## Derived handoff 接收验证
 
 Execution output 同时保留 frozen spec。生产者拥有只读确定性重放核验，绑定父 Candidate、spec、receipt、handoff 和实际输出 bytes；Materialization 消费其验证结果，不拥有权重算法。旧输出可显式提供原 frozen spec 目录。仅说明文字中的 source UUID 不得提升为发布关联。
+
+## 配对父 Candidate
+
+读取 v3 父 Candidate 时，先调用 Candidate owner 的完整只读资格验证，核对身份凭证、pair/index/catalog 绑定与实际 ZIP/HDF5 bytes，然后按精确 Result role 从包内读取 Process。Result-only v3 不提供 Unit 包，不能作为 Unit 聚合输入。文件可读与业务兼容性分开验证；现有共同 Calculation lineage 和字段决定要求不放宽。

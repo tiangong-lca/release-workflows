@@ -13,7 +13,7 @@ whenToUpdate:
 checkPaths:
   - workflows/release-candidate/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 4b0f1552d51610be8fd84ae27bf1f6cd6155ae3c
+lastReviewedCommit: 96aaeb903d6901986e7f0436f817df6e2b7c47e8
 lastReviewedNote: "Release #99: reviewed final identity RPC isolation, structured direct/derived lineage, immutable input receipts and unknown-outcome recovery; Candidate orchestration and publication remain separate."
 related:
   - README.md
@@ -64,11 +64,11 @@ related:
 - Release 只遍历当前契约明确声明的 LCIA Method -> Flow 依赖；通用引用闭合、TIDAS/eILCD validation、conversion、round-trip 和四包构建必须委托 `tidas-tools release build-packages`，不得在本 Workflow 重写。
 - 委托前必须对所选 `TIDAS_BIN` 执行 `version` 与 `validate --describe` 握手，要求 `tidas.operation-report.v1`、`tidas.validation-describe.v1`、`document-validation-batch.v1` 与 `package.name=tidas`；不绑定精确版本号，但缺少必需能力的二进制仍必须 fail closed，不得静默降级。
 - Release Candidate 的完整闭包构建和逐包 qualification 必须显式向全部 TIDAS 子进程传递同一内存预算。默认值由本 Workflow 拥有并设为 `2048 MiB`；调用者可通过 `--tidas-memory-budget-mib` 或 `TIDAS_MEMORY_BUDGET_MIB` 覆盖。`memory_budget_exceeded` 是可恢复的资源配置失败，必须保留失败证据并返回同一冻结输入、提高预算的精确重试命令，不得建议 `failure analyze` 或数据排除。
-- Candidate 必须正好包含四个 ZIP、每个文件的 byte size/SHA-256、完整工具报告、hash-bound `publication-catalog.json`，并显式记录 `publicationAuthorized=false`。
+- legacy Candidate v1/v2 必须正好包含四个 ZIP、每个文件的 byte size/SHA-256、完整工具报告、hash-bound `publication-catalog.json`，并显式记录 `publicationAuthorized=false`。
 - Candidate v2 的 Publication catalog 必须从当前 canonical bytes 确定性提取 exact required references，绑定 canonical index hash，并冻结 Unit Process/Result roots 与 component closure；不得从 ZIP 名称推断。
 - 四个分发包必须使用显式 release version 和产品级数据库名称；内部 profile ID 只保留在机器证据中。每个最终 ZIP 必须在候选冻结前重新列举、隔离解压，并分别通过 TIDAS 或 eILCD validation。
 - 用户未提供 release version 时，Agent 必须使用 CLI 返回的推荐版本和专用回复模板请求确认；确认前不得启动构建。不得把年月推荐值或 mutable `latest` 当作用户已确认。
-- 输出目录不可覆盖。只有四包回读校验全部通过才能原子提交可见 Candidate；包已经生成但 qualification 失败时，必须把 ZIP、结构化失败清单、已有验证报告和逐包回读目录保留为唯一 sibling failed build，并明确 `candidateCreated=false`、`publicationAuthorized=false`。它是诊断产物，不是 Candidate，也不得被发布。
+- 输出目录不可覆盖。legacy 路线只有四包回读校验全部通过才能原子提交可见 Candidate；包已经生成但 qualification 失败时，必须把 ZIP、结构化失败清单、已有验证报告和逐包回读目录保留为唯一 sibling failed build，并明确 `candidateCreated=false`、`publicationAuthorized=false`。它是诊断产物，不是 Candidate，也不得被发布。
 - `tidas release build-packages --format json` 非零退出时，必须把有界 stdout 解析为结构化 operation report 并写入 failed-build diagnostics；只有 stdout 不是有效 JSON 时才保留有界文本尾部。不得只保留 stderr 而丢失字段级 validation evidence。
 - CLI 的人类输出必须包含有界 `Summary / Next / Reply using template`；JSON 输出必须保持单对象、可解析，并携带 `outcome`、`completeness`、artifact 引用、`nextActions[]` 和 `replyTemplate`。
 - Candidate 成功结果还必须携带结构化 `nextDecision`，列出 Publication planning 和已可用的 Dataset Transformation inspect/freeze/execute 入口，同时披露 Derived Result 消费与 Result-only package 的能力缺口；不把可执行的本地节点描述成已完成的端到端路线。
@@ -128,3 +128,10 @@ Release Candidate 只有在以下条件同时成立时完成：
 - `first-generation` 不能免除权威占用查询和原子登记。legacy 占用、内容冲突须回上游重新生成版本和引用；不改写已冻结文件。响应丢失保留请求与已收到的凭证，只核对/重试同一输入，不自动换版本。
 - 直接关联来自 manifest 绑定的 Result Catalog sourceProcess；派生关联必须经过精确父 Candidate、父 Result 内容和 Transformation spec/receipt/handoff 的绑定。legacy 父 Candidate 要求原始 Package Plan 绑定的 Materialization witness；不得解析说明字段或将祖先视为直接替代结果。新父格式的关联读取有显式版本边界。
 - 编排层在消费 Derived Materialization 前仍调用 producer 的确定性 handoff/replay 校验；纯 lineage 解析不替代 canonical 文件验证或 Transformation 的业务验证。
+
+### 配对 Candidate v3
+
+- `buildFinalResultCandidate` 消费已登记且完整重验的 final input；精确 input hash 和显式 release version 决定本地构建。它不登记新身份或改写输入。
+- v3 明确使用 Result-only 两包 profile，绑定 final input、输入计划、来源、canonical index、publication closure catalog、配对回读证据、各 query artifact 与完整 Result→artifact/ordinal catalog。缺少任何行、身份凭证或真实文件完整性即失败。
+- 候选标记最后提交，已存在的输出目录（包括空目录）不可覆盖；失败保留工作目录及不完整目标，均不得作为 Candidate。v3 `candidateQualified=true` 仅证明本地资格，`publicationAuthorized=false` 保持不变。
+- `loadFinalResultCandidate` 按显式 v3 重验绑定、实际 ZIP/HDF5 文件和结果轴。Transformation 可消费这种候选的 Result 包；无 Unit 包时不能进入 Unit 聚合。legacy Publication 不接受 v3，必须经后继版本化发布契约。

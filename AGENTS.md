@@ -26,7 +26,7 @@ checkPaths:
   - .node-version
   - .github/workflows/ci.yml
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 4b0f1552d51610be8fd84ae27bf1f6cd6155ae3c
+lastReviewedCommit: 96aaeb903d6901986e7f0436f817df6e2b7c47e8
 lastReviewedNote: "Release #99: reviewed final identity RPC isolation, structured direct/derived lineage, immutable input receipts and unknown-outcome recovery; Candidate orchestration and publication remain separate."
 related:
   - README.md

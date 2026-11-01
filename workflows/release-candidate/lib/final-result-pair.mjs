@@ -25,7 +25,7 @@ import {
   tidasSpawnOptions,
 } from "./package-build.mjs";
 
-function successful(report, schema) {
+export function successful(report, schema) {
   if (
     report?.schema_version !== "tidas.operation-report.v1" ||
     report.status !== "succeeded" ||

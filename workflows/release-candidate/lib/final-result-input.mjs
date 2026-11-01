@@ -22,6 +22,7 @@ import {
   identityRegistrationRequest,
   verifyIdentityReceipt,
 } from "./final-result-identity.mjs";
+import { readLocalJson } from "./final-result-files.mjs";
 const MAX_METADATA = 128 * 1024 * 1024;
 function requireValue(value, code = "final_input_invalid") {
   if (!value)
@@ -292,4 +293,128 @@ export async function prepareFinalResultInput({
       // The adapter has no business writes during close.
     }
   }
+}
+
+// Persisted evidence is checked independently of the preparer's return value.
+export function verifyFrozenFinalInput({ input, index, plan, lineage }) {
+  requireValue(
+    input?.schemaVersion === "tiangong.release.final-result-input.v1" &&
+      plan?.schemaVersion === "tiangong.release.final-result-input-plan.v1" &&
+      lineage?.schemaVersion === "tiangong.release.final-result-lineage.v1" &&
+      index?.schemaVersion === "tiangong.release.canonical-dataset-index.v1" &&
+      index.datasetCount === index.datasets?.length &&
+      input.candidateQualified === false &&
+      input.publicationAuthorized === false &&
+      input.indexHash === hashJson(index) &&
+      plan.indexHash === input.indexHash &&
+      input.lineageHash === hashJson(lineage) &&
+      plan.lineageHash === input.lineageHash &&
+      hashJson(plan.lineage) === input.lineageHash &&
+      Array.isArray(input.results) &&
+      Array.isArray(input.selection) &&
+      Array.isArray(plan.registrations) &&
+      input.results.length > 0 &&
+      input.results.length === input.selection.length &&
+      input.results.length === plan.registrations.length &&
+      hashJson(input.selection) === hashJson(plan.selection) &&
+      input.inputHash === plan.inputHash &&
+      input.inputHash ===
+        hashJson({
+          projection: FINAL_RESULT_PROJECTION,
+          index,
+          results: input.selection,
+        }),
+    "final_input_binding_invalid",
+  );
+  const roots = new Map(
+    index.datasets
+      .filter((e) => e.role === "result_process")
+      .map((e) => [key(e), e]),
+  );
+  const sources = new Map(lineage.results.map((r) => [key(r), r]));
+  const seen = new Set();
+  for (const [i, row] of input.results.entries()) {
+    const selected = input.selection[i];
+    const request = plan.registrations[i];
+    const receipt = verifyIdentityReceipt(request, {
+      ok: true,
+      data: row.identityReceipt,
+    });
+    const k = key(row);
+    const source = sources.get(k);
+    requireValue(
+      !seen.has(k) &&
+        roots.has(k) &&
+        source &&
+        source.canonicalContentHash === row.canonicalContentHash &&
+        roots.get(k).canonicalContentHash === row.canonicalContentHash &&
+        selected.uuid === row.uuid &&
+        selected.version === row.version &&
+        source.relationKind === selected.relationKind &&
+        hashJson(source.sources) === hashJson(selected.sources) &&
+        row.uuid === receipt.result.uuid &&
+        row.version === receipt.result.version &&
+        hashJson(row) ===
+          hashJson({
+            ...selected,
+            hashDomain: request.hashDomain,
+            canonicalContentHash: request.canonicalContentHash,
+            contentHash: request.contentHash,
+            identityReceipt: receipt,
+          }),
+      "final_input_binding_invalid",
+    );
+    seen.add(k);
+  }
+  requireValue(seen.size === roots.size, "final_input_root_scope");
+  return input;
+}
+
+export async function loadFinalResultInput(inputDir) {
+  const root = path.resolve(inputDir);
+  const input = await readLocalJson(root, "final-result-input.json");
+  const index = await readLocalJson(root, "canonical-dataset-index.json");
+  const plan = await readLocalJson(root, "input-plan.json");
+  const lineage = await readLocalJson(root, "source-lineage.json");
+  verifyFrozenFinalInput({ input, index, plan, lineage });
+  const canonicalRoot = path.join(root, "canonical");
+  const dependencies = [];
+  let charged = Buffer.byteLength(
+    canonicalJson({ input, index, plan, lineage }),
+  );
+  requireValue(charged <= MAX_METADATA, "final_input_metadata_budget");
+  const entries = new Map();
+  for (const entry of index.datasets) {
+    const document = await frozenDocument(canonicalRoot, entry);
+    const k = `${entry.datasetType}:${key(entry)}`;
+    requireValue(!entries.has(k), "final_input_binding_invalid");
+    entries.set(k, entry);
+    if (
+      ["flow", "flowproperty", "unitgroup", "lciamethod"].includes(
+        entry.datasetType,
+      )
+    ) {
+      charged += Buffer.byteLength(canonicalJson(document));
+      requireValue(charged <= MAX_METADATA, "final_input_metadata_budget");
+      dependencies.push({ ...entry, document });
+    }
+  }
+  const resolveDependency = createFrozenDependencyResolver(dependencies);
+  for (const [ordinal, row] of input.selection.entries()) {
+    const entry = entries.get(`process:${key(row)}`);
+    const request = identityRegistrationRequest(
+      projectFinalResult({
+        document: await frozenDocument(canonicalRoot, entry),
+        identity: entry,
+        layer: row.layer,
+        expectedMethods: row.expectedMethods,
+        resolveDependency,
+      }),
+    );
+    requireValue(
+      hashJson(request) === hashJson(plan.registrations[ordinal]),
+      "final_input_registration_drift",
+    );
+  }
+  return { root, canonicalRoot, input, index, plan, lineage };
 }

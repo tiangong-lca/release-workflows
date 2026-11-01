@@ -17,7 +17,7 @@ checkPaths:
   - workflows/dataset-transformation/cli.mjs
   - workflows/dataset-transformation/test/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: e417d3adbd28878ee05218b992b5f1f700dcfada
+lastReviewedCommit: 96aaeb903d6901986e7f0436f817df6e2b7c47e8
 lastReviewedNote: "Release #99: Derived Result handoff consumer verifies exact producer evidence and canonical bytes, pins SDK validation, and preserves v2 parent Result lineage with pending source association; paired Candidate qualification remains separate."
 related:
   - README.md
@@ -35,7 +35,7 @@ unit-process.weighted-aggregate.v1
 result-process.weighted-aggregate.v0
 ```
 
-`process.weighted-aggregate.v0` 保留为既有 Unit Process operation 的兼容入口。新协商从 `weighted-aggregate.choose-target.v0` 开始，由 Agent 解释并推荐，用户确认后改写为上述一个明确 operation。输入必须是同一已验证 Release Candidate v1/v2 中两个或更多、role 与 operation 一致的精确 Process。
+`process.weighted-aggregate.v0` 保留为既有 Unit Process operation 的兼容入口。新协商从 `weighted-aggregate.choose-target.v0` 开始，由 Agent 解释并推荐，用户确认后改写为上述一个明确 operation。输入必须是同一已验证 Release Candidate v1/v2 或已通过配对资格的 v3 中两个或更多、role 与 operation 一致的精确 Process。
 
 Unit Process operation 表达“构造新的代表性过程并重新计算”；Result Process operation 表达“组合已有计算结果而不重新求解供应链”。LifecycleModel、任意表达式、任意 JSON patch、单位映射或参考流转换仍不支持。
 

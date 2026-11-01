@@ -13,7 +13,7 @@ whenToUpdate:
 checkPaths:
   - workflows/release-candidate/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 4b0f1552d51610be8fd84ae27bf1f6cd6155ae3c
+lastReviewedCommit: 96aaeb903d6901986e7f0436f817df6e2b7c47e8
 lastReviewedNote: "Release #99: reviewed final identity RPC isolation, structured direct/derived lineage, immutable input receipts and unknown-outcome recovery; Candidate orchestration and publication remain separate."
 related:
   - AGENTS.md
@@ -326,3 +326,11 @@ RELEASE_PAIR_TIDAS_BIN=/absolute/path/to/tidas node --test workflows/release-can
 来源解析消费 manifest/index/catalog 的 hash 链。Derived Result 另绑定 Transformation 的精确输入/输出与父 Candidate。legacy 父 Candidate 需提供原 Package Plan 所绑定的 Materialization manifest/index/catalog；缺少 witness 则拒绝关联，不从 comments 猜测。v3 父格式读取其绑定的结构化 final input，但该读取能力不表示完整 v3 Candidate CLI 已交付。
 
 普通测试覆盖确认前零远程调用、冲突拒绝、丢失第二次登记响应后的相同输入恢复，以及直接/派生来源的错误绑定。`final-result-identity.test.mjs` 的数据库联调仅接受测试变量 `RELEASE_IDENTITY_TEST_CONN` 指向 `127.0.0.1:61432/postgres` 的任务专用合成实例；缺少变量明确 skipped。不可把业务连接放进该变量，也不能把本地联调解释为生产部署或登记授权。
+
+### 已登记输入的配对 Candidate v3
+
+内部 `buildFinalResultCandidate({finalInputDir, confirmInputHash, outDir, releaseVersion, tidasBin, encoder})` 重新加载 final input，并对实际 canonical bytes 重算每个登记请求；确认后生成并核验两类文件。最终 `release-candidate.json` 使用 v3，绑定 `final-result-input.json`、`input-plan.json`、`source-lineage.json`、canonical index、`publication-catalog.json`、`query-results.json` 与 `pair/` 中的两包和查询文件。`query-results.json` 逐个保存精确 Result、登记凭证、层能力、直接/派生关联和 artifact/ordinal；不是对用户公开的 DTO。
+
+`loadFinalResultCandidate` 验证 v3 manifest/hash 链、真实包和 HDF5 bytes、结果轴完整覆盖，再允许本地消费者读取。Candidate 移动目录不会改变语义绑定。身份登记是上游独立节点，Candidate 构建不连数据库。失败时不会把部分目录标为合格，也不撤销已经登记的内容；重新构建使用同一输入和新的输出目录。
+
+Transformation 已能读取合格 v3 的 Result 包并核对实际 Process bytes；它的权重、共同 Calculation lineage、字段决定和授权约束不变。当前此构建能力仍为内部 API；final-input CLI/Intake 编排与后继 v2 Publication 尚待接入，不能把 v3 交给旧四包发布入口。

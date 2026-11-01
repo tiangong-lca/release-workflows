@@ -14,7 +14,7 @@ whenToUpdate:
 checkPaths:
   - workflows/dataset-transformation/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: e417d3adbd28878ee05218b992b5f1f700dcfada
+lastReviewedCommit: 96aaeb903d6901986e7f0436f817df6e2b7c47e8
 lastReviewedNote: "Release #99: Derived Result handoff consumer verifies exact producer evidence and canonical bytes, pins SDK validation, and preserves v2 parent Result lineage with pending source association; paired Candidate qualification remains separate."
 related:
   - AGENTS.md
@@ -30,7 +30,7 @@ related:
 Dataset Transformation 是 Release Candidate 完成后的可选再加工入口。加权操作先由 Agent 说明并推荐目标层，用户确认后进入对应路线：
 
 ```text
-Validated Candidate v1/v2
+Validated Candidate v1/v2 或已通过配对资格的 v3
   -> Draft DSL
   -> choose Unit Process or Result Process semantics
   -> exact input inspection
@@ -54,7 +54,7 @@ Validated Candidate v1/v2
 - Result Process 的共同 Calculation lineage、精确 exchange set 和 LCIA method UUID/version set 检查；
 - LCI exchange 与 LCIA result 的确定性加权；
 - 新 identity、review reset、lineage、execution receipt 和 operation-specific handoff；
-- Release Candidate v1/v2 读取，便于已有验证 Candidate 与新 Candidate 共同使用。
+- Release Candidate v1/v2 或已通过配对资格的 v3 读取，便于已有验证 Candidate 与新 Candidate 共同使用。
 
 DSL 详细语义见 [Dataset Transformation DSL v0](dsl-v0.md)。
 
