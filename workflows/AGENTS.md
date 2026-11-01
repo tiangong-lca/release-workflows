@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 4642053e1d9fe1095af4c17296b6dbd1dc888d9e
-lastReviewedNote: "Release #99: reviewed bounded signed private reader verification against frozen canonical input, live authority checks before requests and after final response, read-only full-GET probes, actual local Worker/HDF5/ZIP qualification. Probe evidence does not authorize or activate publication."
+lastReviewedCommit: 466d56389f1d9f0c71bd14d587bd51b0458a1801
+lastReviewedNote: "Release #99: reviewed actor-only bounded probe transport, complete selected-artifact/file/numeric readiness orchestration, durable-before-write evidence, immutable unknown-ACK recovery and real local PostgreSQL/Worker qualification. CLI, approval, activation and hosted adoption remain separate."
 related:
   - ../AGENTS.md
   - ../README.md

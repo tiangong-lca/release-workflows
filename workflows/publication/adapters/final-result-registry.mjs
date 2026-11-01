@@ -121,6 +121,27 @@ export function createFinalResultRegistry({
         "select api.svc_result_candidate_register_v2($1::text,$2::text,$3::jsonb) as result",
         [candidateText, catalogText, JSON.stringify(receipt)],
       ),
+    beginReadiness: (header) =>
+      call(
+        "select api.svc_final_result_readiness_begin_v2($1::jsonb) as result",
+        [JSON.stringify(header)],
+      ),
+    stageReadiness: (id, proofs) =>
+      call(
+        "select api.svc_final_result_readiness_artifacts_v2($1::uuid,$2::jsonb) as result",
+        [id, JSON.stringify(proofs)],
+      ),
+    sealReadiness: (id) =>
+      call(
+        "select api.svc_final_result_readiness_seal_v2($1::uuid) as result",
+        [id],
+      ),
+    describeReadiness: (id) =>
+      call(
+        "select api.svc_final_result_readiness_describe_v2($1::uuid) as result",
+        [id],
+        true,
+      ),
     close: () => pool.end(),
   };
 }

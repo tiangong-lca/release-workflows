@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 4642053e1d9fe1095af4c17296b6dbd1dc888d9e
-lastReviewedNote: "Release #99: reviewed bounded signed private reader verification against frozen canonical input, live authority checks before requests and after final response, read-only full-GET probes, actual local Worker/HDF5/ZIP qualification. Probe evidence does not authorize or activate publication."
+lastReviewedCommit: 466d56389f1d9f0c71bd14d587bd51b0458a1801
+lastReviewedNote: "Release #99: reviewed actor-only bounded probe transport, complete selected-artifact/file/numeric readiness orchestration, durable-before-write evidence, immutable unknown-ACK recovery and real local PostgreSQL/Worker qualification. CLI, approval, activation and hosted adoption remain separate."
 related:
   - AGENTS.md
   - ../release-candidate/README.md
@@ -91,7 +91,7 @@ Abort 本次 upload；创建响应丢失而没有 upload ID、或 Abort 失败�
 `multipartCleanupRequired`。它不是删除历史文件或共享文件的许可；目标环境
 需要独立的未完成 multipart 保留/清理策略。
 
-数据库 adapter 仅调用 Database #879 的五个 v2 存储 RPC。目标 hash 同时绑定
+数据库 adapter 调用 Database #879 的五个 v2 存储 RPC 和四个 readiness 证据 RPC。目标 hash 同时绑定
 CONN 的 host/port/database/user 身份和 S3 origin/region/bucket/prefix，密码
 轮换不改变目标。CONN 只允许 PostgreSQL URI 与 TLS 参数，拒绝 query 参数
 覆盖连接身份。原 actor token/publishable-key transport 保持独立；数据面凭据
@@ -129,8 +129,8 @@ Candidate v3；`verify(probe, {authorize})` 核对 Database 的精确 probe 描�
 响应上限 2 MiB。只允许 HTTPS，测试可用字面 loopback HTTP；不跟随重定向。
 对象 adapter 的 `verifyQuery/verifyCandidate` 只做完整 GET，与上传入口分开。
 
-库级验证不进行 Database readiness seal、审批或 current 切换。完整范围的验证编排、
-actor transport、readiness CLI 和数据库激活仍待接入，不能据此开始真实发布。
+单 Result probe 不进行 Database readiness seal、审批或 current 切换。完整范围由下述
+整体 verifier 处理；readiness CLI、批准/激活操作和发布后验证仍待接入。
 
 合成联调使用实际 Release 编码器/Toolkit ZIP 和独立 Worker binary：
 
@@ -558,3 +558,27 @@ Revoke 只作用于 finalized Event 绑定的 exact publication + projection con
 - 所有输出目录不可覆盖，Plan/Event locator-free，stdout 只返回有界 identity/hash/count 和本地 artifact path；
 - 所有 RPC 显式发送 `Content-Profile: api`，不依赖默认 `public` schema；
 - recipe 不改 package/artifact bytes、Candidate dataset publication 或 private artifact ACL。
+
+### 整体就绪验证库
+
+`verifyFinalResultReadiness` 接收同一 `candidateDir`/`inputDir`、精确 run/plan hash、
+新的 verification UUID、用户只读 actor adapter、只读 object store、受控 registry、
+reader 与持久化 `record` 回调。它枚举全部选中 artifact，先完整 GET 四个 Candidate
+文件和所有选中文件，再从冻结输入重建预期数值、验证每个 artifact 的首末选中 Result。
+LCI 全部分页和 LCIA 明确可用性均须通过。上下文、数量或权限变化立即停止。
+
+验证事件必须先落盘再登记数据库。单 artifact proof 受 64 KiB 限制，seal 由 Database
+检查完整范围与有效期；调用者独立 describe 回读原回执后才记录成功。同一不可变写入
+丢失响应时只精确重试一次，不能延长证据时间或把已有观察换成新内容。失败后用新的
+UUID 开始一轮实际验证。回执不等于批准或发布，仍需后继 actor 流程。
+
+`createFinalResultActor` 使用显式 origin、publishable key 和 actor JWT；只调用固定
+probe API，不接受服务凭据、不调用批准/激活。每次由数据库验证 live manager 资格。
+它不自动登录或刷新会话。用户凭据、Worker HMAC 与数据面 CONN/S3 凭据分别保管。
+
+除上述真实文件/Worker 验证外，可在 owner-reset 的任务专用合成数据库使用
+`RELEASE_READINESS_TEST_CONN` 运行 `final-result-readiness-database.test.mjs`。
+该测试强制本地 `127.0.0.1:61432/postgres` 和 `hdf5-final-879` owner 标签，验证真实
+SQL 登记与 lost-ACK 恢复，保留不可变合成审计供 owner reset。它的 HTTP 用户认证是
+固定 token 测试 facade，不替代 hosted PostgREST/Edge/Platform 验证。不要对共享或
+业务数据库运行该测试，也不要用合成回执执行真实发布。

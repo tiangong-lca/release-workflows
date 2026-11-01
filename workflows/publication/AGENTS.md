@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 4642053e1d9fe1095af4c17296b6dbd1dc888d9e
-lastReviewedNote: "Release #99: reviewed bounded signed private reader verification against frozen canonical input, live authority checks before requests and after final response, read-only full-GET probes, actual local Worker/HDF5/ZIP qualification. Probe evidence does not authorize or activate publication."
+lastReviewedCommit: 466d56389f1d9f0c71bd14d587bd51b0458a1801
+lastReviewedNote: "Release #99: reviewed actor-only bounded probe transport, complete selected-artifact/file/numeric readiness orchestration, durable-before-write evidence, immutable unknown-ACK recovery and real local PostgreSQL/Worker qualification. CLI, approval, activation and hosted adoption remain separate."
 related:
   - README.md
   - ../AGENTS.md
@@ -136,7 +136,7 @@ Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认
 ## 最终 Result v3 存储适配
 
 - `lib/final-result-storage.mjs` 只消费重新验证的配对 Candidate v3。inspect 在本地绑定 Candidate/目标/完整文件集/行映射；execute 必须确认完全相同的 storage plan hash。`result-storage inspect/execute` 是独立 opt-in CLI；它不替代后继发布选择、reader readiness、actor approval 或 activation。inspect 不打开远程客户端，不要求 S3 写凭据；execute 在确认及新输出目录检查之后才构造受控 adapter。
-- `adapters/final-result-object-store.mjs` 使用显式数据面 S3/IAM 凭据；`adapters/final-result-registry.mjs` 使用受保护 CONN、单客户端参数化事务与服务角色，仅调用五个 Database-owned v2 query stage/seal/describe 与 Candidate register/describe RPC。不读取 actor token，不接受任意 SQL，不写 canonical/state 120，不调用批准/激活接口。
+- `adapters/final-result-object-store.mjs` 使用显式数据面 S3/IAM 凭据；`adapters/final-result-registry.mjs` 使用受保护 CONN、单客户端参数化事务与服务角色，仅调用五个 Database-owned v2 query/Candidate 存储 RPC 与四个 readiness begin/artifacts/seal/describe RPC。不读取 actor token，不接受任意 SQL，不写 canonical/state 120，不调用批准/激活接口。
 - 对象键只从 artifact UUID/manifest hash、Candidate byte hash 和固定文件名派生。PUT 和 multipart complete 使用 `If-None-Match: *`，不覆盖已有文件；只可中止本次已知 multipart upload，不能 DeleteObject。每次执行与重试都完整 GET 校验 bytes/hash，不把 ETag 或原数据库 seal 当成当前文件可用性的证明。
 - 本地已验证的索引/ZIP 与远端 GET 字节摘要相同后才登记实际 Result 轴和完整包范围。行按 500 条且 JSONB logical size 不超过 1 MiB 分批，映射摘要必须与 Database 的 ASCII 500-row block contract 一致。
 - 超时、响应丢失与并发同键写入必须先精确回读。query/Candidate seal 响应不明时用 service-only describe 恢复原回执；不能换 artifact、Candidate、Result 版本或覆盖原回执。中止分片无法确认或创建分片响应丢失时明确 `multipartCleanupRequired`，不得声称清理完成。
@@ -158,6 +158,30 @@ Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认
 - 新 `verifyQuery/verifyCandidate` 只完整 GET 校验，缺失或损坏时失败，不修复、不上传。
   只读回读不能使用 `ensure*` 的缺失补传行为。
 - `tiangong.final-result-reader-probe.v1` 是单个精确 Result 的实测证据，不是发布范围
-  全覆盖、数据库 readiness seal 或批准。后继 verifier 仍需枚举全部选中 artifact、
-  完整文件集和所需 probe，绑定时间与权限，并由 Database 在激活时独立核对。
-  现阶段没有新增可执行 reader CLI、actor transport 或激活入口，不能把本库回执当成可发布状态。
+  全覆盖、数据库 readiness seal 或批准。整体 verifier 按下述契约枚举选中范围并登记证据；Database 在激活时仍须独立核对。
+  现阶段没有新增可执行 readiness CLI 或激活入口，不能把本库回执当成发布完成状态。
+
+## 最终 Result 整体就绪验证
+
+- `adapters/final-result-actor.mjs` 只以用户 JWT 调用两个固定的、显式 `api`
+  profile 的 probe RPC。只允许 HTTPS 或字面量 loopback HTTP origin，拒绝重定向、
+  secret/service token 与过期会话；JWT 解码只排除错误凭据类型，权限由服务器每次
+  校验。读取与响应体均有期限和大小限制；原始远端错误与凭据不进入输出。
+- `lib/final-result-readiness.mjs` 对同一 Candidate/final input 先枚举完整的选中
+  artifact 范围，严格验证分页、唯一性、选中数量与首末 probe；绑定用户、目标、
+  Candidate、选择、runtime revision 与 reader SHA。数据面数据库 target hash
+  必须与对象存储 target 的数据库身份相同。
+- attempt 时钟在远端 GET 前开始。完整核验四个 Candidate 文件和全部选中 artifact
+  文件后，再运行独立数值 probe，避免较慢 GET 提前耗尽 reader 的有效窗口。
+  每个 Worker 请求仍重新检查用户权限；seal 前再读取当前上下文。
+- 调用者必须在新的不可变本地证据目录实现 `record(event)`：attempt、header、每个
+  artifact proof 必须在相应下一次数据库写入之前持久化。未落盘就停止。每个 proof
+  不超过 Database 的 64 KiB JSONB 预算，单 artifact 分批登记；完整 seal 的数量、
+  上下文和有效期必须独立 describe 回读一致后才能记录成功。
+- 仅对提交结果不明的同一不可变 payload 重试一次，数据库以原 UUID 仲裁；连续不明
+  或冲突必须停止。失败重开验证使用新 UUID 与新观察，不能延长、改写或补造历史证据。
+  成功回执仍 `publicationAuthorized=false`；不生成批准、不激活、不写业务数据。
+- 整体本地资格验证须覆盖真实 Toolkit ZIP、Release HDF5、S3 SDK/HTTP、Worker
+  与隔离 PostgreSQL 的 identity/storage/selection/runtime/readiness RPC。测试用
+  HTTP facade 只接收固定合成 token 并执行真实 actor SQL；不将其描述为 hosted JWT、
+  Edge 或 Platform 的端到端证明。
