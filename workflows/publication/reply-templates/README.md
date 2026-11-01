@@ -25,6 +25,7 @@ related:
 - 只使用 CLI 返回的真实事实替换占位符；
 - 模板按真实沟通语义划分，不按 CLI 命令数量扩张；Portal LCIA 只使用 Plan prepared、Lifecycle result 和 Command failed 三类；
 - 模板只要求 `command`、`outcome`、`completeness`、`artifacts`、`nextActions` 等共同上下文；exact identity/hash 按当前结果择要呈现，不在模板中重复枚举所有 evidence；
+- 最终 Result 存储共用一个模板，按 inspect/execute 的 completeness 区分本地计划与远端文件证据；均不得称为发布完成。
 - Draft Plan 或 Executable Plan 准备成功不表示已经审批、写入或发布；
 - 回复必须披露自动补齐的依赖和因排除而递归剪枝的数据数量；
 - 回复必须披露 mixed-state 目标：Result Process 目标是 120，普通 Unit/Model/support 保持 100；dependency member 不跟随选中组件；

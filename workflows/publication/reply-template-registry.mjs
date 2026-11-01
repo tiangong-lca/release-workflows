@@ -19,6 +19,32 @@ const portalCommandFailed = [
 ];
 
 const templates = Object.freeze({
+  "result-storage inspect": [
+    "final-result-storage",
+    "final-result-storage.md",
+    [
+      "command",
+      "outcome",
+      "completeness",
+      "storagePlanHash",
+      "publicationAuthorized",
+      "artifacts",
+      "nextActions",
+    ],
+  ],
+  "result-storage execute": [
+    "final-result-storage",
+    "final-result-storage.md",
+    [
+      "command",
+      "outcome",
+      "completeness",
+      "storagePlanHash",
+      "publicationAuthorized",
+      "artifacts",
+      "nextActions",
+    ],
+  ],
   "plan prepare": [
     "publish-plan-prepared",
     "publish-plan-prepared.md",

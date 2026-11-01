@@ -4,6 +4,10 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
+import { tmpdir } from "node:os";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+const exec = promisify(execFile);
 import { setup } from "../../release-candidate/test/fixtures/final-input.mjs";
 import {
   inspectFinalResultInput,
@@ -295,6 +299,56 @@ test(
       ).rows[0].n,
       before,
     );
+    // Exercise the real CLI (no injected transports) against the same exact
+    // synthetic endpoint. stdout remains bounded and no secret is persisted.
+    const cli = fileURLToPath(new URL("../cli.mjs", import.meta.url));
+    const cliEnv = {
+      ...process.env,
+      CONN: connectionString,
+      S3_ENDPOINT: s3.endpoint,
+      S3_REGION: "us-east-1",
+      S3_BUCKET: "synthetic-results",
+      S3_PREFIX: "test-owned",
+      S3_ACCESS_KEY_ID: "synthetic-access",
+      S3_SECRET_ACCESS_KEY: "synthetic-secret",
+    };
+    const inspectRun = await exec(
+      process.execPath,
+      [
+        cli,
+        "result-storage",
+        "inspect",
+        "--candidate",
+        candidate.path,
+        "--out-dir",
+        path.join(input.root, "cli-storage-plan"),
+        "--json",
+      ],
+      { cwd: tmpdir(), env: cliEnv },
+    );
+    const cliPlan = JSON.parse(inspectRun.stdout);
+    assert.equal(cliPlan.storagePlanHash, inspected.planHash);
+    const executeRun = await exec(
+      process.execPath,
+      cliPlan.nextActions[0].argv.slice(1),
+      { cwd: tmpdir(), env: cliEnv },
+    );
+    const cliResult = JSON.parse(executeRun.stdout);
+    assert.equal(cliResult.outcome, "final_result_storage_verified");
+    assert.equal(cliResult.publicationAuthorized, false);
+    assert.deepEqual(
+      JSON.parse(await readFile(cliResult.artifacts.storageReceipt, "utf8")),
+      receipt,
+    );
+    assert.equal(
+      s3.requests.filter((r) => r.method !== "GET").length,
+      mutations,
+    );
+    assert.doesNotMatch(
+      inspectRun.stdout + executeRun.stdout,
+      /synthetic-secret|postgresql:|127\.0\.0\.1/,
+    );
+    assert.equal(cliResult.replyTemplate.id, "final-result-storage");
     // Corrupt one contained file: even a stored DB seal cannot bypass full GET.
     const key = [...s3.objects.keys()].find((k) => k.endsWith("/lci.h5"));
     s3.objects.set(key, Buffer.alloc(s3.objects.get(key).length, 9));
@@ -305,5 +359,48 @@ test(
       }),
       { code: "final_storage_content_conflict" },
     );
+    try {
+      await exec(
+        process.execPath,
+        [
+          cli,
+          "result-storage",
+          "execute",
+          "--candidate",
+          candidate.path,
+          "--confirm",
+          inspected.planHash,
+          "--out-dir",
+          path.join(input.root, "cli-storage-failed"),
+          "--json",
+        ],
+        { cwd: tmpdir(), env: cliEnv },
+      );
+      assert.fail("corrupt storage must fail the real CLI");
+    } catch (error) {
+      const failure = JSON.parse(error.stderr);
+      assert.equal(failure.error.code, "final_storage_content_conflict");
+      assert.equal(failure.error.details.attemptRetained, true);
+      assert.ok(failure.nextActions[0].argv.includes(inspected.planHash));
+      assert.ok(
+        failure.nextActions[0].argv.includes(
+          path.join(input.root, "cli-storage-failed-retry"),
+        ),
+      );
+      assert.equal(
+        JSON.parse(
+          await readFile(
+            path.join(input.root, "cli-storage-failed/storage-failure.json"),
+            "utf8",
+          ),
+        ).publicationAuthorized,
+        false,
+      );
+      assert.doesNotMatch(
+        error.stderr,
+        /synthetic-secret|postgresql:|127\.0\.0\.1/,
+      );
+      assert.equal(error.stdout, "");
+    }
   },
 );

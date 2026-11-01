@@ -162,5 +162,15 @@ export async function fixture(
     byteSize: bytes.length,
   };
   const key = `/synthetic-results/test-owned/query-artifacts/${ref.artifactId}/${ref.manifestSha256}/lci.h5`;
-  return { store, descriptor, filePath, requests, objects, parts, key, bytes };
+  return {
+    store,
+    descriptor,
+    filePath,
+    requests,
+    objects,
+    parts,
+    key,
+    bytes,
+    endpoint: `http://127.0.0.1:${server.address().port}`,
+  };
 }

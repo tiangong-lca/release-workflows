@@ -26,8 +26,8 @@ checkPaths:
   - .node-version
   - .github/workflows/ci.yml
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 0cbdafca34cd2a4a06b453c46bcdbaea8d781f2c
-lastReviewedNote: "Release #99: reviewed v3 conditional object transport, bounded full GET and five service-only registry RPCs, immutable receipt recovery, actual synthetic Candidate/S3/PostgreSQL proof and exact manifest fields. Actor publication authority and runtime policies remain separate and unchanged."
+lastReviewedCommit: 2e04d0d35c6f874a0572ffb0fc2f7dee1fa06db3
+lastReviewedNote: "Release #99: reviewed opt-in final Result storage CLI, exact plan confirmation, explicit operator environment, retained safe recovery and actual CLI/SDK/isolated PostgreSQL proof. Root ownership and actor publication authority remain unchanged."
 related:
   - README.md
   - .docpact/config.yaml

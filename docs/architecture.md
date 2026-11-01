@@ -18,8 +18,8 @@ checkPaths:
   - .docpact/config.yaml
   - workflows/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 0cbdafca34cd2a4a06b453c46bcdbaea8d781f2c
-lastReviewedNote: "Release #99: reviewed v3 conditional object transport, bounded full GET and five service-only registry RPCs, immutable receipt recovery, actual synthetic Candidate/S3/PostgreSQL proof and exact manifest fields. Actor publication authority and runtime policies remain separate and unchanged."
+lastReviewedCommit: 2e04d0d35c6f874a0572ffb0fc2f7dee1fa06db3
+lastReviewedNote: "Release #99: reviewed opt-in final Result storage CLI, exact plan confirmation, explicit operator environment, retained safe recovery and actual CLI/SDK/isolated PostgreSQL proof. Root ownership and actor publication authority remain unchanged."
 related:
   - ../AGENTS.md
   - ../README.md
@@ -42,7 +42,7 @@ Calculation -> verified Calculation Bundle
 
 Calculation 内部包含完整性验证；Result/Model 是 Materialization recipe；packaging/qualification 属于 Candidate。它们不是新增顶层 Workflow。Publication 内的 Portal LCIA recipe 从 ready V3 package / prepared projection 开始，与 Candidate dataset recipe 独立。
 
-Transformation handoff 表达目标：Unit 返回计算，Result 返回物化，最终形成新 Candidate。Materialization 通过 `materialize derived` 验证加工后字节；Candidate 的 `result` 命令族接通 Result-only Intake、结构化父血缘、登记和 v3 两包/HDF5 配对。身份登记是独立数据面动作；本地文件构建不登记身份。Publication 已实现 v3 的内部存储 adapter：条件创建非公开对象、完整 GET、精确行/包登记及丢失回执恢复；它不取得 actor 发布权限，CLI 和版本化选择/就绪/激活仍待接通。不得把 producer 输出、接口字段或设计箭头当作消费者实现证据。补齐路线需要各 owner 的明确契约与真实跨节点验证。
+Transformation handoff 表达目标：Unit 返回计算，Result 返回物化，最终形成新 Candidate。Materialization 通过 `materialize derived` 验证加工后字节；Candidate 的 `result` 命令族接通 Result-only Intake、结构化父血缘、登记和 v3 两包/HDF5 配对。身份登记是独立数据面动作；本地文件构建不登记身份。Publication 的 `result-storage inspect/execute` 接通 v3 的存储 adapter：本地精确计划、条件创建非公开对象、完整 GET、精确行/包登记及丢失回执恢复；它不取得 actor 发布权限，版本化选择/就绪/激活仍待接通。不得把 producer 输出、接口字段或设计箭头当作消费者实现证据。补齐路线需要各 owner 的明确契约与真实跨节点验证。
 
 ## 权威来源
 

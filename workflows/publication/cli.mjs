@@ -20,6 +20,7 @@ import {
   prepareResultProcessPublication,
   verifyResultProcessReadback,
 } from "./lib/result-process.mjs";
+import { runFinalResultStorageCommand } from "./lib/final-result-storage-command.mjs";
 import { replyTemplateFor } from "./reply-template-registry.mjs";
 
 const CLI_PATH = fileURLToPath(new URL("./cli.mjs", import.meta.url));
@@ -54,7 +55,7 @@ const BOOLEAN_OPTIONS = new Set(["json", "help"]);
 
 const HELP = `release-publication <command> [options]
 
-Candidate-bound dataset Publication plus an opt-in Portal LCIA package/projection workflow. Remote reads and writes always use an actor-scoped session; service-role secrets are not accepted.
+Candidate-bound dataset Publication plus an opt-in Portal LCIA package/projection workflow. Actor publication recipes use actor-scoped sessions. The separate result-storage recipe uses explicit operator CONN and S3 credentials only for immutable file storage and registration; it cannot publish.
 
 Dataset publication target state follows the dataset role, per operation: Result Process
 datasets target state 120 through the manager-attested Database command, and ordinary Unit
@@ -62,6 +63,8 @@ Process, LifecycleModel and support datasets keep the existing state 100 platfor
 A plan is therefore mixed-state, not a single global state.
 
 Commands:
+  result-storage inspect  Locally verify a final Result v3 Candidate and freeze its storage plan
+  result-storage execute  Confirm that plan, store/read back files and register immutable evidence
   plan prepare          Resolve dependency-safe scope into an unapproved Draft Plan
   payload materialize  Extract only the resolved TIDAS datasets from the Candidate
   target inspect        Compare exact UUID + Version + content against the platform
@@ -79,7 +82,7 @@ Commands:
   projection revoke     Confirm, revoke, and independently verify the exact binding
 
 Core options:
-  --candidate <path>              Release Candidate v2 directory
+  --candidate <path>              Candidate v2 directory; result-storage requires v3
   --plan-dir <path>               Publication Draft Plan directory
   --payload-dir <path>            Materialized Publication payload directory
   --inspection-dir <path>         Target inspection directory
@@ -150,7 +153,18 @@ Notes:
   prepare/publish/readback RPCs; the platform dataset commands are never used for them and
   no intermediate 0 or 100 row is ever created.
 
-Required remote environment:
+result-storage inspect:
+  --candidate <v3-directory> --out-dir <new-directory>
+
+result-storage execute:
+  --candidate <v3-directory> --confirm <storage-plan-sha256> --out-dir <new-attempt-directory>
+  Requires explicit CONN, S3_ENDPOINT, S3_REGION, S3_BUCKET; optional S3_PREFIX.
+  Execute also requires S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY; optional S3_SESSION_TOKEN.
+  Inspect makes no remote requests and requires no S3 credentials. No .env is loaded.
+  Retry the same Candidate/target/confirmation in a NEW output directory; preserve prior attempts.
+  Storage success does not authorize publication or make a result visible.
+
+Actor remote environment:
   TIANGONG_LCA_API_BASE_URL
   TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY
   TIANGONG_LCA_ACCESS_TOKEN or TIANGONG_LCA_API_KEY
@@ -164,6 +178,10 @@ async function main() {
   }
   const commandName = `${command} ${actionName ?? ""}`.trim();
   const handlers = {
+    "result-storage inspect": (options) =>
+      runFinalResultStorageCommand("inspect", options),
+    "result-storage execute": (options) =>
+      runFinalResultStorageCommand("execute", options),
     "plan prepare": planPrepare,
     "payload materialize": payloadMaterialize,
     "target inspect": targetInspect,
@@ -904,13 +922,16 @@ main().catch((error) => {
       message: error.message,
       details: error.details ?? {},
     },
-    nextActions: [
-      {
-        kind: "inspect_publication_help",
-        command: `${COMMAND} --help`,
-        argv: ["node", CLI_PATH, "--help"],
-      },
-    ],
+    nextActions:
+      commandName.startsWith("result-storage ") && error.nextActions
+        ? error.nextActions
+        : [
+            {
+              kind: "inspect_publication_help",
+              command: `${COMMAND} --help`,
+              argv: ["node", CLI_PATH, "--help"],
+            },
+          ],
     replyTemplate: replyTemplateFor(commandName, { ok: false }),
   };
   if (process.argv.includes("--json"))

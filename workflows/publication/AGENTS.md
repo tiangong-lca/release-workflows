@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 0cbdafca34cd2a4a06b453c46bcdbaea8d781f2c
-lastReviewedNote: "Release #99: reviewed v3 conditional object transport, bounded full GET and five service-only registry RPCs, immutable receipt recovery, actual synthetic Candidate/S3/PostgreSQL proof and exact manifest fields. Actor publication authority and runtime policies remain separate and unchanged."
+lastReviewedCommit: 2e04d0d35c6f874a0572ffb0fc2f7dee1fa06db3
+lastReviewedNote: "Release #99: reviewed opt-in final Result storage CLI, exact local plan confirmation, explicit operator environment, retained sanitized attempts and concrete recovery, actual CLI/SDK/isolated PostgreSQL qualification. Actor approval, activation and runtime policies remain separate."
 related:
   - README.md
   - ../AGENTS.md
@@ -135,10 +135,11 @@ Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认
 
 ## 最终 Result v3 存储适配
 
-- `lib/final-result-storage.mjs` 只消费重新验证的配对 Candidate v3。inspect 在本地绑定 Candidate/目标/完整文件集/行映射；execute 必须确认完全相同的 storage plan hash。此内部能力尚未接入 CLI，也不替代后继发布选择、reader readiness、actor approval 或 activation。
+- `lib/final-result-storage.mjs` 只消费重新验证的配对 Candidate v3。inspect 在本地绑定 Candidate/目标/完整文件集/行映射；execute 必须确认完全相同的 storage plan hash。`result-storage inspect/execute` 是独立 opt-in CLI；它不替代后继发布选择、reader readiness、actor approval 或 activation。inspect 不打开远程客户端，不要求 S3 写凭据；execute 在确认及新输出目录检查之后才构造受控 adapter。
 - `adapters/final-result-object-store.mjs` 使用显式数据面 S3/IAM 凭据；`adapters/final-result-registry.mjs` 使用受保护 CONN、单客户端参数化事务与服务角色，仅调用五个 Database-owned v2 query stage/seal/describe 与 Candidate register/describe RPC。不读取 actor token，不接受任意 SQL，不写 canonical/state 120，不调用批准/激活接口。
 - 对象键只从 artifact UUID/manifest hash、Candidate byte hash 和固定文件名派生。PUT 和 multipart complete 使用 `If-None-Match: *`，不覆盖已有文件；只可中止本次已知 multipart upload，不能 DeleteObject。每次执行与重试都完整 GET 校验 bytes/hash，不把 ETag 或原数据库 seal 当成当前文件可用性的证明。
 - 本地已验证的索引/ZIP 与远端 GET 字节摘要相同后才登记实际 Result 轴和完整包范围。行按 500 条且 JSONB logical size 不超过 1 MiB 分批，映射摘要必须与 Database 的 ASCII 500-row block contract 一致。
 - 超时、响应丢失与并发同键写入必须先精确回读。query/Candidate seal 响应不明时用 service-only describe 恢复原回执；不能换 artifact、Candidate、Result 版本或覆盖原回执。中止分片无法确认或创建分片响应丢失时明确 `multipartCleanupRequired`，不得声称清理完成。
 - 目标 fingerprint 绑定数据库连接身份（不含密码）、存储 origin/region/bucket/prefix。配置必须指向已经治理的非公开存储；adapter 不改变 bucket policy，也不能以文件核验代替非公开环境准入。原 actor recipes 与 Portal projection 的 secret/locator 禁止仍保持。
+- CLI 只读取显式进程环境中的 `CONN` 与既有 `S3_*` 白名单，不隐式载入 `.env` 或 AWS credential provider chain，不接受凭据参数。证据输出必须位于冻结 Candidate 外部，含符号链接解析。每次 execute 使用新的输出目录：先写 attempt、成功后写 receipt；失败保留 attempt/failure，精确重试用新目录，不能删除记录伪造完成。stdout/stderr 只返回有界摘要与安全错误码；原始 provider/连接异常不外泄。
 - 该阶段只产生不可变存储登记证据，始终 `publicationAuthorized=false`。普通用户访问、完整 ZIP 授权及原子 current 切换由版本化 Database/Edge/Platform 接入另行完成。

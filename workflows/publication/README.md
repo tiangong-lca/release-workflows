@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 0cbdafca34cd2a4a06b453c46bcdbaea8d781f2c
-lastReviewedNote: "Release #99: reviewed v3 conditional object transport, bounded full GET and five service-only registry RPCs, immutable receipt recovery, actual synthetic Candidate/S3/PostgreSQL proof and exact manifest fields. Actor publication authority and runtime policies remain separate and unchanged."
+lastReviewedCommit: 2e04d0d35c6f874a0572ffb0fc2f7dee1fa06db3
+lastReviewedNote: "Release #99: reviewed opt-in final Result storage CLI, exact local plan confirmation, explicit operator environment, retained sanitized attempts and concrete recovery, actual CLI/SDK/isolated PostgreSQL qualification. Actor approval, activation and runtime policies remain separate."
 related:
   - AGENTS.md
   - ../release-candidate/README.md
@@ -40,19 +40,49 @@ Release Candidate v2
 
 Dataset Transformation 不属于本 Workflow。任何 Process/LifeCycleModel 内容修改、规则聚合、UUID/Version 改变或重新计算，都必须先产生新的 Candidate，再进入 Publication。
 
-## 最终 Result v3 存储适配（内部 API）
+## 最终 Result v3 文件存储
 
 `lib/final-result-storage.mjs` 提供 `inspectFinalResultStorage` 和
 `executeFinalResultStorage`，消费已通过真实 HDF5/ZIP 回读及全局身份登记的
 Candidate v3。inspect 仅本地读取，返回精确 storage plan/hash；execute 需要同一
-hash 确认，并重新验证 Candidate。当前尚无 CLI 路由；原 `plan prepare` 等命令
+hash 确认，并重新验证 Candidate。CLI 为 `result-storage inspect/execute`；原 `plan prepare` 等命令
 仍按下文 Candidate v2/actor recipe 运行，不能用它们发布 v3。
 
 受控 S3 adapter 只写入 `<prefix>/query-artifacts/<artifactId>/<manifestSha256>/`
 和 `<prefix>/release-candidates/<candidateSha256>/` 下的固定文件名。后者包括
 `release-candidate.json`、`publication-catalog.json`、`result.tidas.zip`、
-`result.ilcd.zip`。存储命名不改变 ZIP 内部内容与原下载文件名。每个对象最大
-32 GiB，16 MiB 顺序分片；默认每请求/完整 GET 最长 15 分钟，可在 100 ms 至
+`result.ilcd.zip`。存储命名不改变 ZIP 内部内容与原下载文件名。
+
+进程环境必须显式提供 `CONN`、`S3_ENDPOINT`、`S3_REGION`、`S3_BUCKET`，
+可选 `S3_PREFIX`。inspect 只解析目标并校验本地 Candidate，不联网、不读取
+S3 secret。execute 还要求 `S3_ACCESS_KEY_ID`、`S3_SECRET_ACCESS_KEY`，可选
+`S3_SESSION_TOKEN`；不会隐式读取 `.env` 或其他 AWS credential provider。
+目标必须是已经治理的非公开存储，CLI 不改变 bucket policy。
+
+```bash
+node workflows/publication/cli.mjs result-storage inspect \
+  --candidate /absolute/path/final-candidate --out-dir /absolute/path/storage-plan --json
+```
+
+检查输出目录中的 `storage-plan.json` 与不含密码的 `storage-target.json`，再使用
+CLI 返回的绝对路径 `nextActions`。`storage-plan.json` 保存无末尾换行的 canonical
+JSON，其文件 SHA-256 等于返回的 `storagePlanHash`；确认值直接取该字段。
+
+```bash
+node workflows/publication/cli.mjs result-storage execute \
+  --candidate /absolute/path/final-candidate --confirm '<storagePlanHash>' \
+  --out-dir /absolute/path/storage-attempt-1 --json
+```
+
+存储证据目录必须在冻结 Candidate 外部；符号链接别名也不能绕过此边界。
+execute 在确认 hash、校验 Candidate 和检查新输出目录后才构造远程客户端。
+它先保留 `storage-attempt.json`，成功后写 `storage-receipt.json`；失败保留
+attempt 与可写入的 `storage-failure.json`，不覆盖历史，也不输出原始连接/provider
+异常。使用相同 Candidate、目标和确认值，在新目录重试；数据库回执及远端完整
+GET 决定恢复结果，不能以本地旧 receipt 跳过回读。成功仍然
+`publicationAuthorized=false`，CLI 明确报告后继发布适配尚未完成。
+
+每个对象最大 32 GiB，16 MiB 顺序分片；默认每请求/完整 GET 最长 15 分钟，可在 100 ms 至
 1 小时内显式配置。内存按单分片和有界元数据使用，不把整张矩阵或 ZIP 读进内存。
 
 写入使用 S3 条件创建，现有相同 bytes 通过完整 GET 后复用；现有不同 bytes
@@ -74,7 +104,7 @@ CONN 的 host/port/database/user 身份和 S3 origin/region/bucket/prefix，密�
 选择、非公开 reader/权限就绪验证、actor 批准、原子激活和发布后验证。
 
 验证入口为 `test/final-result-object-store.test.mjs`（真实 SDK 对 loopback 合成
-HTTP 服务）和 `test/final-result-storage.test.mjs`。后者的实际产物/数据库联调
+HTTP 服务）和 `test/final-result-storage.test.mjs`。后者还通过真实子进程 CLI 验证 inspect、execute 和只读复用；其实际产物/数据库联调
 显式要求 `RELEASE_PAIR_TIDAS_BIN` 与 `RELEASE_STORAGE_TEST_CONN`，且拒绝
 `127.0.0.1:61432/postgres` 以外的连接；它只用于 Database #879 拥有的本地合成库。
 默认测试跳过该联调，不能称为通过。测试实际生成三个 Result、两组 HDF5 和两个
