@@ -64,3 +64,5 @@ Transformation 的 inspect、freeze、execute 已实现；其 `completed` 只证
 Agent 从 [AGENTS.md](AGENTS.md) 进入，按路径读取 scoped contract。根 [Workflow 导航](workflows/README.md) 帮助选择动作；跨 Workflow 所有权、证据与交接设计见 [architecture](docs/architecture.md)。操作命令在各 Workflow README 与 CLI help 中维护。
 
 精确工具链以 `.node-version` 和根 `package.json` 为准；安装及验证入口见根 AGENTS。运行产物放在 ignored `.release/`。机密配置仅按 `.env.example` 和所属 Workflow 契约使用，不加入源码或运行证据。
+
+最终 Result 的查询投影与原生 HDF5 编码由 [Release Candidate](workflows/release-candidate/README.md) 拥有。它与计算解耦；本地编码证据不替代 ZIP、Candidate 或 Publication 门禁。

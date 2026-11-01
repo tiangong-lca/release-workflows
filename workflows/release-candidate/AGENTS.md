@@ -106,3 +106,11 @@ Release Candidate 只有在以下条件同时成立时完成：
 - Candidate 原子冻结且明确记录 `publicationAuthorized=false`；
 - 证据和恢复信息已保存；
 - 下一步明确指向原 Candidate 的 Publication planning 或 Dataset Transformation。
+
+## 最终 Result 数值编码契约
+
+- `lib/final-result-projection.mjs` 从冻结 Result 和精确 Flow/Flow Property/Unit Group/LCIA Method 提取查询视图。参考 exchange 按内部 ID 单独表达，其余只接受 Elementary Flow；复合键必须保留方向、位置、function type 和精确单位身份。
+- 当前投影 profile 要求每条 exchange 的有效 `resultingAmount`（包括零），不提供 `meanAmount` 回退；LCIA 读取最终 `meanAmount`。不归一化、不换算、不重新特征化；缺失层/方法与合法零值分开。
+- `lib/final-result-artifacts.mjs` 按层/方法集分组，逐结果 spool；CSR LCI、dense LCIA 与索引均由 Candidate 拥有的 `native/` 工具生成/回读。索引和单行/总文件预算不可绕过，零行及负值保留，失败不能产生合格 Candidate。
+- encoding receipt 必须显式 `candidateQualified=false` 和 `publicationAuthorized=false`；只有后续独立 ZIP 一致性、身份权威登记及配对 Candidate 门禁成立才能取得相应资格。不能通过 v1 Calculation 绑定把新 Result 轴伪装成 source Unit 轴。
+- 独立预期值测试分别验证领域投影与真实 HDF5 文件；不能仅以 writer 自己生成的相同错误值互比证明正确。

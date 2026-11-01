@@ -1,8 +1,8 @@
 version: 1
 layout: repo
-lastReviewedAt: 2026-10-30
-lastReviewedCommit: 8a9aa0bbb273d630247264318201f84e6b72b9ba
-lastReviewedNote: "Release #97: reviewed Calculation-owned query artifact transport/metadata registration and unchanged numeric, ZIP, actor Publication, dependency and delivery boundaries."
+lastReviewedAt: "2026-11-01"
+lastReviewedCommit: "fb448b9eb7a6f5857e6ceca956ae157b3ae5d4e5"
+lastReviewedNote: "Release #99: reviewed Candidate-owned final Result projection, native HDF5 encoder and paired-file prerequisites; existing ownership rules cover the workflow-local native source and tests."
 
 catalog:
   repos:

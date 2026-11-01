@@ -48,8 +48,12 @@ Candidate 成功冻结后不可原地修改。Publication 可规划引用完整�
 
 ## 维护与验证
 
-所有 JavaScript/MJS Workflow 共用根 pnpm workspace 和唯一 lockfile；仅从仓库根 frozen install。业务代码、schema、fixture 和测试留在所属 Workflow；根 `test/` 只负责仓库工具链/跨 Workflow 自动化契约。
+所有 JavaScript/MJS Workflow 共用根 pnpm workspace 和唯一 pnpm lockfile；仅从仓库根 frozen install。业务代码、schema、fixture 和测试留在所属 Workflow；根 `test/` 只负责仓库工具链/跨 Workflow 自动化契约。
 
 各 Workflow 的精确 Node engine 必须与根 `.node-version`、根 manifest 和 CI 选择一致。运行时更新沿用 frozen install 与完整 `prepush:gate`，不通过放宽 engine、修改依赖图或降低业务验证来替代资格验证。
 
 每个 Workflow 的 AGENTS 维护执行红线及触发式阅读入口，README 维护当前操作与限制。源码、schema、配置和测试解释当前可执行行为；文档与实现冲突时应显式修正，不能擅自改变授权或业务语义。任务进度、历史验收和临时 workaround 不累计为常驻规则。
+
+## 最终结果查询编码
+
+Candidate 内的最终 Result 投影和原生 HDF5 编码器拥有生成逻辑，Worker 查询服务继续拥有读取。编码只消费冻结标准内容及精确依赖，不从父 Bundle 替换加工后数值；本地 encoding receipt 不等于配对 Candidate、身份登记或发布批准。既有 Calculation v1 bridge 在消费者迁移前保留其原契约。

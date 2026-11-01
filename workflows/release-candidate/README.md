@@ -284,3 +284,17 @@ Candidate v2 在 canonical bytes 仍可验证时生成 `publication-catalog.json
 
 1. 为 Dataset Transformation 派生 Candidate 增加显式 `parentCandidateHash` 与 transformation evidence binding。
 2. 在 Publication target inspection 契约确定后，把 Candidate component metadata 与远程 target classification 对接。
+
+## 最终 Result 查询文件生成内核
+
+内部 `buildFinalResultArtifacts({canonicalRoot, index, results, outDir, encoder})` 从已冻结 canonical index 的真实 bytes 提取 Result；`results` 显式给出 UUID/version、layer、expectedMethods、direct/derived 及精确 sources。每个文件重新检查大小、SHA-256 和 canonical content hash，单位和指标仅从冻结依赖解析。v1 profile 要求 `resultingAmount`，缺失/无效最终值会失败，不回退旧 `meanAmount`。
+
+按能力/方法集分别生成 `tiangong.query-artifact.v2`：`results.json.gz` 使用最终 Result 身份，`inventory-items.json.gz` 固定完整清单键，`impacts.json.gz` 保存精确指标；`lci.h5` 为 uint64 CSR 索引及 float64 值，`lcia.h5` 为按行分块 float64 矩阵。LCI-only 不生成 LCIA 文件。每组 manifest 绑定输入及全部文件 hash/size。
+
+执行 `pnpm run native:build` 构建 Release 自有工具；内部调用通过 `RELEASE_HDF5_BIN` 或 `encoder` 显式指定二进制。`native/Cargo.lock` 锁定依赖；使用 [hdf5 0.8.1](https://docs.rs/crate/hdf5/0.8.1) 的静态 HDF5/zlib，构建需要 Rust/CMake。`pnpm run prepush:gate` 验证 Rust 格式/Clippy、构建、领域样本和实际 HDF5 回读；CI 原生样本覆盖 Linux x64、Windows x64、macOS ARM64。
+
+原生内部协议为 `TGQNUM02` + little-endian uint64 的行数/清单列数/指标数；每行写入 uint64 非零数、递增唯一的 uint64 列号/float64 数值，再跟完整 LCIA float64 行。编码器拒绝非有限值、重复/越界列、截断或尾随 bytes；重新打开实际 HDF5 与该精确流逐行对照。JS 测试另用手写期望数值验证文件，避免只证明同一提取器自洽。
+
+预算：单文档/投影 8 MiB，累计元数据 128 MiB，最多 200 万结果/清单列及 4096 指标，spool/数值流/总文件各受 32 GiB 上限约束；数值按单行处理，索引留在受限内存。输出路径不可覆盖，receipt 最后提交；仅有部分文件不构成完成。
+
+此内核产生 `final-result-encoding.v1` 本地证据，明确 `candidateQualified=false`、`publicationAuthorized=false`。现有 `package build` 仍保持四包资格流程；配对 ZIP 校验、身份登记和 v2 发布接入完成前，不把内核输出作为可发布 Candidate，也不授予普通用户读取资格。

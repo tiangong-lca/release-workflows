@@ -14,7 +14,9 @@
     "test:contracts": "node --test test/*.test.mjs",
     "test:workflows": "pnpm --recursive --workspace-concurrency=1 --if-present run test",
     "test": "pnpm run test:contracts && pnpm run test:workflows",
-    "prepush:gate": "pnpm run format:check && pnpm run test"
+    "prepush:gate": "pnpm run native:check && pnpm run native:build && pnpm run format:check && pnpm run test",
+    "native:build": "cargo build --locked --manifest-path workflows/release-candidate/native/Cargo.toml",
+    "native:check": "cargo fmt --manifest-path workflows/release-candidate/native/Cargo.toml --check && cargo clippy --locked --manifest-path workflows/release-candidate/native/Cargo.toml -- -D warnings"
   },
   "devDependencies": {
     "prettier": "3.9.6"
