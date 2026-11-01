@@ -25,9 +25,9 @@ checkPaths:
   - pnpm-lock.yaml
   - .node-version
   - .github/workflows/ci.yml
-lastReviewedAt: 2026-10-30
-lastReviewedCommit: 8a9aa0bbb273d630247264318201f84e6b72b9ba
-lastReviewedNote: "Release #97: reviewed Calculation-owned query artifact transport/metadata registration and unchanged numeric, ZIP, actor Publication, dependency and delivery boundaries."
+lastReviewedAt: 2026-11-01
+lastReviewedCommit: e417d3adbd28878ee05218b992b5f1f700dcfada
+lastReviewedNote: "Release #99: reviewed separate Derived Result handoff verification, byte-preserving SDK-validated Materialization, content-addressed paths and explicit pending association/Candidate gates; no solver or publication authority moves."
 related:
   - README.md
   - .docpact/config.yaml

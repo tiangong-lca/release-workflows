@@ -15,9 +15,9 @@ whenToUpdate:
   - 当范围、Result Process 内容层或模型连接原则变化时
 checkPaths:
   - workflows/result-materialization/**
-lastReviewedAt: 2026-08-19
-lastReviewedCommit: 9adfbf11942428fba306360c264e9a39d27a4f3e
-lastReviewedNote: "Reframed the workflow around the domain relationship between source Process, Result Process, and LifecycleModel."
+lastReviewedAt: 2026-11-01
+lastReviewedCommit: e417d3adbd28878ee05218b992b5f1f700dcfada
+lastReviewedNote: "Release #99: reviewed separate Derived Result handoff verification, byte-preserving SDK-validated Materialization, content-addressed paths and explicit pending association/Candidate gates; no solver or publication authority moves."
 related:
   - ../README.md
   - ../AGENTS.md
@@ -227,3 +227,12 @@ Result Process 内容：LCI + LCIA
 - 先在本地生成、验证并冻结，再交给 Release Candidate Workflow 组包；远程发布由 Publication Workflow 单独负责。
 
 CLI 参数、请求结构、Result Catalog、文件目录、hash、版本分配和验证命令等工程契约见 [Result Materialization Workflow](../README.md)。Agent 执行顺序和阻塞条件见 [Workflow Agent Guide](../AGENTS.md)。
+
+## 已加工 Derived Result 的接收
+
+Result aggregation 已改变最终结果内容，接收入口 `materialize derived` 必须保留
+其最终字节、已冻结 identity/version 和 parent Result 集合。Transformation producer
+负责重放核验业务权重，Materialization 负责 SDK 验证及 canonical collection/catalog
+冻结，不再求解、不补造 M(P)。该结果是独立 Derived Result，不能被标记为任一源
+Unit Process 的 direct result。没有结构化父血缘时，原过程关联显式待解决；不能从
+说明文字推导发布关联，也不能据本地冻结成功跳过身份登记和 ZIP/HDF5 配对门禁。

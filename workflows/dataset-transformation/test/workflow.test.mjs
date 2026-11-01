@@ -1,3 +1,7 @@
+import {
+  validUnitProcess,
+  reference as completeReference,
+} from "../../result-materialization/test-support/process-fixture.mjs";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import {
@@ -15,6 +19,8 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { analyzeTransformation } from "../lib/analysis.mjs";
 import { executeTransformation } from "../lib/execute.mjs";
+import { verifyDerivedResultHandoff } from "../lib/handoff.mjs";
+import { materializeDerivedResult } from "../../result-materialization/lib/derived-result.mjs";
 import { freezeTransformation } from "../lib/freeze.mjs";
 import {
   canonicalJson,
@@ -133,6 +139,13 @@ test("resolved DSL normalizes three quantitative references before weighted aggr
     process.modellingAndValidation.validation.review["@type"],
     "Not reviewed",
   );
+  await assert.rejects(
+    verifyDerivedResultHandoff({
+      candidateDir: fixture.candidate,
+      transformationDir: execution.path,
+    }),
+    { code: "derived_result_required" },
+  );
   assert.equal(execution.handoff.nextWorkflow, "calculation");
   assert.equal(execution.handoff.finalTarget, "new-release-candidate");
 });
@@ -194,7 +207,7 @@ test("new Unit Process operation requires an explicit matching target confirmati
 });
 
 test("compatible Result Processes aggregate LCI and LCIA then route to Result Materialization", async (t) => {
-  const fixture = await createFixture();
+  const fixture = await createFixture({ completeResults: true });
   t.after(() => rm(fixture.root, { recursive: true, force: true }));
   const value = draft({
     operationType: RESULT_OPERATION,
@@ -205,6 +218,18 @@ test("compatible Result Processes aggregate LCI and LCIA then route to Result Ma
       operationType: RESULT_OPERATION,
     }),
   });
+  const finalName = value.decisions.find(
+    ({ conflictId }) => conflictId === "field:name",
+  ).value;
+  delete finalName.functionalUnitFlowProperties;
+  finalName.mixAndLocationTypes = {
+    "@xml:lang": "en",
+    "#text": "weighted production mix",
+  };
+  finalName.treatmentStandardsRoutes = {
+    "@xml:lang": "en",
+    "#text": "fixture route",
+  };
   value.operation.targetRecommendation = {
     recommendedOperation: RESULT_OPERATION,
     reason: "The requested output is a weighted Result rather than a new model",
@@ -248,6 +273,111 @@ test("compatible Result Processes aggregate LCI and LCIA then route to Result Ma
   assert.equal(execution.handoff.status, "ready_for_result_materialization");
   assert.equal(execution.handoff.nextWorkflow, "result-materialization");
   assert.equal(execution.receipt.resultEvidence.disposition, "derived");
+  const verified = await verifyDerivedResultHandoff({
+    candidateDir: fixture.candidate,
+    transformationDir: execution.path,
+  });
+  assert.equal(
+    verified.dataset.canonicalContentHash,
+    execution.dataset.canonicalContentHash,
+  );
+  const materialized = await materializeDerivedResult({
+    candidateDir: fixture.candidate,
+    transformationDir: execution.path,
+    artifactRoot: path.join(fixture.root, "artifacts"),
+  });
+  assert.equal(materialized.catalog.datasets[0].relationKind, "derived");
+  assert.equal(materialized.catalog.datasets[0].parentResults.length, 3);
+  assert.equal(materialized.manifest.publicationAuthorized, false);
+  assert.deepEqual(
+    await readFile(
+      path.join(materialized.path, materialized.catalog.datasets[0].path),
+    ),
+    verified.bytes,
+  );
+  const reused = await materializeDerivedResult({
+    candidateDir: fixture.candidate,
+    transformationDir: execution.path,
+    artifactRoot: path.join(fixture.root, "artifacts"),
+  });
+  assert.equal(reused.disposition, "reused_existing");
+  const cli = path.resolve(ROOT, "../result-materialization/cli.mjs");
+  const cliResult = await execFileAsync(
+    globalThis.process.execPath,
+    [
+      cli,
+      "materialize",
+      "derived",
+      "--candidate",
+      fixture.candidate,
+      "--transformation",
+      execution.path,
+      "--artifact-root",
+      path.join(fixture.root, "artifacts"),
+      "--json",
+    ],
+    { cwd: os.tmpdir() },
+  );
+  assert.equal(JSON.parse(cliResult.stdout).outcome, "reused_existing");
+  await writeFile(path.join(materialized.path, "result-catalog.json"), "{}");
+  await assert.rejects(
+    materializeDerivedResult({
+      candidateDir: fixture.candidate,
+      transformationDir: execution.path,
+      artifactRoot: path.join(fixture.root, "artifacts"),
+    }),
+    { code: "artifact_path_conflict" },
+  );
+  const changedReceipt = {
+    ...execution.receipt,
+    validation: { ...execution.receipt.validation, referenceAmount: 99 },
+  };
+  await writeFile(
+    path.join(execution.path, "transformation-execution-receipt.json"),
+    canonicalJson(changedReceipt),
+  );
+  await writeFile(
+    path.join(execution.path, "transformation-handoff.json"),
+    canonicalJson({
+      ...execution.handoff,
+      transformationExecutionReceiptSha256: hashJson(changedReceipt),
+    }),
+  );
+  await assert.rejects(
+    verifyDerivedResultHandoff({
+      candidateDir: fixture.candidate,
+      transformationDir: execution.path,
+    }),
+    { code: "derived_result_evidence_mismatch" },
+  );
+  await writeFile(
+    path.join(execution.path, "transformation-execution-receipt.json"),
+    canonicalJson(execution.receipt),
+  );
+  await writeFile(
+    path.join(execution.path, "transformation-handoff.json"),
+    canonicalJson(execution.handoff),
+  );
+  await rm(path.join(execution.path, "transformation-frozen-spec.json"));
+  const legacy = await verifyDerivedResultHandoff({
+    candidateDir: fixture.candidate,
+    transformationDir: execution.path,
+    specDir: frozen.path,
+  });
+  assert.equal(legacy.receiptSha256, verified.receiptSha256);
+
+  await writeFile(
+    path.join(execution.path, "canonical-datasets", execution.dataset.path),
+    "{}",
+  );
+  await assert.rejects(
+    verifyDerivedResultHandoff({
+      candidateDir: fixture.candidate,
+      transformationDir: execution.path,
+      specDir: frozen.path,
+    }),
+    { code: "derived_result_bytes_mismatch" },
+  );
 });
 
 test("incompatible Result method sets remain a route decision instead of execution failure", async (t) => {
@@ -491,7 +621,10 @@ function resolvedDecisions({
   ];
 }
 
-async function createFixture({ mismatchedResultMethod = false } = {}) {
+async function createFixture({
+  mismatchedResultMethod = false,
+  completeResults = false,
+} = {}) {
   const root = await mkdtemp(path.join(os.tmpdir(), "transformation-v0-"));
   const candidate = path.join(root, "candidate");
   const unitPackageRoot = path.join(root, "unit-package-root");
@@ -568,6 +701,7 @@ async function createFixture({ mismatchedResultMethod = false } = {}) {
       annual: "9999 missing-data-sentinel/year",
     }),
   ];
+  if (completeResults) resultDocuments.forEach(completeResultFixture);
   for (const [index, document] of resultDocuments.entries()) {
     const file = `${RESULT_INPUTS[index]}_${VERSION}.json`;
     const relative = `processes/${file}`;
@@ -768,4 +902,60 @@ function exchange(id, direction, flow, amount) {
       "@type": "flow data set",
     },
   };
+}
+
+function completeResultFixture(document) {
+  const process = document.processDataSet;
+  const uuid = process.processInformation.dataSetInformation["common:UUID"];
+  const base = validUnitProcess(
+    uuid,
+    FLOW_REFERENCE,
+    "Result fixture",
+  ).processDataSet;
+  for (const [key, value] of Object.entries(base))
+    if (key.startsWith("@")) process[key] = value;
+  process.administrativeInformation = {
+    ...base.administrativeInformation,
+    publicationAndOwnership: {
+      ...base.administrativeInformation.publicationAndOwnership,
+      ...process.administrativeInformation.publicationAndOwnership,
+    },
+  };
+  const info = process.processInformation.dataSetInformation;
+  info.classificationInformation =
+    base.processInformation.dataSetInformation.classificationInformation;
+  delete info.name.functionalUnitFlowProperties;
+  info.name.treatmentStandardsRoutes =
+    base.processInformation.dataSetInformation.name.treatmentStandardsRoutes;
+  info.name.mixAndLocationTypes =
+    base.processInformation.dataSetInformation.name.mixAndLocationTypes;
+  process.modellingAndValidation.LCIMethodAndAllocation.LCIMethodPrinciple =
+    "Attributional";
+  process.modellingAndValidation.complianceDeclarations =
+    base.modellingAndValidation.complianceDeclarations;
+  process.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.dataCutOffAndCompletenessPrinciples =
+    { "@xml:lang": "en", "#text": "Complete fixture" };
+  process.modellingAndValidation.dataSourcesTreatmentAndRepresentativeness.referenceToDataSource =
+    completeReference(
+      "source data set",
+      "sources",
+      "66666666-6666-4666-8666-666666666666",
+      "Fixture source",
+    );
+  for (const item of process.exchanges.exchange) {
+    item.referenceToFlowDataSet = completeReference(
+      "flow data set",
+      "flows",
+      item.referenceToFlowDataSet["@refObjectId"],
+      "Fixture flow",
+    );
+    item.dataDerivationTypeStatus = "Calculated";
+  }
+  for (const item of process.LCIAResults.LCIAResult)
+    item.referenceToLCIAMethodDataSet = completeReference(
+      "LCIA method data set",
+      "lciamethods",
+      item.referenceToLCIAMethodDataSet["@refObjectId"],
+      "Fixture method",
+    );
 }

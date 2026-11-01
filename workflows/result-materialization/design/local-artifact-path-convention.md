@@ -16,9 +16,9 @@ whenToUpdate:
 checkPaths:
   - workflows/calculation/**
   - workflows/result-materialization/**
-lastReviewedAt: 2026-10-07
-lastReviewedCommit: 89847052770fede8ebe2eeb8aba32af9b3b71989
-lastReviewedNote: "Reviewed for Release #80: current Bundle-only intake and unsupported Derived Result handoff are explicit; materialization and path behavior remain unchanged."
+lastReviewedAt: 2026-11-01
+lastReviewedCommit: e417d3adbd28878ee05218b992b5f1f700dcfada
+lastReviewedNote: "Release #99: reviewed separate Derived Result handoff verification, byte-preserving SDK-validated Materialization, content-addressed paths and explicit pending association/Candidate gates; no solver or publication authority moves."
 related:
   - ../README.md
   - ../AGENTS.md
@@ -231,3 +231,13 @@ canonical 路径不使用：
 - 并发相同 key 不产生两个 canonical 目录；
 - 冲突、残缺或 hash 不一致时 fail closed；
 - `--artifact-root` 和显式 `--out-dir` 的行为、JSON 输出和错误均有测试。
+
+## Derived Result 默认路径
+
+`materialize derived` 不虚构 calculation ID 或 Bundle hash。它在同一 artifact root
+下写入 `result-materialization/derived/<materialization-key-hash>/`，key 使用
+`tiangong.release.derived-materialization-key.v1`，绑定 exact parent Candidate、
+Frozen Spec、Execution Receipt 和 handoff hashes。UUID/version 已由 Transformation
+冻结，接收时不重新分配。所有 evidence、Result 原始 bytes、catalog、index 和
+manifest 完整一致才返回 `reused_existing`；残缺或漂移返回 `artifact_path_conflict`。
+路径不证明身份登记、Candidate 资格或发布状态。

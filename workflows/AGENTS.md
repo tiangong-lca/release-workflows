@@ -12,9 +12,9 @@ whenToUpdate:
   - 当所有 Workflow 共享的证据、权限、恢复或文档规则变化时
 checkPaths:
   - workflows/**
-lastReviewedAt: 2026-10-30
-lastReviewedCommit: 8a9aa0bbb273d630247264318201f84e6b72b9ba
-lastReviewedNote: "Release #97: Calculation owns the opt-in Worker query-artifact upload/readback and parameterized metadata registration adapter. Numeric generation, ZIP recipes, actor Publication authorization and source provenance remain with their existing owners."
+lastReviewedAt: 2026-11-01
+lastReviewedCommit: e417d3adbd28878ee05218b992b5f1f700dcfada
+lastReviewedNote: "Release #99: Derived Result handoff consumer verifies exact producer evidence and canonical bytes, pins SDK validation, and preserves v2 parent Result lineage with pending source association; paired Candidate qualification remains separate."
 related:
   - ../AGENTS.md
   - ../README.md

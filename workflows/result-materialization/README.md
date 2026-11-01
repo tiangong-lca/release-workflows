@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 materialization recipe、身份版本、数据集关系、验证或输出变化时
 checkPaths:
   - workflows/result-materialization/**
-lastReviewedAt: 2026-10-16
-lastReviewedCommit: 04cccd9dc06aa5ae3b1f9f72f027692894d0c2ff
-lastReviewedNote: "Reviewed Release #85: exact Node 24.22.0 aligns the local selector, six manifests, CI and existing toolchain assertions; pnpm 11.24.0, frozen dependency graph, internal SDK, overrides, recipe/numerical contracts and publication authorization are preserved."
+lastReviewedAt: 2026-11-01
+lastReviewedCommit: e417d3adbd28878ee05218b992b5f1f700dcfada
+lastReviewedNote: "Release #99: Derived Result handoff consumer verifies exact producer evidence and canonical bytes, pins SDK validation, and preserves v2 parent Result lineage with pending source association; paired Candidate qualification remains separate."
 related:
   - AGENTS.md
   - design/result-process-and-lifecycle-model.md
@@ -36,7 +36,18 @@ related:
 - 已有请求与精确输入，用于重新执行或核验已有完整产物；部分生成结果不构成独立输入或 checkpoint；
 - 已完成 materialization、但需要针对新 recipe 或上一版 manifest 重新生成的 dataset collection。
 
-Dataset Transformation 已输出 `status=ready_for_result_materialization` handoff，绑定 Frozen Spec、Execution Receipt、Derived Result identity/version/hash 和父 Candidate；但本 Workflow 尚未实现该输入的消费者，当前 CLI 仍只接受 Calculation Bundle intake。不得将 handoff 改名为 Bundle 或补造 LifecycleModel。Result-only materialization 也尚不受 Release Candidate 的 package profile 支持；本节点产物完成不表示可直接构建新 Candidate。
+Dataset Transformation 的 `ready_for_result_materialization` 可通过独立 `materialize derived` 接收。它验证精确父 Candidate、Frozen Spec、Execution Receipt、handoff 及加工后字节，由 Transformation producer 重放核验；Materialization 只执行 SDK 校验并冻结原样的 Result，不重新求解、不改变权重或数值、不生成 LifecycleModel。
+
+```bash
+node workflows/result-materialization/cli.mjs materialize derived \
+  --candidate /absolute/parent-candidate \
+  --transformation /absolute/transformation-output \
+  --artifact-root /absolute/artifacts --json
+```
+
+新 Transformation output 携带冻结方案；旧产物须额外提供 `--spec /absolute/frozen-spec`。该入口输出 versioned Result Catalog/Materialization manifest v2 和 canonical index v1；默认路径为 `.release/result-materialization/derived/<materialization-key-hash>`，完整字节验证通过才复用。显式 `--out-dir` 不覆盖已有目录。
+
+Derived descriptor 保存 exact parent Results，原过程关联标记 `requires_verified_parent_lineage`。旧 Result 说明文字不是原过程关联凭证；后续 Candidate 需补齐可核验的结构化父血缘和依赖、取得身份登记并完成 ZIP/HDF5 配对。当前 `candidateQualified=false`、`publicationAuthorized=false`，现有 Candidate 入口仍拒绝 Result-only；此本地接收能力不表示端到端发布已打通。
 
 ## 为什么是独立 Workflow
 

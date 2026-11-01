@@ -19,9 +19,9 @@ checkPaths:
   - docs/architecture.md
   - workflows/**
   - .docpact/config.yaml
-lastReviewedAt: 2026-10-30
-lastReviewedCommit: 8a9aa0bbb273d630247264318201f84e6b72b9ba
-lastReviewedNote: "Release #97: reviewed Calculation-owned query artifact transport/metadata registration and unchanged numeric, ZIP, actor Publication, dependency and delivery boundaries."
+lastReviewedAt: 2026-11-01
+lastReviewedCommit: e417d3adbd28878ee05218b992b5f1f700dcfada
+lastReviewedNote: "Release #99: reviewed separate Derived Result handoff verification, byte-preserving SDK-validated Materialization, content-addressed paths and explicit pending association/Candidate gates; no solver or publication authority moves."
 related:
   - AGENTS.md
   - docs/architecture.md
@@ -34,13 +34,13 @@ related:
 
 ## 选择 Workflow
 
-| Workflow                                                             | 当前职责与入口                                                                                   |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| [Calculation](workflows/calculation/README.md)                       | ResultSet、Closure、计算任务、Calculation Bundle 下载与完整性验证                                |
-| [Result Materialization](workflows/result-materialization/README.md) | 从已验证 Calculation Bundle 生成 Result Process / LifecycleModel 与 canonical dataset collection |
-| [Release Candidate](workflows/release-candidate/README.md)           | 闭合输入、四包验证、失败影响分析与不可变 Candidate                                               |
-| [Dataset Transformation](workflows/dataset-transformation/README.md) | Candidate 中精确 Unit/Result Process 的语义决策、确定性加权、验证与 handoff                      |
-| [Publication](workflows/publication/README.md)                       | Candidate 精确范围、审批、可恢复发布与独立回读；另有 opt-in Portal LCIA recipe                   |
+| Workflow                                                             | 当前职责与入口                                                                 |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| [Calculation](workflows/calculation/README.md)                       | ResultSet、Closure、计算任务、Calculation Bundle 下载与完整性验证              |
+| [Result Materialization](workflows/result-materialization/README.md) | 从已验证 Bundle 生成 Result/Model，或验证并冻结加工后的 Derived Result         |
+| [Release Candidate](workflows/release-candidate/README.md)           | 闭合输入、四包验证、失败影响分析与不可变 Candidate                             |
+| [Dataset Transformation](workflows/dataset-transformation/README.md) | Candidate 中精确 Unit/Result Process 的语义决策、确定性加权、验证与 handoff    |
+| [Publication](workflows/publication/README.md)                       | Candidate 精确范围、审批、可恢复发布与独立回读；另有 opt-in Portal LCIA recipe |
 
 默认路径：
 
@@ -57,7 +57,7 @@ Candidate 构建不构成发布授权。Publication 可选择引用完整的子�
 
 Transformation 的 inspect、freeze、execute 已实现；其 `completed` 只证明本节点产物和 handoff 已生成。Unit 聚合使旧 Result evidence 失效，需要新的计算；Result 聚合产生 Derived Result，不重新求解或补造 LifecycleModel。
 
-**后继路线不是现成的自动闭环。** Materialization 当前入口只消费 Calculation Bundle intake，尚未消费 Transformation 的 Derived Result handoff；Release Candidate 当前只支持 LifecycleModel full-closure profile，拒绝 Result-only materialization。进入后继 Workflow 前应核对其真实输入契约；不能通过重命名产物、复用旧证据或补造 Model 绕过限制。具体节点和限制由各 Workflow 文档维护。
+**后继路线不是现成的自动闭环。** Materialization 已提供 `materialize derived` 接收精确 Derived Result handoff，并保留未完成的结构化原过程关联门禁；Release Candidate 当前只支持 LifecycleModel full-closure profile，拒绝 Result-only materialization。进入后继 Workflow 前应核对其真实输入契约；不能通过重命名产物、复用旧证据或补造 Model 绕过限制。具体节点和限制由各 Workflow 文档维护。
 
 ## 开发与阅读
 

@@ -13,7 +13,7 @@ import { aggregateProcesses } from "./process-aggregation.mjs";
 import { operationRole } from "./operations.mjs";
 import { aggregateResultProcesses } from "./result-aggregation.mjs";
 
-export async function executeTransformation({ candidateDir, specDir, outDir }) {
+export async function prepareTransformation({ candidateDir, specDir }) {
   const { value: frozenSpec } = await readJson(
     path.join(specDir, "transformation-frozen-spec.json"),
     "transformation_frozen_spec_missing",
@@ -108,10 +108,21 @@ export async function executeTransformation({ candidateDir, specDir, outDir }) {
   };
   validateContract("executionReceipt", receipt);
   validateContract("handoff", handoff);
+  return { result, dataset, receipt, handoff, frozenSpec, candidate };
+}
+
+export async function executeTransformation({ candidateDir, specDir, outDir }) {
+  const { result, dataset, receipt, handoff, frozenSpec } =
+    await prepareTransformation({ candidateDir, specDir });
+  const relativePath = `canonical-datasets/${dataset.path}`;
   const target = await writeImmutableDirectory(outDir, async (staging) => {
     const outputFile = containedPath(staging, relativePath);
     await mkdir(path.dirname(outputFile), { recursive: true });
     await writeFile(outputFile, result.bytes, { flag: "wx" });
+    await writeCanonical(
+      path.join(staging, "transformation-frozen-spec.json"),
+      frozenSpec,
+    );
     await writeCanonical(
       path.join(staging, "transformation-execution-receipt.json"),
       receipt,

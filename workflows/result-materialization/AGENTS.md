@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 recipe、identity/version、metadata、reference、validation 或输出契约变化时
 checkPaths:
   - workflows/result-materialization/**
-lastReviewedAt: 2026-10-16
-lastReviewedCommit: 04cccd9dc06aa5ae3b1f9f72f027692894d0c2ff
-lastReviewedNote: "Reviewed Release #85: exact Node 24.22.0 aligns the local selector, six manifests, CI and existing toolchain assertions; pnpm 11.24.0, frozen dependency graph, internal SDK, overrides, recipe/numerical contracts and publication authorization are preserved."
+lastReviewedAt: 2026-11-01
+lastReviewedCommit: e417d3adbd28878ee05218b992b5f1f700dcfada
+lastReviewedNote: "Release #99: Derived Result handoff consumer verifies exact producer evidence and canonical bytes, pins SDK validation, and preserves v2 parent Result lineage with pending source association; paired Candidate qualification remains separate."
 related:
   - README.md
   - design/result-process-and-lifecycle-model.md
@@ -34,8 +34,8 @@ related:
 
 ## Agent 的职责
 
-- 识别 Calculation Bundle 或已有 materialization artifact；当前 CLI 只消费已验证的 Calculation Bundle intake。
-- Dataset Transformation 的 `ready_for_result_materialization` 是尚待接通的接收边界，不能直接作为当前 intake 使用。收到该 handoff 时保留 Derived Result/receipt 并报告能力缺口；不得伪装为 Bundle、重用旧 Result evidence 或补造 LifecycleModel。Result-only 输出还受 Release Candidate package profile 限制。
+- 识别 Calculation Bundle、已有 materialization artifact 或精确 Derived Result handoff。Bundle 路线沿用原 intake；Derived 路线使用 `materialize derived`。
+- Derived Result 必须通过 Transformation producer 的精确父 Candidate、Frozen Spec、receipt、handoff 及输出字节验证，再由真实 SDK 校验；只冻结已加工字节，不重新求解或改变权重。保留 exact parent Results，不把文本说明解析成原过程发布关联。结构化父血缘、身份登记和配对 Candidate 是后继独立门禁，不补造 Model 或 Unit 包。
 - 展示可用 recipe、已有证据和必须由用户决定的模型/metadata 问题。
 - 冻结精确 Materialization Request。
 - 冻结 requested roots、最终输出类型、Result Process 内容层、required Result set 和 direct-edge evidence。
@@ -96,7 +96,7 @@ related:
 
 ## 身份与版本
 
-- Identity 由稳定语义输入和 recipe profile 派生，不使用随机 UUID。
+- Bundle 路线 Identity 由稳定语义输入和 recipe profile 派生，不使用随机 UUID。Derived 路线保留用户已冻结的 Transformation identity/version，不能在接收时另分配身份；跨发布冲突由后续身份登记 fail closed。
 - Generated `R(P)` UUIDv5 name 只包含 `U(P)` UUID 和 reference flow UUID，不包含 schema/version 字段，也不依赖 `M(P)` UUID、Result profile、方法集或结果内容；算法与 namespace 只保存在外层 identity evidence。
 - 版本规划必须考虑 semantic hash、version-significant hash 和引用版本。
 - 先统一解析并冻结 Result UUID/version set，再生成绑定精确 `R(Q)`/`R(P)` references 的 Model version set。

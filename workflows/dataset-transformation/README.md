@@ -13,9 +13,9 @@ whenToUpdate:
   - 当支持的加工机制、DSL、冲突策略、验证或返回路径变化时
 checkPaths:
   - workflows/dataset-transformation/**
-lastReviewedAt: 2026-10-16
-lastReviewedCommit: 04cccd9dc06aa5ae3b1f9f72f027692894d0c2ff
-lastReviewedNote: "Reviewed Release #85: exact Node 24.22.0 aligns the local selector, six manifests, CI and existing toolchain assertions; pnpm 11.24.0, frozen dependency graph, internal SDK, overrides, recipe/numerical contracts and publication authorization are preserved."
+lastReviewedAt: 2026-11-01
+lastReviewedCommit: e417d3adbd28878ee05218b992b5f1f700dcfada
+lastReviewedNote: "Release #99: Derived Result handoff consumer verifies exact producer evidence and canonical bytes, pins SDK validation, and preserves v2 parent Result lineage with pending source association; paired Candidate qualification remains separate."
 related:
   - AGENTS.md
   - dsl-v0.md
@@ -109,7 +109,7 @@ result-process.weighted-aggregate.v0
 
 Unit Process 路线改变过程清单语义，因此父 Candidate 中已有 Result Process/LifecycleModel evidence 标记为 `invalidated`。Result Process 路线把输入 Result evidence 标记为 `derived`，不重新调用 Worker，也不隐式聚合 LifecycleModel。父 Candidate 不被覆盖；新 Candidate 必须绑定 Transformation Frozen Spec、Execution Receipt 和对应的新计算或物化证据。
 
-**当前限制：** Materialization 尚未实现 Derived Result handoff 消费，当前入口仍是 Calculation Bundle intake；Candidate 只接受 LifecycleModel full-closure profile，Result-only 输入会被拒绝。Unit handoff 也不能直接作为 Calculation API 输入，必须先满足其业务对象和授权契约。不要将目标路线当作自动可执行闭环。
+**当前限制：** Materialization 已提供 `materialize derived --candidate <parent> --transformation <output>` 消费精确 Derived Result；旧 output 额外提供 `--spec <frozen-spec>`；Candidate 只接受 LifecycleModel full-closure profile，Result-only 输入会被拒绝。Unit handoff 也不能直接作为 Calculation API 输入，必须先满足其业务对象和授权契约。不要将目标路线当作自动可执行闭环。
 
 ## CLI
 

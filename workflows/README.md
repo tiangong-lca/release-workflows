@@ -12,9 +12,9 @@ whenToUpdate:
   - 当顶层 Workflow 新增、删除、重命名或重新划分时
 checkPaths:
   - workflows/**
-lastReviewedAt: 2026-10-30
-lastReviewedCommit: 8a9aa0bbb273d630247264318201f84e6b72b9ba
-lastReviewedNote: "Release #97: reviewed Calculation-owned query artifact transport/metadata registration and unchanged numeric, ZIP, actor Publication, dependency and delivery boundaries."
+lastReviewedAt: 2026-11-01
+lastReviewedCommit: e417d3adbd28878ee05218b992b5f1f700dcfada
+lastReviewedNote: "Release #99: Derived Result Materialization now consumes producer-verified exact final bytes; structured source association and paired Candidate qualification remain separate gates."
 related:
   - ../README.md
   - AGENTS.md
@@ -22,13 +22,13 @@ related:
 
 # Workflows
 
-| 目标                                                           | 入口                                                       |
-| -------------------------------------------------------------- | ---------------------------------------------------------- |
-| 创建/查询 ResultSet、检查 Closure、提交/跟踪计算、下载 Bundle  | [Calculation](calculation/README.md)                       |
-| 从 Calculation Bundle 生成标准 Result Process / LifecycleModel | [Result Materialization](result-materialization/README.md) |
-| 补齐输入、验证打包、审核失败影响、冻结 Candidate               | [Release Candidate](release-candidate/README.md)           |
-| 对 Candidate 中的 Unit/Result Process 做语义决策与加权         | [Dataset Transformation](dataset-transformation/README.md) |
-| Candidate 发布，或 opt-in Portal LCIA package/projection 操作  | [Publication](publication/README.md)                       |
+| 目标                                                          | 入口                                                       |
+| ------------------------------------------------------------- | ---------------------------------------------------------- |
+| 创建/查询 ResultSet、检查 Closure、提交/跟踪计算、下载 Bundle | [Calculation](calculation/README.md)                       |
+| 从 Bundle 生成 Result/Model，或接收精确加工后 Derived Result  | [Result Materialization](result-materialization/README.md) |
+| 补齐输入、验证打包、审核失败影响、冻结 Candidate              | [Release Candidate](release-candidate/README.md)           |
+| 对 Candidate 中的 Unit/Result Process 做语义决策与加权        | [Dataset Transformation](dataset-transformation/README.md) |
+| Candidate 发布，或 opt-in Portal LCIA package/projection 操作 | [Publication](publication/README.md)                       |
 
 进入目标目录，读取本目录 [AGENTS.md](AGENTS.md)、目标 AGENTS 和当前动作对应的 README 章节。CLI 返回 `replyTemplate` 时只读取指定模板，以真实结果填充。
 

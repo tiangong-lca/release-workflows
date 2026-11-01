@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 Transformation DSL、决策权限、执行器、验证或返回路径变化时
 checkPaths:
   - workflows/dataset-transformation/**
-lastReviewedAt: 2026-10-16
-lastReviewedCommit: 04cccd9dc06aa5ae3b1f9f72f027692894d0c2ff
-lastReviewedNote: "Reviewed Release #85: exact Node 24.22.0 aligns the local selector, six manifests, CI and existing toolchain assertions; pnpm 11.24.0, frozen dependency graph, internal SDK, overrides, recipe/numerical contracts and publication authorization are preserved."
+lastReviewedAt: 2026-11-01
+lastReviewedCommit: e417d3adbd28878ee05218b992b5f1f700dcfada
+lastReviewedNote: "Release #99: Derived Result handoff consumer verifies exact producer evidence and canonical bytes, pins SDK validation, and preserves v2 parent Result lineage with pending source association; paired Candidate qualification remains separate."
 related:
   - README.md
   - dsl-v0.md
@@ -25,7 +25,7 @@ related:
 
 ## 当前实现
 
-本 Workflow 已实现两类加权语义：Unit Process 聚合构造新过程并生成以 Calculation 为目标的 handoff；Result Process 聚合组合已有 LCI/LCIA Result 并生成以 Result Materialization 为目标的 handoff。handoff 不证明接收端支持：Materialization 的 Derived Result 消费与 Candidate 的 Result-only package 尚未实现，不得补造 Model 或改写输入契约绕过限制。`process.weighted-aggregate.v0` 继续作为旧 Unit Process operation 兼容入口，新 Draft 使用显式目标选择和清晰 operation type。
+本 Workflow 已实现两类加权语义：Unit Process 聚合构造新过程并生成以 Calculation 为目标的 handoff；Result Process 聚合组合已有 LCI/LCIA Result 并生成以 Result Materialization 为目标的 handoff。handoff 不证明接收端支持：Materialization 已提供 `materialize derived` 验证并冻结原样结果；Candidate 的 Result-only 配对入口尚待接通，不得补造 Model 或改写输入契约绕过限制。`process.weighted-aggregate.v0` 继续作为旧 Unit Process operation 兼容入口，新 Draft 使用显式目标选择和清晰 operation type。
 
 进入目标动作前读取 `workflows/AGENTS.md`、[README](README.md) 的对应章节；设计或执行 DSL 时读取 [DSL v0](dsl-v0.md)。只按 CLI 指针读取回复模板。
 
@@ -79,3 +79,7 @@ Agent 不得代替用户决定 aggregation target、weighting mode、weights/ann
 - 真实三 Process 试验是历史验收示例；只有任务要求重现且精确输入可用时才重算，不将其作为每次操作的完成门；
 - TIDAS JSON、eILCD projection/validation 和 semantic round-trip 通过；
 - handoff 的目标与 operation 一致：Unit Process 需要新计算，Result Process 指向物化且不隐式聚合 LifecycleModel；显式披露当前消费者与 package 限制，不宣称后继已执行。
+
+## Derived handoff 接收验证
+
+Execution output 同时保留 frozen spec。生产者拥有只读确定性重放核验，绑定父 Candidate、spec、receipt、handoff 和实际输出 bytes；Materialization 消费其验证结果，不拥有权重算法。旧输出可显式提供原 frozen spec 目录。仅说明文字中的 source UUID 不得提升为发布关联。

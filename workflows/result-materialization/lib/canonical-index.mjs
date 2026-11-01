@@ -52,8 +52,18 @@ export async function writeCanonicalDatasetIndex(root, datasets) {
       canonicalContentHash,
     });
   }
+  const index = canonicalDatasetIndex(entries);
+  await writeFile(
+    path.join(root, "canonical-dataset-index.json"),
+    canonicalJson(index),
+    { flag: "wx" },
+  );
+  return index;
+}
+
+export function canonicalDatasetIndex(entries) {
   entries.sort((left, right) => left.path.localeCompare(right.path));
-  const index = {
+  return {
     schemaVersion: "tiangong.release.canonical-dataset-index.v1",
     datasetCount: entries.length,
     byteSize: entries.reduce((total, entry) => total + entry.byteSize, 0),
@@ -68,12 +78,6 @@ export async function writeCanonicalDatasetIndex(root, datasets) {
     ),
     datasets: entries,
   };
-  await writeFile(
-    path.join(root, "canonical-dataset-index.json"),
-    canonicalJson(index),
-    { flag: "wx" },
-  );
-  return index;
 }
 
 function safeRelative(value) {
