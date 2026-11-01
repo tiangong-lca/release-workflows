@@ -1,0 +1,1830 @@
+{
+  "provenance": "Synthetic SimaPro fixture imported with Toolkit c8ff09dafb8aa1c74a41677c320dd991e13eb054; final Result edits and synthetic method authored for Release pairing qualification; no business data.",
+  "index": {
+    "schemaVersion": "tiangong.release.canonical-dataset-index.v1",
+    "datasetCount": 11,
+    "byteSize": 37536,
+    "artifactSetHash": "13d3c17eec93dc75cb6fb1eedef9fc5ee9a88eab74912260bae3ab2822f8ebc2",
+    "datasets": [
+      {
+        "datasetType": "contact",
+        "role": "support",
+        "uuid": "a6db11f5-1cb4-579a-b503-bd17c361b8c2",
+        "version": "00.00.001",
+        "path": "contacts/a6db11f5-1cb4-579a-b503-bd17c361b8c2.json",
+        "byteSize": 1499,
+        "sha256": "41b82a516c89bdbaab36a65fed7792e57968b0754b2affc32ef841b065f25160",
+        "canonicalContentHash": "538884a83df54344dc4d740a73b5054ef1e79b48dbafb90759217971e474c379"
+      },
+      {
+        "datasetType": "flowproperty",
+        "role": "support",
+        "uuid": "830ce814-9f17-5bd1-aea0-832e93f08ea9",
+        "version": "00.00.001",
+        "path": "flowproperties/830ce814-9f17-5bd1-aea0-832e93f08ea9.json",
+        "byteSize": 2173,
+        "sha256": "87c6edd800d0792ec0862d33cb7a959e687af459674052e269ea7cd693474d68",
+        "canonicalContentHash": "8dd2afc0c970c23674f931f6ac37b9266c0f54290071e22f761e4c490916dbb2"
+      },
+      {
+        "datasetType": "flow",
+        "role": "support",
+        "uuid": "1c56725f-ac04-5abe-8f49-6a90cebb2a79",
+        "version": "00.00.001",
+        "path": "flows/1c56725f-ac04-5abe-8f49-6a90cebb2a79.json",
+        "byteSize": 3800,
+        "sha256": "9d9a78489b7773033e1873523ef54f860d9add3b66b6111128755cd585679b44",
+        "canonicalContentHash": "4f1cd2d8589b945182c63a0337cd019142eb84913da650ee3c62a147b535c250"
+      },
+      {
+        "datasetType": "flow",
+        "role": "support",
+        "uuid": "8b9586cc-0558-5149-9f30-0a69c15cbb06",
+        "version": "00.00.001",
+        "path": "flows/8b9586cc-0558-5149-9f30-0a69c15cbb06.json",
+        "byteSize": 3333,
+        "sha256": "6675d3f2e09466b5ec31402aa315cf93ad940a8e15f49b1bdcf6b4869a6fce70",
+        "canonicalContentHash": "788a3e71702b79271ce5bfc2c18129fba1995b303cbddd9020bcd9fef014bf63"
+      },
+      {
+        "datasetType": "lciamethod",
+        "role": "support",
+        "uuid": "00000000-0000-4000-8000-000000000099",
+        "version": "00.00.001",
+        "path": "lciamethods/00000000-0000-4000-8000-000000000099.json",
+        "byteSize": 4158,
+        "sha256": "324948f67f861d927db26a8a1e5b058be27b189325e6e73ba43990000cfbef30",
+        "canonicalContentHash": "0e8893b997f9196d4fa28e2a0245c702ea65cda05bcba7d7a76bbd1960ff2973"
+      },
+      {
+        "datasetType": "process",
+        "role": "result_process",
+        "uuid": "00000000-0000-4000-8000-000000000098",
+        "version": "00.00.001",
+        "path": "processes/00000000-0000-4000-8000-000000000098.json",
+        "byteSize": 5691,
+        "sha256": "fd2e1718d3fc8ea5eda97595f1b7a39f5a779c844de99c4774f2fc7ae9efb694",
+        "canonicalContentHash": "c7a83b4f0060aabc0760c1e42157c0c66f7457bf3341d53972f54c7b0aaa7e4c"
+      },
+      {
+        "datasetType": "process",
+        "role": "result_process",
+        "uuid": "28b4c46d-2875-5373-8d19-abd8ce22db6a",
+        "version": "00.00.001",
+        "path": "processes/28b4c46d-2875-5373-8d19-abd8ce22db6a.json",
+        "byteSize": 6033,
+        "sha256": "6ad9265564789ef7757d03901777e57b1de55d215c8a32c33f5223d229f6fb24",
+        "canonicalContentHash": "1064d3c8937bddde315bf83f2d63e698de84f53c32cd1ea74d7d51620fe22735"
+      },
+      {
+        "datasetType": "process",
+        "role": "result_process",
+        "uuid": "28b4c46d-2875-5373-8d19-abd8ce22db6a",
+        "version": "00.00.002",
+        "path": "processes/28b4c46d-2875-5373-8d19-abd8ce22db6a_00.00.002.json",
+        "byteSize": 6028,
+        "sha256": "d4508e7d5b37f0a97114bdfaed0a5dd828a20533872577cbd38fa833a2907ff4",
+        "canonicalContentHash": "742ebf14db7fb46a40fd324da69ff5aad835477ca4d93e830807a913bc25c0c4"
+      },
+      {
+        "datasetType": "source",
+        "role": "support",
+        "uuid": "16938856-0a35-5654-8aff-56c17e61da4d",
+        "version": "00.00.001",
+        "path": "sources/16938856-0a35-5654-8aff-56c17e61da4d.json",
+        "byteSize": 1417,
+        "sha256": "19d2c729c187bc4fa5f6f8940655c7d67cfe2e54d4c866ab5f40181ecba1ae84",
+        "canonicalContentHash": "1d07bb855cc863741c5a12bf908e61bae89388d60df7f08222e4d9c4672b1648"
+      },
+      {
+        "datasetType": "source",
+        "role": "support",
+        "uuid": "82bc2e49-63fc-500f-b52f-69867cd8c91a",
+        "version": "00.00.001",
+        "path": "sources/82bc2e49-63fc-500f-b52f-69867cd8c91a.json",
+        "byteSize": 1446,
+        "sha256": "7739c6f8f10a923bd1d56e12efa9d5944618cb49d8572400b987867753cd004f",
+        "canonicalContentHash": "ef6bee2130cbe73be16f7865e1ccc9d60acca9e53a55355dea3c60d40d98372e"
+      },
+      {
+        "datasetType": "unitgroup",
+        "role": "support",
+        "uuid": "d831c535-6737-5243-aec2-a243d2bb9d42",
+        "version": "00.00.001",
+        "path": "unitgroups/d831c535-6737-5243-aec2-a243d2bb9d42.json",
+        "byteSize": 1958,
+        "sha256": "7a0c30a6fb8d483337b0effe40e4f40793c7346a068acc1967da1ea6b6e8a741",
+        "canonicalContentHash": "4fc23f26ed6744152dde1db2b756ec06609b4ea1eafe6515e4dfc3ce5a6d5de7"
+      }
+    ]
+  },
+  "results": [
+    {
+      "uuid": "00000000-0000-4000-8000-000000000098",
+      "version": "00.00.001",
+      "layer": "lci",
+      "expectedMethods": [],
+      "relationKind": "direct",
+      "sources": [
+        {
+          "uuid": "00000000-0000-4000-8000-000000000080",
+          "version": "01.00.000"
+        }
+      ]
+    },
+    {
+      "uuid": "28b4c46d-2875-5373-8d19-abd8ce22db6a",
+      "version": "00.00.001",
+      "layer": "lci-lcia",
+      "expectedMethods": [
+        {
+          "uuid": "00000000-0000-4000-8000-000000000099",
+          "version": "00.00.001"
+        }
+      ],
+      "relationKind": "direct",
+      "sources": [
+        {
+          "uuid": "00000000-0000-4000-8000-000000000080",
+          "version": "01.00.000"
+        }
+      ]
+    },
+    {
+      "uuid": "28b4c46d-2875-5373-8d19-abd8ce22db6a",
+      "version": "00.00.002",
+      "layer": "lci-lcia",
+      "expectedMethods": [
+        {
+          "uuid": "00000000-0000-4000-8000-000000000099",
+          "version": "00.00.001"
+        }
+      ],
+      "relationKind": "direct",
+      "sources": [
+        {
+          "uuid": "00000000-0000-4000-8000-000000000080",
+          "version": "01.00.000"
+        }
+      ]
+    }
+  ],
+  "records": [
+    {
+      "path": "contacts/a6db11f5-1cb4-579a-b503-bd17c361b8c2.json",
+      "document": {
+        "contactDataSet": {
+          "@version": "1.1",
+          "@xmlns": "http://lca.jrc.it/ILCD/Contact",
+          "@xmlns:common": "http://lca.jrc.it/ILCD/Common",
+          "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+          "@xsi:schemaLocation": "http://lca.jrc.it/ILCD/Contact ../../schemas/ILCD_ContactDataSet.xsd",
+          "administrativeInformation": {
+            "dataEntryBy": {
+              "common:referenceToDataSetFormat": {
+                "@refObjectId": "16938856-0a35-5654-8aff-56c17e61da4d",
+                "@type": "source data set",
+                "@uri": "../sources/16938856-0a35-5654-8aff-56c17e61da4d.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "ILCD format",
+                  "@xml:lang": "en"
+                }
+              },
+              "common:timeStamp": "1900-01-01T00:00:00Z"
+            },
+            "publicationAndOwnership": {
+              "common:dataSetVersion": "00.00.001",
+              "common:permanentDataSetURI": "https://lcdn.tiangong.earth/datasetdetail/contact.xhtml?uuid=a6db11f5-1cb4-579a-b503-bd17c361b8c2&version=00.00.001",
+              "common:referenceToOwnershipOfDataSet": {
+                "@refObjectId": "a6db11f5-1cb4-579a-b503-bd17c361b8c2",
+                "@type": "contact data set",
+                "@uri": "../contacts/a6db11f5-1cb4-579a-b503-bd17c361b8c2.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "TianGong LCA import tooling",
+                  "@xml:lang": "en"
+                }
+              }
+            }
+          },
+          "contactInformation": {
+            "dataSetInformation": {
+              "classificationInformation": {
+                "common:classification": {
+                  "common:class": {
+                    "#text": "Other",
+                    "@classId": "5",
+                    "@level": "0"
+                  }
+                }
+              },
+              "common:UUID": "a6db11f5-1cb4-579a-b503-bd17c361b8c2",
+              "common:name": {
+                "#text": "TianGong LCA import tooling",
+                "@xml:lang": "en"
+              },
+              "common:shortName": {
+                "#text": "TianGong LCA import tooling",
+                "@xml:lang": "en"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "flowproperties/830ce814-9f17-5bd1-aea0-832e93f08ea9.json",
+      "document": {
+        "flowPropertyDataSet": {
+          "@version": "1.1",
+          "@xmlns": "http://lca.jrc.it/ILCD/FlowProperty",
+          "@xmlns:common": "http://lca.jrc.it/ILCD/Common",
+          "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+          "@xsi:schemaLocation": "http://lca.jrc.it/ILCD/FlowProperty ../../schemas/ILCD_FlowPropertyDataSet.xsd",
+          "administrativeInformation": {
+            "dataEntryBy": {
+              "common:referenceToDataSetFormat": {
+                "@refObjectId": "16938856-0a35-5654-8aff-56c17e61da4d",
+                "@type": "source data set",
+                "@uri": "../sources/16938856-0a35-5654-8aff-56c17e61da4d.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "ILCD format",
+                  "@xml:lang": "en"
+                }
+              },
+              "common:timeStamp": "1900-01-01T00:00:00Z"
+            },
+            "publicationAndOwnership": {
+              "common:dataSetVersion": "00.00.001",
+              "common:permanentDataSetURI": "https://lcdn.tiangong.earth/datasetdetail/flowproperty.xhtml?uuid=830ce814-9f17-5bd1-aea0-832e93f08ea9&version=00.00.001",
+              "common:referenceToOwnershipOfDataSet": {
+                "@refObjectId": "a6db11f5-1cb4-579a-b503-bd17c361b8c2",
+                "@type": "contact data set",
+                "@uri": "../contacts/a6db11f5-1cb4-579a-b503-bd17c361b8c2.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "TianGong LCA import tooling",
+                  "@xml:lang": "en"
+                }
+              }
+            }
+          },
+          "flowPropertiesInformation": {
+            "dataSetInformation": {
+              "classificationInformation": {
+                "common:classification": {
+                  "common:class": {
+                    "#text": "Other flow properties",
+                    "@classId": "4",
+                    "@level": "0"
+                  }
+                }
+              },
+              "common:UUID": "830ce814-9f17-5bd1-aea0-832e93f08ea9",
+              "common:name": {
+                "#text": "Amount in kg",
+                "@xml:lang": "en"
+              }
+            },
+            "quantitativeReference": {
+              "referenceToReferenceUnitGroup": {
+                "@refObjectId": "d831c535-6737-5243-aec2-a243d2bb9d42",
+                "@type": "unit group data set",
+                "@uri": "../unitgroups/d831c535-6737-5243-aec2-a243d2bb9d42.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "Units of kg",
+                  "@xml:lang": "en"
+                }
+              }
+            }
+          },
+          "modellingAndValidation": {
+            "complianceDeclarations": {
+              "compliance": {
+                "common:approvalOfOverallCompliance": "Not defined",
+                "common:referenceToComplianceSystem": {
+                  "@refObjectId": "82bc2e49-63fc-500f-b52f-69867cd8c91a",
+                  "@type": "source data set",
+                  "@uri": "../sources/82bc2e49-63fc-500f-b52f-69867cd8c91a.json",
+                  "@version": "00.00.001",
+                  "common:shortDescription": {
+                    "#text": "External LCA source compliance context",
+                    "@xml:lang": "en"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "flows/1c56725f-ac04-5abe-8f49-6a90cebb2a79.json",
+      "document": {
+        "flowDataSet": {
+          "@locations": "../ILCDLocations.xml",
+          "@version": "1.1",
+          "@xmlns": "http://lca.jrc.it/ILCD/Flow",
+          "@xmlns:common": "http://lca.jrc.it/ILCD/Common",
+          "@xmlns:ecn": "http://eplca.jrc.ec.europa.eu/ILCD/Extensions/2018/ECNumber",
+          "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+          "@xsi:schemaLocation": "http://lca.jrc.it/ILCD/Flow ../../schemas/ILCD_FlowDataSet.xsd",
+          "administrativeInformation": {
+            "dataEntryBy": {
+              "common:referenceToDataSetFormat": {
+                "@refObjectId": "16938856-0a35-5654-8aff-56c17e61da4d",
+                "@type": "source data set",
+                "@uri": "../sources/16938856-0a35-5654-8aff-56c17e61da4d.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "ILCD format",
+                  "@xml:lang": "en"
+                }
+              },
+              "common:timeStamp": "1900-01-01T00:00:00Z"
+            },
+            "publicationAndOwnership": {
+              "common:dataSetVersion": "00.00.001",
+              "common:permanentDataSetURI": "https://lcdn.tiangong.earth/datasetdetail/productFlow.xhtml?uuid=1c56725f-ac04-5abe-8f49-6a90cebb2a79&version=00.00.001",
+              "common:referenceToOwnershipOfDataSet": {
+                "@refObjectId": "a6db11f5-1cb4-579a-b503-bd17c361b8c2",
+                "@type": "contact data set",
+                "@uri": "../contacts/a6db11f5-1cb4-579a-b503-bd17c361b8c2.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "TianGong LCA import tooling",
+                  "@xml:lang": "en"
+                }
+              }
+            }
+          },
+          "flowInformation": {
+            "dataSetInformation": {
+              "classificationInformation": {
+                "common:classification": {
+                  "@name": "CPC",
+                  "common:class": [
+                    {
+                      "#text": "Community, social and personal services",
+                      "@classId": "9",
+                      "@level": "0"
+                    },
+                    {
+                      "#text": "Sewage and waste collection, treatment and disposal and other environmental protection services",
+                      "@classId": "94",
+                      "@level": "1"
+                    },
+                    {
+                      "#text": "Other environmental protection services n.e.c.",
+                      "@classId": "949",
+                      "@level": "2"
+                    },
+                    {
+                      "#text": "Other environmental protection services n.e.c.",
+                      "@classId": "9490",
+                      "@level": "3"
+                    },
+                    {
+                      "#text": "Other environmental protection services n.e.c.",
+                      "@classId": "94900",
+                      "@level": "4"
+                    }
+                  ],
+                  "common:other": {
+                    "@xmlns:tidasimport": "https://tiangong.earth/tidas/import-trace/1.0",
+                    "tidasimport:sourceTrace": {
+                      "@marker": "TIDAS_IMPORT_TRACE_V1",
+                      "payload": {
+                        "mappingKind": "non-elementary",
+                        "sourceClassification": {
+                          "categoryPath": ["Products"]
+                        },
+                        "sourceFlowType": "Product flow",
+                        "sourcePath": ["Products"],
+                        "taxonomyId": "cpc",
+                        "taxonomyVersion": "2.1"
+                      }
+                    }
+                  }
+                }
+              },
+              "common:UUID": "1c56725f-ac04-5abe-8f49-6a90cebb2a79",
+              "common:other": {
+                "@xmlns:tidasimport": "https://tiangong.earth/tidas/import-trace/1.0",
+                "tidasimport:sourceTrace": {
+                  "@marker": "TIDAS_IMPORT_TRACE_V1",
+                  "payload": {
+                    "format": "simapro-csv",
+                    "sourceName": "Steel | production route | GLO",
+                    "sourceObject": "Products"
+                  }
+                }
+              },
+              "name": {
+                "baseName": {
+                  "#text": "Steel",
+                  "@xml:lang": "en"
+                },
+                "mixAndLocationTypes": {
+                  "#text": "GLO",
+                  "@xml:lang": "en"
+                },
+                "treatmentStandardsRoutes": {
+                  "#text": "production route",
+                  "@xml:lang": "en"
+                }
+              }
+            },
+            "quantitativeReference": {
+              "referenceToReferenceFlowProperty": "1"
+            }
+          },
+          "flowProperties": {
+            "flowProperty": {
+              "@dataSetInternalID": "1",
+              "common:other": {
+                "@xmlns:tidasimport": "https://tiangong.earth/tidas/import-trace/1.0",
+                "tidasimport:sourceTrace": {
+                  "@marker": "TIDAS_IMPORT_TRACE_V1",
+                  "payload": {
+                    "referenceDecision": "legacy-single-property-source-contract"
+                  }
+                }
+              },
+              "meanValue": "1",
+              "referenceToFlowPropertyDataSet": {
+                "@refObjectId": "830ce814-9f17-5bd1-aea0-832e93f08ea9",
+                "@type": "flow property data set",
+                "@uri": "../flowproperties/830ce814-9f17-5bd1-aea0-832e93f08ea9.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "Amount in kg",
+                  "@xml:lang": "en"
+                }
+              }
+            }
+          },
+          "modellingAndValidation": {
+            "LCIMethod": {
+              "typeOfDataSet": "Product flow"
+            },
+            "complianceDeclarations": {
+              "compliance": {
+                "common:approvalOfOverallCompliance": "Not defined",
+                "common:referenceToComplianceSystem": {
+                  "@refObjectId": "82bc2e49-63fc-500f-b52f-69867cd8c91a",
+                  "@type": "source data set",
+                  "@uri": "../sources/82bc2e49-63fc-500f-b52f-69867cd8c91a.json",
+                  "@version": "00.00.001",
+                  "common:shortDescription": {
+                    "#text": "External LCA source compliance context",
+                    "@xml:lang": "en"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "flows/8b9586cc-0558-5149-9f30-0a69c15cbb06.json",
+      "document": {
+        "flowDataSet": {
+          "@locations": "../ILCDLocations.xml",
+          "@version": "1.1",
+          "@xmlns": "http://lca.jrc.it/ILCD/Flow",
+          "@xmlns:common": "http://lca.jrc.it/ILCD/Common",
+          "@xmlns:ecn": "http://eplca.jrc.ec.europa.eu/ILCD/Extensions/2018/ECNumber",
+          "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+          "@xsi:schemaLocation": "http://lca.jrc.it/ILCD/Flow ../../schemas/ILCD_FlowDataSet.xsd",
+          "administrativeInformation": {
+            "dataEntryBy": {
+              "common:referenceToDataSetFormat": {
+                "@refObjectId": "16938856-0a35-5654-8aff-56c17e61da4d",
+                "@type": "source data set",
+                "@uri": "../sources/16938856-0a35-5654-8aff-56c17e61da4d.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "ILCD format",
+                  "@xml:lang": "en"
+                }
+              },
+              "common:timeStamp": "1900-01-01T00:00:00Z"
+            },
+            "publicationAndOwnership": {
+              "common:dataSetVersion": "00.00.001",
+              "common:permanentDataSetURI": "https://lcdn.tiangong.earth/datasetdetail/productFlow.xhtml?uuid=8b9586cc-0558-5149-9f30-0a69c15cbb06&version=00.00.001",
+              "common:referenceToOwnershipOfDataSet": {
+                "@refObjectId": "a6db11f5-1cb4-579a-b503-bd17c361b8c2",
+                "@type": "contact data set",
+                "@uri": "../contacts/a6db11f5-1cb4-579a-b503-bd17c361b8c2.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "TianGong LCA import tooling",
+                  "@xml:lang": "en"
+                }
+              }
+            }
+          },
+          "flowInformation": {
+            "dataSetInformation": {
+              "classificationInformation": {
+                "common:elementaryFlowCategorization": {
+                  "common:category": [
+                    {
+                      "#text": "Emissions",
+                      "@catId": "1",
+                      "@level": "0"
+                    },
+                    {
+                      "#text": "Emissions to air",
+                      "@catId": "1.3",
+                      "@level": "1"
+                    }
+                  ],
+                  "common:other": {
+                    "@xmlns:tidasimport": "https://tiangong.earth/tidas/import-trace/1.0",
+                    "tidasimport:sourceTrace": {
+                      "@marker": "TIDAS_IMPORT_TRACE_V1",
+                      "payload": {
+                        "mappingKind": "exact-path",
+                        "sourceClassification": {
+                          "categoryPath": ["Emissions to air"]
+                        },
+                        "sourceFlowType": "Elementary flow",
+                        "sourcePath": ["Emissions to air"],
+                        "taxonomyId": "ilcd-flow-categorization",
+                        "taxonomyVersion": "1.1"
+                      }
+                    }
+                  }
+                }
+              },
+              "common:UUID": "8b9586cc-0558-5149-9f30-0a69c15cbb06",
+              "common:other": {
+                "@xmlns:tidasimport": "https://tiangong.earth/tidas/import-trace/1.0",
+                "tidasimport:sourceTrace": {
+                  "@marker": "TIDAS_IMPORT_TRACE_V1",
+                  "payload": {
+                    "format": "simapro-csv",
+                    "sourceName": "Carbon dioxide",
+                    "sourceObject": "Emissions to air"
+                  }
+                }
+              },
+              "name": {
+                "baseName": {
+                  "#text": "Carbon dioxide",
+                  "@xml:lang": "en"
+                }
+              }
+            },
+            "quantitativeReference": {
+              "referenceToReferenceFlowProperty": "1"
+            }
+          },
+          "flowProperties": {
+            "flowProperty": {
+              "@dataSetInternalID": "1",
+              "common:other": {
+                "@xmlns:tidasimport": "https://tiangong.earth/tidas/import-trace/1.0",
+                "tidasimport:sourceTrace": {
+                  "@marker": "TIDAS_IMPORT_TRACE_V1",
+                  "payload": {
+                    "referenceDecision": "legacy-single-property-source-contract"
+                  }
+                }
+              },
+              "meanValue": "1",
+              "referenceToFlowPropertyDataSet": {
+                "@refObjectId": "830ce814-9f17-5bd1-aea0-832e93f08ea9",
+                "@type": "flow property data set",
+                "@uri": "../flowproperties/830ce814-9f17-5bd1-aea0-832e93f08ea9.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "Amount in kg",
+                  "@xml:lang": "en"
+                }
+              }
+            }
+          },
+          "modellingAndValidation": {
+            "LCIMethod": {
+              "typeOfDataSet": "Elementary flow"
+            },
+            "complianceDeclarations": {
+              "compliance": {
+                "common:approvalOfOverallCompliance": "Not defined",
+                "common:referenceToComplianceSystem": {
+                  "@refObjectId": "82bc2e49-63fc-500f-b52f-69867cd8c91a",
+                  "@type": "source data set",
+                  "@uri": "../sources/82bc2e49-63fc-500f-b52f-69867cd8c91a.json",
+                  "@version": "00.00.001",
+                  "common:shortDescription": {
+                    "#text": "External LCA source compliance context",
+                    "@xml:lang": "en"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "lciamethods/00000000-0000-4000-8000-000000000099.json",
+      "document": {
+        "LCIAMethodDataSet": {
+          "@version": "1.1",
+          "@xmlns": "http://lca.jrc.it/ILCD/LCIAMethod",
+          "@xmlns:common": "http://lca.jrc.it/ILCD/Common",
+          "LCIAMethodInformation": {
+            "dataSetInformation": {
+              "classificationInformation": {
+                "common:classification": {
+                  "common:class": [
+                    {
+                      "#text": "Damage level LCIA methods",
+                      "@classId": "1",
+                      "@level": "0"
+                    }
+                  ]
+                }
+              },
+              "common:UUID": "00000000-0000-4000-8000-000000000099",
+              "common:name": {
+                "#text": "Synthetic climate indicator",
+                "@xml:lang": "en"
+              }
+            },
+            "geography": {
+              "geographicalRepresentativenessDescription": {
+                "#text": "Synthetic qualification",
+                "@xml:lang": "en"
+              },
+              "impactLocation": "GLO",
+              "interventionLocation": "GLO"
+            },
+            "impactModel": {
+              "modelDescription": {
+                "#text": "Fixture only; no real impact assessment",
+                "@xml:lang": "en"
+              },
+              "modelName": "Synthetic indicator"
+            },
+            "quantitativeReference": {
+              "referenceQuantity": {
+                "@refObjectId": "830ce814-9f17-5bd1-aea0-832e93f08ea9",
+                "@type": "flow property data set",
+                "@uri": "../flowproperties/830ce814-9f17-5bd1-aea0-832e93f08ea9.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "kg CO2 equivalents",
+                  "@xml:lang": "en"
+                }
+              }
+            },
+            "time": {
+              "duration": {
+                "#text": "100 years",
+                "@xml:lang": "en"
+              },
+              "referenceYear": {
+                "#text": "2026",
+                "@xml:lang": "en"
+              },
+              "timeRepresentativenessDescription": {
+                "#text": "Synthetic qualification",
+                "@xml:lang": "en"
+              }
+            }
+          },
+          "administrativeInformation": {
+            "dataEntryBy": {
+              "common:referenceToDataSetFormat": {
+                "@refObjectId": "16938856-0a35-5654-8aff-56c17e61da4d",
+                "@type": "source data set",
+                "@uri": "../sources/16938856-0a35-5654-8aff-56c17e61da4d.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "ILCD format",
+                  "@xml:lang": "en"
+                }
+              },
+              "common:timeStamp": "1900-01-01T00:00:00Z",
+              "recommendationBy": {
+                "level": "Not recommended",
+                "meaning": {
+                  "#text": "Fixture only",
+                  "@xml:lang": "en"
+                },
+                "referenceToEntity": {
+                  "@refObjectId": "a6db11f5-1cb4-579a-b503-bd17c361b8c2",
+                  "@type": "contact data set",
+                  "@uri": "../contacts/a6db11f5-1cb4-579a-b503-bd17c361b8c2.json",
+                  "@version": "00.00.001",
+                  "common:shortDescription": {
+                    "#text": "TianGong LCA import tooling",
+                    "@xml:lang": "en"
+                  }
+                }
+              }
+            },
+            "dataGenerator": {
+              "common:referenceToPersonOrEntityGeneratingTheDataSet": {
+                "@refObjectId": "a6db11f5-1cb4-579a-b503-bd17c361b8c2",
+                "@type": "contact data set",
+                "@uri": "../contacts/a6db11f5-1cb4-579a-b503-bd17c361b8c2.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "TianGong LCA import tooling",
+                  "@xml:lang": "en"
+                }
+              }
+            },
+            "publicationAndOwnership": {
+              "common:dataSetVersion": "00.00.001",
+              "common:dateOfLastRevision": "1900-01-01T00:00:00Z",
+              "common:referenceToOwnershipOfDataSet": {
+                "@refObjectId": "a6db11f5-1cb4-579a-b503-bd17c361b8c2",
+                "@type": "contact data set",
+                "@uri": "../contacts/a6db11f5-1cb4-579a-b503-bd17c361b8c2.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "TianGong LCA import tooling",
+                  "@xml:lang": "en"
+                }
+              }
+            }
+          },
+          "characterisationFactors": {
+            "factor": {
+              "deviatingRecommendation": "Not recommended",
+              "exchangeDirection": "Output",
+              "meanValue": "1",
+              "referenceToFlowDataSet": {
+                "@refObjectId": "8b9586cc-0558-5149-9f30-0a69c15cbb06",
+                "@type": "flow data set",
+                "@uri": "../flows/8b9586cc-0558-5149-9f30-0a69c15cbb06.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "Carbon dioxide",
+                  "@xml:lang": "en"
+                }
+              }
+            }
+          },
+          "modellingAndValidation": {
+            "LCIAMethodNormalisationAndWeighting": {
+              "LCIAMethodPrinciple": "other",
+              "typeOfDataSet": "Damage indicator"
+            },
+            "complianceDeclarations": {
+              "compliance": {
+                "common:approvalOfOverallCompliance": "Not defined",
+                "common:documentationCompliance": "Not defined",
+                "common:methodologicalCompliance": "Not defined",
+                "common:nomenclatureCompliance": "Not defined",
+                "common:qualityCompliance": "Not defined",
+                "common:referenceToComplianceSystem": {
+                  "@refObjectId": "82bc2e49-63fc-500f-b52f-69867cd8c91a",
+                  "@type": "source data set",
+                  "@uri": "../sources/82bc2e49-63fc-500f-b52f-69867cd8c91a.json",
+                  "@version": "00.00.001",
+                  "common:shortDescription": {
+                    "#text": "External LCA source compliance context",
+                    "@xml:lang": "en"
+                  }
+                },
+                "common:reviewCompliance": "Not defined"
+              }
+            },
+            "dataSources": {
+              "referenceToDataSource": {
+                "@refObjectId": "16938856-0a35-5654-8aff-56c17e61da4d",
+                "@type": "source data set",
+                "@uri": "../sources/16938856-0a35-5654-8aff-56c17e61da4d.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "ILCD format",
+                  "@xml:lang": "en"
+                }
+              }
+            },
+            "validation": {
+              "review": {
+                "@type": "Not reviewed"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "processes/00000000-0000-4000-8000-000000000098.json",
+      "document": {
+        "processDataSet": {
+          "@locations": "../ILCDLocations.xml",
+          "@version": "1.1",
+          "@xmlns": "http://lca.jrc.it/ILCD/Process",
+          "@xmlns:common": "http://lca.jrc.it/ILCD/Common",
+          "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+          "@xsi:schemaLocation": "http://lca.jrc.it/ILCD/Process ../../schemas/ILCD_ProcessDataSet.xsd",
+          "administrativeInformation": {
+            "common:commissionerAndGoal": {
+              "common:intendedApplications": {
+                "#text": "Converted from external LCA package",
+                "@xml:lang": "en"
+              },
+              "common:referenceToCommissioner": {
+                "@refObjectId": "a6db11f5-1cb4-579a-b503-bd17c361b8c2",
+                "@type": "contact data set",
+                "@uri": "../contacts/a6db11f5-1cb4-579a-b503-bd17c361b8c2.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "TianGong LCA import tooling",
+                  "@xml:lang": "en"
+                }
+              }
+            },
+            "dataEntryBy": {
+              "common:referenceToDataSetFormat": {
+                "@refObjectId": "16938856-0a35-5654-8aff-56c17e61da4d",
+                "@type": "source data set",
+                "@uri": "../sources/16938856-0a35-5654-8aff-56c17e61da4d.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "ILCD format",
+                  "@xml:lang": "en"
+                }
+              },
+              "common:referenceToPersonOrEntityEnteringTheData": {
+                "@refObjectId": "a6db11f5-1cb4-579a-b503-bd17c361b8c2",
+                "@type": "contact data set",
+                "@uri": "../contacts/a6db11f5-1cb4-579a-b503-bd17c361b8c2.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "TianGong LCA import tooling",
+                  "@xml:lang": "en"
+                }
+              },
+              "common:timeStamp": "1900-01-01T00:00:00Z"
+            },
+            "publicationAndOwnership": {
+              "common:copyright": "false",
+              "common:dataSetVersion": "00.00.001",
+              "common:licenseType": "Free of charge for all users and uses",
+              "common:permanentDataSetURI": "https://lcdn.tiangong.earth/datasetdetail/process.xhtml?uuid=28b4c46d-2875-5373-8d19-abd8ce22db6a&version=00.00.001",
+              "common:referenceToOwnershipOfDataSet": {
+                "@refObjectId": "a6db11f5-1cb4-579a-b503-bd17c361b8c2",
+                "@type": "contact data set",
+                "@uri": "../contacts/a6db11f5-1cb4-579a-b503-bd17c361b8c2.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "TianGong LCA import tooling",
+                  "@xml:lang": "en"
+                }
+              }
+            }
+          },
+          "exchanges": {
+            "exchange": [
+              {
+                "@dataSetInternalID": "1",
+                "common:other": {
+                  "@xmlns:tidasimport": "https://tiangong.earth/tidas/import-trace/1.0",
+                  "tidasimport:sourceTrace": {
+                    "@marker": "TIDAS_IMPORT_TRACE_V1",
+                    "payload": {
+                      "exchangeMetadata": {
+                        "unitName": "kg"
+                      }
+                    }
+                  }
+                },
+                "dataDerivationTypeStatus": "Unknown derivation",
+                "exchangeDirection": "Input",
+                "generalComment": {
+                  "#text": "Source exchange internal id: 1.",
+                  "@xml:lang": "en"
+                },
+                "meanAmount": "-2",
+                "referenceToFlowDataSet": {
+                  "@refObjectId": "1c56725f-ac04-5abe-8f49-6a90cebb2a79",
+                  "@type": "flow data set",
+                  "@uri": "../flows/1c56725f-ac04-5abe-8f49-6a90cebb2a79.json",
+                  "@version": "00.00.001",
+                  "common:shortDescription": {
+                    "#text": "Steel",
+                    "@xml:lang": "en"
+                  }
+                },
+                "resultingAmount": "-2"
+              },
+              {
+                "@dataSetInternalID": "2",
+                "common:other": {
+                  "@xmlns:tidasimport": "https://tiangong.earth/tidas/import-trace/1.0",
+                  "tidasimport:sourceTrace": {
+                    "@marker": "TIDAS_IMPORT_TRACE_V1",
+                    "payload": {
+                      "exchangeMetadata": {
+                        "unitName": "kg"
+                      }
+                    }
+                  }
+                },
+                "dataDerivationTypeStatus": "Unknown derivation",
+                "exchangeDirection": "Output",
+                "generalComment": {
+                  "#text": "Source exchange internal id: 2.",
+                  "@xml:lang": "en"
+                },
+                "meanAmount": "-3",
+                "referenceToFlowDataSet": {
+                  "@refObjectId": "8b9586cc-0558-5149-9f30-0a69c15cbb06",
+                  "@type": "flow data set",
+                  "@uri": "../flows/8b9586cc-0558-5149-9f30-0a69c15cbb06.json",
+                  "@version": "00.00.001",
+                  "common:shortDescription": {
+                    "#text": "Carbon dioxide",
+                    "@xml:lang": "en"
+                  }
+                },
+                "resultingAmount": "-3"
+              }
+            ]
+          },
+          "modellingAndValidation": {
+            "LCIMethodAndAllocation": {
+              "typeOfDataSet": "LCI result"
+            },
+            "complianceDeclarations": {
+              "compliance": {
+                "common:approvalOfOverallCompliance": "Not defined",
+                "common:documentationCompliance": "Not defined",
+                "common:methodologicalCompliance": "Not defined",
+                "common:nomenclatureCompliance": "Not defined",
+                "common:qualityCompliance": "Not defined",
+                "common:referenceToComplianceSystem": {
+                  "@refObjectId": "82bc2e49-63fc-500f-b52f-69867cd8c91a",
+                  "@type": "source data set",
+                  "@uri": "../sources/82bc2e49-63fc-500f-b52f-69867cd8c91a.json",
+                  "@version": "00.00.001",
+                  "common:shortDescription": {
+                    "#text": "External LCA source compliance context",
+                    "@xml:lang": "en"
+                  }
+                },
+                "common:reviewCompliance": "Not defined"
+              }
+            },
+            "dataSourcesTreatmentAndRepresentativeness": {
+              "annualSupplyOrProductionVolume": {
+                "#text": "0 kg/year; source production volume unavailable",
+                "@xml:lang": "en"
+              },
+              "dataCutOffAndCompletenessPrinciples": {
+                "#text": "Converted from external LCA package",
+                "@xml:lang": "en"
+              },
+              "referenceToDataSource": {
+                "@refObjectId": "16938856-0a35-5654-8aff-56c17e61da4d",
+                "@type": "source data set",
+                "@uri": "../sources/16938856-0a35-5654-8aff-56c17e61da4d.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "External LCA source metadata",
+                  "@xml:lang": "en"
+                }
+              }
+            },
+            "validation": {
+              "review": {
+                "@type": "Not reviewed"
+              }
+            }
+          },
+          "processInformation": {
+            "dataSetInformation": {
+              "classificationInformation": {
+                "common:classification": {
+                  "@name": "ISIC rev.4",
+                  "common:class": [
+                    {
+                      "#text": "Other service activities",
+                      "@classId": "T",
+                      "@level": "0"
+                    },
+                    {
+                      "#text": "Activities of membership organizations",
+                      "@classId": "94",
+                      "@level": "1"
+                    },
+                    {
+                      "#text": "Activities of other membership organizations",
+                      "@classId": "949",
+                      "@level": "2"
+                    },
+                    {
+                      "#text": "Activities of other membership organizations n.e.c.",
+                      "@classId": "9499",
+                      "@level": "3"
+                    }
+                  ]
+                }
+              },
+              "common:UUID": "00000000-0000-4000-8000-000000000098",
+              "common:generalComment": {
+                "#text": "Synthetic Release pair qualification",
+                "@xml:lang": "en"
+              },
+              "name": {
+                "baseName": {
+                  "#text": "Final result",
+                  "@xml:lang": "en"
+                },
+                "mixAndLocationTypes": {
+                  "#text": "GLO",
+                  "@xml:lang": "en"
+                },
+                "treatmentStandardsRoutes": {
+                  "#text": "source-described route",
+                  "@xml:lang": "en"
+                }
+              }
+            },
+            "geography": {
+              "locationOfOperationSupplyOrProduction": {
+                "@location": "GLO"
+              }
+            },
+            "quantitativeReference": {
+              "@type": "Reference flow(s)",
+              "functionalUnitOrOther": {
+                "#text": "1 kg Steel",
+                "@xml:lang": "en"
+              },
+              "referenceToReferenceFlow": "1"
+            },
+            "time": {
+              "common:referenceYear": 9999
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "processes/28b4c46d-2875-5373-8d19-abd8ce22db6a.json",
+      "document": {
+        "processDataSet": {
+          "@locations": "../ILCDLocations.xml",
+          "@version": "1.1",
+          "@xmlns": "http://lca.jrc.it/ILCD/Process",
+          "@xmlns:common": "http://lca.jrc.it/ILCD/Common",
+          "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+          "@xsi:schemaLocation": "http://lca.jrc.it/ILCD/Process ../../schemas/ILCD_ProcessDataSet.xsd",
+          "LCIAResults": {
+            "LCIAResult": [
+              {
+                "meanAmount": "42",
+                "referenceToLCIAMethodDataSet": {
+                  "@refObjectId": "00000000-0000-4000-8000-000000000099",
+                  "@type": "LCIA method data set",
+                  "@uri": "../lciamethods/00000000-0000-4000-8000-000000000099.json",
+                  "@version": "00.00.001",
+                  "common:shortDescription": {
+                    "#text": "Synthetic climate indicator",
+                    "@xml:lang": "en"
+                  }
+                }
+              }
+            ]
+          },
+          "administrativeInformation": {
+            "common:commissionerAndGoal": {
+              "common:intendedApplications": {
+                "#text": "Converted from external LCA package",
+                "@xml:lang": "en"
+              },
+              "common:referenceToCommissioner": {
+                "@refObjectId": "a6db11f5-1cb4-579a-b503-bd17c361b8c2",
+                "@type": "contact data set",
+                "@uri": "../contacts/a6db11f5-1cb4-579a-b503-bd17c361b8c2.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "TianGong LCA import tooling",
+                  "@xml:lang": "en"
+                }
+              }
+            },
+            "dataEntryBy": {
+              "common:referenceToDataSetFormat": {
+                "@refObjectId": "16938856-0a35-5654-8aff-56c17e61da4d",
+                "@type": "source data set",
+                "@uri": "../sources/16938856-0a35-5654-8aff-56c17e61da4d.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "ILCD format",
+                  "@xml:lang": "en"
+                }
+              },
+              "common:referenceToPersonOrEntityEnteringTheData": {
+                "@refObjectId": "a6db11f5-1cb4-579a-b503-bd17c361b8c2",
+                "@type": "contact data set",
+                "@uri": "../contacts/a6db11f5-1cb4-579a-b503-bd17c361b8c2.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "TianGong LCA import tooling",
+                  "@xml:lang": "en"
+                }
+              },
+              "common:timeStamp": "1900-01-01T00:00:00Z"
+            },
+            "publicationAndOwnership": {
+              "common:copyright": "false",
+              "common:dataSetVersion": "00.00.001",
+              "common:licenseType": "Free of charge for all users and uses",
+              "common:permanentDataSetURI": "https://lcdn.tiangong.earth/datasetdetail/process.xhtml?uuid=28b4c46d-2875-5373-8d19-abd8ce22db6a&version=00.00.001",
+              "common:referenceToOwnershipOfDataSet": {
+                "@refObjectId": "a6db11f5-1cb4-579a-b503-bd17c361b8c2",
+                "@type": "contact data set",
+                "@uri": "../contacts/a6db11f5-1cb4-579a-b503-bd17c361b8c2.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "TianGong LCA import tooling",
+                  "@xml:lang": "en"
+                }
+              }
+            }
+          },
+          "exchanges": {
+            "exchange": [
+              {
+                "@dataSetInternalID": "1",
+                "common:other": {
+                  "@xmlns:tidasimport": "https://tiangong.earth/tidas/import-trace/1.0",
+                  "tidasimport:sourceTrace": {
+                    "@marker": "TIDAS_IMPORT_TRACE_V1",
+                    "payload": {
+                      "exchangeMetadata": {
+                        "unitName": "kg"
+                      }
+                    }
+                  }
+                },
+                "dataDerivationTypeStatus": "Unknown derivation",
+                "exchangeDirection": "Output",
+                "generalComment": {
+                  "#text": "Source exchange internal id: 1.",
+                  "@xml:lang": "en"
+                },
+                "meanAmount": "1",
+                "referenceToFlowDataSet": {
+                  "@refObjectId": "1c56725f-ac04-5abe-8f49-6a90cebb2a79",
+                  "@type": "flow data set",
+                  "@uri": "../flows/1c56725f-ac04-5abe-8f49-6a90cebb2a79.json",
+                  "@version": "00.00.001",
+                  "common:shortDescription": {
+                    "#text": "Steel",
+                    "@xml:lang": "en"
+                  }
+                },
+                "resultingAmount": "1"
+              },
+              {
+                "@dataSetInternalID": "2",
+                "common:other": {
+                  "@xmlns:tidasimport": "https://tiangong.earth/tidas/import-trace/1.0",
+                  "tidasimport:sourceTrace": {
+                    "@marker": "TIDAS_IMPORT_TRACE_V1",
+                    "payload": {
+                      "exchangeMetadata": {
+                        "unitName": "kg"
+                      }
+                    }
+                  }
+                },
+                "dataDerivationTypeStatus": "Unknown derivation",
+                "exchangeDirection": "Output",
+                "generalComment": {
+                  "#text": "Source exchange internal id: 2.",
+                  "@xml:lang": "en"
+                },
+                "meanAmount": "2.5",
+                "referenceToFlowDataSet": {
+                  "@refObjectId": "8b9586cc-0558-5149-9f30-0a69c15cbb06",
+                  "@type": "flow data set",
+                  "@uri": "../flows/8b9586cc-0558-5149-9f30-0a69c15cbb06.json",
+                  "@version": "00.00.001",
+                  "common:shortDescription": {
+                    "#text": "Carbon dioxide",
+                    "@xml:lang": "en"
+                  }
+                },
+                "resultingAmount": "2.5"
+              }
+            ]
+          },
+          "modellingAndValidation": {
+            "LCIMethodAndAllocation": {
+              "typeOfDataSet": "LCI result"
+            },
+            "complianceDeclarations": {
+              "compliance": {
+                "common:approvalOfOverallCompliance": "Not defined",
+                "common:documentationCompliance": "Not defined",
+                "common:methodologicalCompliance": "Not defined",
+                "common:nomenclatureCompliance": "Not defined",
+                "common:qualityCompliance": "Not defined",
+                "common:referenceToComplianceSystem": {
+                  "@refObjectId": "82bc2e49-63fc-500f-b52f-69867cd8c91a",
+                  "@type": "source data set",
+                  "@uri": "../sources/82bc2e49-63fc-500f-b52f-69867cd8c91a.json",
+                  "@version": "00.00.001",
+                  "common:shortDescription": {
+                    "#text": "External LCA source compliance context",
+                    "@xml:lang": "en"
+                  }
+                },
+                "common:reviewCompliance": "Not defined"
+              }
+            },
+            "dataSourcesTreatmentAndRepresentativeness": {
+              "annualSupplyOrProductionVolume": {
+                "#text": "0 kg/year; source production volume unavailable",
+                "@xml:lang": "en"
+              },
+              "dataCutOffAndCompletenessPrinciples": {
+                "#text": "Converted from external LCA package",
+                "@xml:lang": "en"
+              },
+              "referenceToDataSource": {
+                "@refObjectId": "16938856-0a35-5654-8aff-56c17e61da4d",
+                "@type": "source data set",
+                "@uri": "../sources/16938856-0a35-5654-8aff-56c17e61da4d.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "External LCA source metadata",
+                  "@xml:lang": "en"
+                }
+              }
+            },
+            "validation": {
+              "review": {
+                "@type": "Not reviewed"
+              }
+            }
+          },
+          "processInformation": {
+            "dataSetInformation": {
+              "classificationInformation": {
+                "common:classification": {
+                  "@name": "ISIC rev.4",
+                  "common:class": [
+                    {
+                      "#text": "Other service activities",
+                      "@classId": "T",
+                      "@level": "0"
+                    },
+                    {
+                      "#text": "Activities of membership organizations",
+                      "@classId": "94",
+                      "@level": "1"
+                    },
+                    {
+                      "#text": "Activities of other membership organizations",
+                      "@classId": "949",
+                      "@level": "2"
+                    },
+                    {
+                      "#text": "Activities of other membership organizations n.e.c.",
+                      "@classId": "9499",
+                      "@level": "3"
+                    }
+                  ]
+                }
+              },
+              "common:UUID": "28b4c46d-2875-5373-8d19-abd8ce22db6a",
+              "common:generalComment": {
+                "#text": "Synthetic Release pair qualification",
+                "@xml:lang": "en"
+              },
+              "name": {
+                "baseName": {
+                  "#text": "Final result",
+                  "@xml:lang": "en"
+                },
+                "mixAndLocationTypes": {
+                  "#text": "GLO",
+                  "@xml:lang": "en"
+                },
+                "treatmentStandardsRoutes": {
+                  "#text": "source-described route",
+                  "@xml:lang": "en"
+                }
+              }
+            },
+            "geography": {
+              "locationOfOperationSupplyOrProduction": {
+                "@location": "GLO"
+              }
+            },
+            "quantitativeReference": {
+              "@type": "Reference flow(s)",
+              "functionalUnitOrOther": {
+                "#text": "1 kg Steel",
+                "@xml:lang": "en"
+              },
+              "referenceToReferenceFlow": "1"
+            },
+            "time": {
+              "common:referenceYear": 9999
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "processes/28b4c46d-2875-5373-8d19-abd8ce22db6a_00.00.002.json",
+      "document": {
+        "processDataSet": {
+          "@locations": "../ILCDLocations.xml",
+          "@version": "1.1",
+          "@xmlns": "http://lca.jrc.it/ILCD/Process",
+          "@xmlns:common": "http://lca.jrc.it/ILCD/Common",
+          "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+          "@xsi:schemaLocation": "http://lca.jrc.it/ILCD/Process ../../schemas/ILCD_ProcessDataSet.xsd",
+          "LCIAResults": {
+            "LCIAResult": [
+              {
+                "meanAmount": "0",
+                "referenceToLCIAMethodDataSet": {
+                  "@refObjectId": "00000000-0000-4000-8000-000000000099",
+                  "@type": "LCIA method data set",
+                  "@uri": "../lciamethods/00000000-0000-4000-8000-000000000099.json",
+                  "@version": "00.00.001",
+                  "common:shortDescription": {
+                    "#text": "Synthetic climate indicator",
+                    "@xml:lang": "en"
+                  }
+                }
+              }
+            ]
+          },
+          "administrativeInformation": {
+            "common:commissionerAndGoal": {
+              "common:intendedApplications": {
+                "#text": "Converted from external LCA package",
+                "@xml:lang": "en"
+              },
+              "common:referenceToCommissioner": {
+                "@refObjectId": "a6db11f5-1cb4-579a-b503-bd17c361b8c2",
+                "@type": "contact data set",
+                "@uri": "../contacts/a6db11f5-1cb4-579a-b503-bd17c361b8c2.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "TianGong LCA import tooling",
+                  "@xml:lang": "en"
+                }
+              }
+            },
+            "dataEntryBy": {
+              "common:referenceToDataSetFormat": {
+                "@refObjectId": "16938856-0a35-5654-8aff-56c17e61da4d",
+                "@type": "source data set",
+                "@uri": "../sources/16938856-0a35-5654-8aff-56c17e61da4d.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "ILCD format",
+                  "@xml:lang": "en"
+                }
+              },
+              "common:referenceToPersonOrEntityEnteringTheData": {
+                "@refObjectId": "a6db11f5-1cb4-579a-b503-bd17c361b8c2",
+                "@type": "contact data set",
+                "@uri": "../contacts/a6db11f5-1cb4-579a-b503-bd17c361b8c2.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "TianGong LCA import tooling",
+                  "@xml:lang": "en"
+                }
+              },
+              "common:timeStamp": "1900-01-01T00:00:00Z"
+            },
+            "publicationAndOwnership": {
+              "common:copyright": "false",
+              "common:dataSetVersion": "00.00.002",
+              "common:licenseType": "Free of charge for all users and uses",
+              "common:permanentDataSetURI": "https://lcdn.tiangong.earth/datasetdetail/process.xhtml?uuid=28b4c46d-2875-5373-8d19-abd8ce22db6a&version=00.00.001",
+              "common:referenceToOwnershipOfDataSet": {
+                "@refObjectId": "a6db11f5-1cb4-579a-b503-bd17c361b8c2",
+                "@type": "contact data set",
+                "@uri": "../contacts/a6db11f5-1cb4-579a-b503-bd17c361b8c2.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "TianGong LCA import tooling",
+                  "@xml:lang": "en"
+                }
+              }
+            }
+          },
+          "exchanges": {
+            "exchange": [
+              {
+                "@dataSetInternalID": "1",
+                "common:other": {
+                  "@xmlns:tidasimport": "https://tiangong.earth/tidas/import-trace/1.0",
+                  "tidasimport:sourceTrace": {
+                    "@marker": "TIDAS_IMPORT_TRACE_V1",
+                    "payload": {
+                      "exchangeMetadata": {
+                        "unitName": "kg"
+                      }
+                    }
+                  }
+                },
+                "dataDerivationTypeStatus": "Unknown derivation",
+                "exchangeDirection": "Output",
+                "generalComment": {
+                  "#text": "Source exchange internal id: 1.",
+                  "@xml:lang": "en"
+                },
+                "meanAmount": "1",
+                "referenceToFlowDataSet": {
+                  "@refObjectId": "1c56725f-ac04-5abe-8f49-6a90cebb2a79",
+                  "@type": "flow data set",
+                  "@uri": "../flows/1c56725f-ac04-5abe-8f49-6a90cebb2a79.json",
+                  "@version": "00.00.001",
+                  "common:shortDescription": {
+                    "#text": "Steel",
+                    "@xml:lang": "en"
+                  }
+                },
+                "resultingAmount": "1"
+              },
+              {
+                "@dataSetInternalID": "2",
+                "common:other": {
+                  "@xmlns:tidasimport": "https://tiangong.earth/tidas/import-trace/1.0",
+                  "tidasimport:sourceTrace": {
+                    "@marker": "TIDAS_IMPORT_TRACE_V1",
+                    "payload": {
+                      "exchangeMetadata": {
+                        "unitName": "kg"
+                      }
+                    }
+                  }
+                },
+                "dataDerivationTypeStatus": "Unknown derivation",
+                "exchangeDirection": "Output",
+                "generalComment": {
+                  "#text": "Source exchange internal id: 2.",
+                  "@xml:lang": "en"
+                },
+                "meanAmount": "0",
+                "referenceToFlowDataSet": {
+                  "@refObjectId": "8b9586cc-0558-5149-9f30-0a69c15cbb06",
+                  "@type": "flow data set",
+                  "@uri": "../flows/8b9586cc-0558-5149-9f30-0a69c15cbb06.json",
+                  "@version": "00.00.001",
+                  "common:shortDescription": {
+                    "#text": "Carbon dioxide",
+                    "@xml:lang": "en"
+                  }
+                },
+                "resultingAmount": "0"
+              }
+            ]
+          },
+          "modellingAndValidation": {
+            "LCIMethodAndAllocation": {
+              "typeOfDataSet": "LCI result"
+            },
+            "complianceDeclarations": {
+              "compliance": {
+                "common:approvalOfOverallCompliance": "Not defined",
+                "common:documentationCompliance": "Not defined",
+                "common:methodologicalCompliance": "Not defined",
+                "common:nomenclatureCompliance": "Not defined",
+                "common:qualityCompliance": "Not defined",
+                "common:referenceToComplianceSystem": {
+                  "@refObjectId": "82bc2e49-63fc-500f-b52f-69867cd8c91a",
+                  "@type": "source data set",
+                  "@uri": "../sources/82bc2e49-63fc-500f-b52f-69867cd8c91a.json",
+                  "@version": "00.00.001",
+                  "common:shortDescription": {
+                    "#text": "External LCA source compliance context",
+                    "@xml:lang": "en"
+                  }
+                },
+                "common:reviewCompliance": "Not defined"
+              }
+            },
+            "dataSourcesTreatmentAndRepresentativeness": {
+              "annualSupplyOrProductionVolume": {
+                "#text": "0 kg/year; source production volume unavailable",
+                "@xml:lang": "en"
+              },
+              "dataCutOffAndCompletenessPrinciples": {
+                "#text": "Converted from external LCA package",
+                "@xml:lang": "en"
+              },
+              "referenceToDataSource": {
+                "@refObjectId": "16938856-0a35-5654-8aff-56c17e61da4d",
+                "@type": "source data set",
+                "@uri": "../sources/16938856-0a35-5654-8aff-56c17e61da4d.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "External LCA source metadata",
+                  "@xml:lang": "en"
+                }
+              }
+            },
+            "validation": {
+              "review": {
+                "@type": "Not reviewed"
+              }
+            }
+          },
+          "processInformation": {
+            "dataSetInformation": {
+              "classificationInformation": {
+                "common:classification": {
+                  "@name": "ISIC rev.4",
+                  "common:class": [
+                    {
+                      "#text": "Other service activities",
+                      "@classId": "T",
+                      "@level": "0"
+                    },
+                    {
+                      "#text": "Activities of membership organizations",
+                      "@classId": "94",
+                      "@level": "1"
+                    },
+                    {
+                      "#text": "Activities of other membership organizations",
+                      "@classId": "949",
+                      "@level": "2"
+                    },
+                    {
+                      "#text": "Activities of other membership organizations n.e.c.",
+                      "@classId": "9499",
+                      "@level": "3"
+                    }
+                  ]
+                }
+              },
+              "common:UUID": "28b4c46d-2875-5373-8d19-abd8ce22db6a",
+              "common:generalComment": {
+                "#text": "Synthetic Release pair qualification",
+                "@xml:lang": "en"
+              },
+              "name": {
+                "baseName": {
+                  "#text": "Final result",
+                  "@xml:lang": "en"
+                },
+                "mixAndLocationTypes": {
+                  "#text": "GLO",
+                  "@xml:lang": "en"
+                },
+                "treatmentStandardsRoutes": {
+                  "#text": "source-described route",
+                  "@xml:lang": "en"
+                }
+              }
+            },
+            "geography": {
+              "locationOfOperationSupplyOrProduction": {
+                "@location": "GLO"
+              }
+            },
+            "quantitativeReference": {
+              "@type": "Reference flow(s)",
+              "functionalUnitOrOther": {
+                "#text": "1 kg Steel",
+                "@xml:lang": "en"
+              },
+              "referenceToReferenceFlow": "1"
+            },
+            "time": {
+              "common:referenceYear": 9999
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "sources/16938856-0a35-5654-8aff-56c17e61da4d.json",
+      "document": {
+        "sourceDataSet": {
+          "@version": "1.1",
+          "@xmlns": "http://lca.jrc.it/ILCD/Source",
+          "@xmlns:common": "http://lca.jrc.it/ILCD/Common",
+          "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+          "@xsi:schemaLocation": "http://lca.jrc.it/ILCD/Source ../../schemas/ILCD_SourceDataSet.xsd",
+          "administrativeInformation": {
+            "dataEntryBy": {
+              "common:referenceToDataSetFormat": {
+                "@refObjectId": "16938856-0a35-5654-8aff-56c17e61da4d",
+                "@type": "source data set",
+                "@uri": "../sources/16938856-0a35-5654-8aff-56c17e61da4d.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "ILCD format",
+                  "@xml:lang": "en"
+                }
+              },
+              "common:timeStamp": "1900-01-01T00:00:00Z"
+            },
+            "publicationAndOwnership": {
+              "common:dataSetVersion": "00.00.001",
+              "common:permanentDataSetURI": "https://lcdn.tiangong.earth/datasetdetail/source.xhtml?uuid=16938856-0a35-5654-8aff-56c17e61da4d&version=00.00.001",
+              "common:referenceToOwnershipOfDataSet": {
+                "@refObjectId": "a6db11f5-1cb4-579a-b503-bd17c361b8c2",
+                "@type": "contact data set",
+                "@uri": "../contacts/a6db11f5-1cb4-579a-b503-bd17c361b8c2.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "TianGong LCA import tooling",
+                  "@xml:lang": "en"
+                }
+              }
+            }
+          },
+          "sourceInformation": {
+            "dataSetInformation": {
+              "classificationInformation": {
+                "common:classification": {
+                  "common:class": {
+                    "#text": "Data set formats",
+                    "@classId": "1",
+                    "@level": "0"
+                  }
+                }
+              },
+              "common:UUID": "16938856-0a35-5654-8aff-56c17e61da4d",
+              "common:shortName": {
+                "#text": "ILCD format",
+                "@xml:lang": "en"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "sources/82bc2e49-63fc-500f-b52f-69867cd8c91a.json",
+      "document": {
+        "sourceDataSet": {
+          "@version": "1.1",
+          "@xmlns": "http://lca.jrc.it/ILCD/Source",
+          "@xmlns:common": "http://lca.jrc.it/ILCD/Common",
+          "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+          "@xsi:schemaLocation": "http://lca.jrc.it/ILCD/Source ../../schemas/ILCD_SourceDataSet.xsd",
+          "administrativeInformation": {
+            "dataEntryBy": {
+              "common:referenceToDataSetFormat": {
+                "@refObjectId": "16938856-0a35-5654-8aff-56c17e61da4d",
+                "@type": "source data set",
+                "@uri": "../sources/16938856-0a35-5654-8aff-56c17e61da4d.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "ILCD format",
+                  "@xml:lang": "en"
+                }
+              },
+              "common:timeStamp": "1900-01-01T00:00:00Z"
+            },
+            "publicationAndOwnership": {
+              "common:dataSetVersion": "00.00.001",
+              "common:permanentDataSetURI": "https://lcdn.tiangong.earth/datasetdetail/source.xhtml?uuid=82bc2e49-63fc-500f-b52f-69867cd8c91a&version=00.00.001",
+              "common:referenceToOwnershipOfDataSet": {
+                "@refObjectId": "a6db11f5-1cb4-579a-b503-bd17c361b8c2",
+                "@type": "contact data set",
+                "@uri": "../contacts/a6db11f5-1cb4-579a-b503-bd17c361b8c2.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "TianGong LCA import tooling",
+                  "@xml:lang": "en"
+                }
+              }
+            }
+          },
+          "sourceInformation": {
+            "dataSetInformation": {
+              "classificationInformation": {
+                "common:classification": {
+                  "common:class": {
+                    "#text": "Compliance systems",
+                    "@classId": "3",
+                    "@level": "0"
+                  }
+                }
+              },
+              "common:UUID": "82bc2e49-63fc-500f-b52f-69867cd8c91a",
+              "common:shortName": {
+                "#text": "External LCA source compliance context",
+                "@xml:lang": "en"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "unitgroups/d831c535-6737-5243-aec2-a243d2bb9d42.json",
+      "document": {
+        "unitGroupDataSet": {
+          "@version": "1.1",
+          "@xmlns": "http://lca.jrc.it/ILCD/UnitGroup",
+          "@xmlns:common": "http://lca.jrc.it/ILCD/Common",
+          "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+          "@xsi:schemaLocation": "http://lca.jrc.it/ILCD/UnitGroup ../../schemas/ILCD_UnitGroupDataSet.xsd",
+          "administrativeInformation": {
+            "dataEntryBy": {
+              "common:referenceToDataSetFormat": {
+                "@refObjectId": "16938856-0a35-5654-8aff-56c17e61da4d",
+                "@type": "source data set",
+                "@uri": "../sources/16938856-0a35-5654-8aff-56c17e61da4d.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "ILCD format",
+                  "@xml:lang": "en"
+                }
+              },
+              "common:timeStamp": "1900-01-01T00:00:00Z"
+            },
+            "publicationAndOwnership": {
+              "common:dataSetVersion": "00.00.001",
+              "common:permanentDataSetURI": "https://lcdn.tiangong.earth/unitgroups/d831c535-6737-5243-aec2-a243d2bb9d42?version=00.00.001",
+              "common:referenceToOwnershipOfDataSet": {
+                "@refObjectId": "a6db11f5-1cb4-579a-b503-bd17c361b8c2",
+                "@type": "contact data set",
+                "@uri": "../contacts/a6db11f5-1cb4-579a-b503-bd17c361b8c2.json",
+                "@version": "00.00.001",
+                "common:shortDescription": {
+                  "#text": "TianGong LCA import tooling",
+                  "@xml:lang": "en"
+                }
+              }
+            }
+          },
+          "modellingAndValidation": {
+            "complianceDeclarations": {
+              "compliance": {
+                "common:approvalOfOverallCompliance": "Not defined",
+                "common:referenceToComplianceSystem": {
+                  "@refObjectId": "82bc2e49-63fc-500f-b52f-69867cd8c91a",
+                  "@type": "source data set",
+                  "@uri": "../sources/82bc2e49-63fc-500f-b52f-69867cd8c91a.json",
+                  "@version": "00.00.001",
+                  "common:shortDescription": {
+                    "#text": "External LCA source compliance context",
+                    "@xml:lang": "en"
+                  }
+                }
+              }
+            }
+          },
+          "unitGroupInformation": {
+            "dataSetInformation": {
+              "classificationInformation": {
+                "common:classification": {
+                  "common:class": {
+                    "#text": "Other unit groups",
+                    "@classId": "4",
+                    "@level": "0"
+                  }
+                }
+              },
+              "common:UUID": "d831c535-6737-5243-aec2-a243d2bb9d42",
+              "common:name": {
+                "#text": "Units of kg",
+                "@xml:lang": "en"
+              }
+            },
+            "quantitativeReference": {
+              "referenceToReferenceUnit": "1"
+            }
+          },
+          "units": {
+            "unit": [
+              {
+                "@dataSetInternalID": "1",
+                "meanValue": "1.0",
+                "name": "kg"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

@@ -20,8 +20,8 @@ checkPaths:
   - workflows/**
   - .docpact/config.yaml
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: e417d3adbd28878ee05218b992b5f1f700dcfada
-lastReviewedNote: "Release #99: reviewed separate Derived Result handoff verification, byte-preserving SDK-validated Materialization, content-addressed paths and explicit pending association/Candidate gates; no solver or publication authority moves."
+lastReviewedCommit: 097f0da0a81a8266cf794a445a4940e721f70f23
+lastReviewedNote: "Release #99: Result-only native ZIP/HDF5 pairing now has actual archive and matrix readback proof; existing CLI, final identity/lineage gates and publication authority remain explicit."
 related:
   - AGENTS.md
   - docs/architecture.md
@@ -57,7 +57,7 @@ Candidate 构建不构成发布授权。Publication 可选择引用完整的子�
 
 Transformation 的 inspect、freeze、execute 已实现；其 `completed` 只证明本节点产物和 handoff 已生成。Unit 聚合使旧 Result evidence 失效，需要新的计算；Result 聚合产生 Derived Result，不重新求解或补造 LifecycleModel。
 
-**后继路线不是现成的自动闭环。** Materialization 已提供 `materialize derived` 接收精确 Derived Result handoff，并保留未完成的结构化原过程关联门禁；Release Candidate 当前只支持 LifecycleModel full-closure profile，拒绝 Result-only materialization。进入后继 Workflow 前应核对其真实输入契约；不能通过重命名产物、复用旧证据或补造 Model 绕过限制。具体节点和限制由各 Workflow 文档维护。
+**后继路线不是现成的自动闭环。** Materialization 已提供 `materialize derived` 接收精确 Derived Result handoff，并保留未完成的结构化原过程关联门禁；现有 `package build` CLI 仍要求 LifecycleModel full-closure 输入；内部双产物模块已支持 Result-only 两包和 HDF5 配对回读，但尚不替代身份登记、来源关联与 Candidate 冻结。进入后继 Workflow 前应核对其真实输入契约；不能通过重命名产物、复用旧证据或补造 Model 绕过限制。具体节点和限制由各 Workflow 文档维护。
 
 ## 开发与阅读
 

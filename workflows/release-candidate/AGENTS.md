@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 intake、package、candidate qualification、scope refinement 或 Candidate 后继路径变化时
 checkPaths:
   - workflows/release-candidate/**
-lastReviewedAt: 2026-10-16
-lastReviewedCommit: 04cccd9dc06aa5ae3b1f9f72f027692894d0c2ff
-lastReviewedNote: "Reviewed Release #85: exact Node 24.22.0 aligns the local selector, six manifests, CI and existing toolchain assertions; pnpm 11.24.0, frozen dependency graph, internal SDK, overrides, recipe/numerical contracts and publication authorization are preserved."
+lastReviewedAt: 2026-11-01
+lastReviewedCommit: 097f0da0a81a8266cf794a445a4940e721f70f23
+lastReviewedNote: "Release #99: explicit Result-only Toolkit capability admission and actual ZIP/HDF5 pairing; mixed layers, exact versions and independent numeric fixtures verified. Candidate identity/lineage and publication remain separate."
 related:
   - README.md
   - ../AGENTS.md
@@ -114,3 +114,9 @@ Release Candidate 只有在以下条件同时成立时完成：
 - `lib/final-result-artifacts.mjs` 按层/方法集分组，逐结果 spool；CSR LCI、dense LCIA 与索引均由 Candidate 拥有的 `native/` 工具生成/回读。索引和单行/总文件预算不可绕过，零行及负值保留，失败不能产生合格 Candidate。
 - encoding receipt 必须显式 `candidateQualified=false` 和 `publicationAuthorized=false`；只有后续独立 ZIP 一致性、身份权威登记及配对 Candidate 门禁成立才能取得相应资格。不能通过 v1 Calculation 绑定把新 Result 轴伪装成 source Unit 轴。
 - 独立预期值测试分别验证领域投影与真实 HDF5 文件；不能仅以 writer 自己生成的相同错误值互比证明正确。
+
+### 双产物局部资格
+
+- `buildFinalResultPair` 内部能力显式选择 `result-process-full-closure.v1` 两包，不修改 legacy `package build` 四包契约。工具必须声明 profile 与 report v2 能力。
+- 配对须覆盖实际 ZIP 解压验证、实际归档语义 round-trip、完整冻结文档与依赖、最终 Result 轴及实际 HDF5 全量数值。缺少方法能力不能补零，完整零结果不能丢行。
+- 配对 receipt 只证明本地文件一致，不替代身份登记、来源证据、Candidate 资格或发布批准。失败保留成功产物和诊断；不创建合格 Candidate、不覆盖原输出。

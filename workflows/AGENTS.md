@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: e417d3adbd28878ee05218b992b5f1f700dcfada
-lastReviewedNote: "Release #99: Derived Result handoff consumer verifies exact producer evidence and canonical bytes, pins SDK validation, and preserves v2 parent Result lineage with pending source association; paired Candidate qualification remains separate."
+lastReviewedCommit: 097f0da0a81a8266cf794a445a4940e721f70f23
+lastReviewedNote: "Release #99: explicit Result-only Toolkit capability admission and actual ZIP/HDF5 pairing; mixed layers, exact versions and independent numeric fixtures verified. Candidate identity/lineage and publication remain separate."
 related:
   - ../AGENTS.md
   - ../README.md

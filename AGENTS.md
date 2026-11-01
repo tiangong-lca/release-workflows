@@ -26,8 +26,8 @@ checkPaths:
   - .node-version
   - .github/workflows/ci.yml
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: e417d3adbd28878ee05218b992b5f1f700dcfada
-lastReviewedNote: "Release #99: reviewed separate Derived Result handoff verification, byte-preserving SDK-validated Materialization, content-addressed paths and explicit pending association/Candidate gates; no solver or publication authority moves."
+lastReviewedCommit: 097f0da0a81a8266cf794a445a4940e721f70f23
+lastReviewedNote: "Release #99: Result-only native ZIP/HDF5 pairing now has actual archive and matrix readback proof; existing CLI, final identity/lineage gates and publication authority remain explicit."
 related:
   - README.md
   - .docpact/config.yaml

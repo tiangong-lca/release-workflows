@@ -331,7 +331,7 @@ export async function buildFinalResultArtifacts({
     await rm(staging, { recursive: true, force: true });
   }
 }
-async function frozenDocument(root, entry) {
+export async function frozenDocument(root, entry) {
   if (
     typeof entry.path !== "string" ||
     path.isAbsolute(entry.path) ||
@@ -373,7 +373,7 @@ async function describe(root, name) {
   }
   return { name, sha256: hash.digest("hex"), byteSize, plainByteSize: null };
 }
-function runEncoder(binary, args) {
+export function runEncoder(binary, args) {
   return new Promise((resolve, reject) => {
     const child = spawn(binary, args, {
       stdio: ["ignore", "ignore", "pipe"],

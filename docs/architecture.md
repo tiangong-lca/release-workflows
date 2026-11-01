@@ -18,8 +18,8 @@ checkPaths:
   - .docpact/config.yaml
   - workflows/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: e417d3adbd28878ee05218b992b5f1f700dcfada
-lastReviewedNote: "Release #99: Derived Result Materialization now consumes producer-verified exact final bytes; structured source association and paired Candidate qualification remain separate gates."
+lastReviewedCommit: 097f0da0a81a8266cf794a445a4940e721f70f23
+lastReviewedNote: "Release #99: Result-only native ZIP/HDF5 pairing now has actual archive and matrix readback proof; existing CLI, final identity/lineage gates and publication authority remain explicit."
 related:
   - ../AGENTS.md
   - ../README.md
@@ -42,7 +42,7 @@ Calculation -> verified Calculation Bundle
 
 Calculation 内部包含完整性验证；Result/Model 是 Materialization recipe；packaging/qualification 属于 Candidate。它们不是新增顶层 Workflow。Publication 内的 Portal LCIA recipe 从 ready V3 package / prepared projection 开始，与 Candidate dataset recipe 独立。
 
-Transformation handoff 表达目标：Unit 返回计算，Result 返回物化，最终形成新 Candidate。**当前接收边界未闭合**：Materialization 已提供独立 `materialize derived` 路线，验证并冻结加工后字节；原过程关联仍需结构化父血缘；Candidate 拒绝 Result-only profile。不得把 producer 输出、接口字段或设计箭头当作消费者实现证据。补齐路线需要各 owner 的明确契约与真实跨节点验证。
+Transformation handoff 表达目标：Unit 返回计算，Result 返回物化，最终形成新 Candidate。**当前接收边界未闭合**：Materialization 已提供独立 `materialize derived` 路线，验证并冻结加工后字节；原过程关联仍需结构化父血缘；既有 Candidate CLI 仍拒绝 Result-only profile；内部两包/HDF5 配对模块只产生局部资格证据，完整 Candidate 冻结仍需身份和来源契约。不得把 producer 输出、接口字段或设计箭头当作消费者实现证据。补齐路线需要各 owner 的明确契约与真实跨节点验证。
 
 ## 权威来源
 

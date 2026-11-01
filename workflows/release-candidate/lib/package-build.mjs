@@ -24,6 +24,7 @@ import { loadReleaseIntake } from "./release-intake.mjs";
 
 export const PACKAGE_PROFILE =
   "standalone-lifecyclemodel-result-full-closure.v1";
+export const RESULT_PACKAGE_PROFILE = "result-process-full-closure.v1";
 export const DEFAULT_TIDAS_MEMORY_BUDGET_MIB = 2048;
 
 const DISTRIBUTION_PACKAGES = [
@@ -40,6 +41,16 @@ const DISTRIBUTION_PACKAGES = [
     "ilcd",
   ],
 ];
+
+export function distributionPackages(profile = PACKAGE_PROFILE) {
+  if (profile === PACKAGE_PROFILE) return DISTRIBUTION_PACKAGES;
+  if (profile === RESULT_PACKAGE_PROFILE)
+    return [
+      [`${profile}.tidas.zip`, "ResultDatabase", "tidas"],
+      [`${profile}.ilcd.zip`, "ResultDatabase", "ilcd"],
+    ];
+  fail("package_profile_unsupported", "Unsupported package profile");
+}
 
 export async function buildPackageCandidate({
   releaseIntakeDir,
@@ -443,7 +454,7 @@ function validateTidasMemoryBudgetMiB(value) {
   return parsed;
 }
 
-function tidasSpawnOptions(memoryBudgetMiB) {
+export function tidasSpawnOptions(memoryBudgetMiB) {
   return {
     env: {
       ...process.env,
@@ -462,8 +473,12 @@ function isMemoryBudgetExceeded(value) {
   return false;
 }
 
-async function applyDistributionNames(packagesDir, releaseVersion) {
-  for (const [source, product, format] of DISTRIBUTION_PACKAGES) {
+export async function applyDistributionNames(
+  packagesDir,
+  releaseVersion,
+  profile = PACKAGE_PROFILE,
+) {
+  for (const [source, product, format] of distributionPackages(profile)) {
     await rename(
       path.join(packagesDir, source),
       path.join(
@@ -481,10 +496,11 @@ export async function verifyBuiltPackages({
   workspace,
   releaseVersion,
   reportPath,
+  profile = PACKAGE_PROFILE,
   spawnCommand = spawnBounded,
 }) {
   const packages = [];
-  for (const [, product, format] of DISTRIBUTION_PACKAGES) {
+  for (const [, product, format] of distributionPackages(profile)) {
     const fileName = `TiangongLCA-${releaseVersion}-${product}.${format}.zip`;
     const archive = path.join(packagesDir, fileName);
     const listing = await spawnCommand("unzip", ["-Z1", archive]);
@@ -598,7 +614,11 @@ export async function verifyBuiltPackages({
     });
   }
   return {
-    schemaVersion: "tiangong.release.package-verification.v1",
+    schemaVersion:
+      profile === RESULT_PACKAGE_PROFILE
+        ? "tiangong.release.package-verification.v2"
+        : "tiangong.release.package-verification.v1",
+    ...(profile === RESULT_PACKAGE_PROFILE ? { profile } : {}),
     releaseVersion,
     outcome: "passed",
     packages,
@@ -895,12 +915,14 @@ export async function runTidas({
   indexPath,
   packagesDir,
   issueSpoolPath,
+  profile = PACKAGE_PROFILE,
   spawnCommand = spawnBounded,
 }) {
   const budget = validateTidasMemoryBudgetMiB(memoryBudgetMiB);
   const runtime = await verifyTidasRuntime({
     tidasBin,
     memoryBudgetMiB: budget,
+    profile,
     spawnCommand,
   });
   await mkdir(path.dirname(packagesDir), { recursive: true });
@@ -916,6 +938,7 @@ export async function runTidas({
     "--format",
     "json",
   ];
+  if (profile === RESULT_PACKAGE_PROFILE) args.push("--profile", profile);
   if (issueSpoolPath && runtime.issueSpoolSupported)
     args.push("--issue-spool", issueSpoolPath);
   const result = await spawnCommand(tidasBin, args, tidasSpawnOptions(budget));
@@ -951,8 +974,10 @@ function parseFailedTidasOutput(stdout) {
 export async function verifyTidasRuntime({
   tidasBin,
   memoryBudgetMiB = DEFAULT_TIDAS_MEMORY_BUDGET_MIB,
+  profile = PACKAGE_PROFILE,
   spawnCommand = spawnBounded,
 }) {
+  distributionPackages(profile);
   const version = await runTidasPreflight({
     tidasBin,
     args: ["version", "--format", "json", "--progress", "never"],
@@ -971,6 +996,18 @@ export async function verifyTidasRuntime({
       "tidas_runtime_incompatible",
       "Release package construction requires the tidas operation-report.v1 contract",
       { actualVersion: observedVersion ?? null },
+    );
+
+  if (
+    profile === RESULT_PACKAGE_PROFILE &&
+    (!version.summary?.release_build_profiles?.includes(profile) ||
+      !version.summary?.release_report_schemas?.includes(
+        "tidas.release-report.v2",
+      ))
+  )
+    fail(
+      "tidas_result_profile_incompatible",
+      "tidas must advertise the Result-only profile and v2 report",
     );
 
   const validation = await runTidasPreflight({
@@ -1049,7 +1086,7 @@ async function runTidasPreflight({
   }
 }
 
-function spawnBounded(command, args, options = {}) {
+export function spawnBounded(command, args, options = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       ...options,

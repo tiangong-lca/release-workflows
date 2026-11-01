@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 intake、包的语义、候选构建、scope refinement 或 Candidate 后继路径变化时
 checkPaths:
   - workflows/release-candidate/**
-lastReviewedAt: 2026-10-16
-lastReviewedCommit: 04cccd9dc06aa5ae3b1f9f72f027692894d0c2ff
-lastReviewedNote: "Reviewed Release #85: exact Node 24.22.0 aligns the local selector, six manifests, CI and existing toolchain assertions; pnpm 11.24.0, frozen dependency graph, internal SDK, overrides, recipe/numerical contracts and publication authorization are preserved."
+lastReviewedAt: 2026-11-01
+lastReviewedCommit: 097f0da0a81a8266cf794a445a4940e721f70f23
+lastReviewedNote: "Release #99: explicit Result-only Toolkit capability admission and actual ZIP/HDF5 pairing; mixed layers, exact versions and independent numeric fixtures verified. Candidate identity/lineage and publication remain separate."
 related:
   - AGENTS.md
   - ../../README.md
@@ -298,3 +298,19 @@ Candidate v2 在 canonical bytes 仍可验证时生成 `publication-catalog.json
 预算：单文档/投影 8 MiB，累计元数据 128 MiB，最多 200 万结果/清单列及 4096 指标，spool/数值流/总文件各受 32 GiB 上限约束；数值按单行处理，索引留在受限内存。输出路径不可覆盖，receipt 最后提交；仅有部分文件不构成完成。
 
 此内核产生 `final-result-encoding.v1` 本地证据，明确 `candidateQualified=false`、`publicationAuthorized=false`。现有 `package build` 仍保持四包资格流程；配对 ZIP 校验、身份登记和 v2 发布接入完成前，不把内核输出作为可发布 Candidate，也不授予普通用户读取资格。
+
+### 最终 Result 双产物配对
+
+`lib/final-result-pair.mjs` 的 `buildFinalResultPair` 接受冻结 canonical collection、完整 index、精确 Result selection、release version，以及显式 Toolkit/encoder。它复制并重验输入，在同一输入上构建 HDF5 和 `result-process-full-closure.v1` 的 TIDAS/ILCD 两包；Toolkit 握手必须同时声明该 profile 和 `tidas.release-report.v2`，不按版本号猜能力。
+
+包实际解压后再次通过各格式验证，并在两个 ZIP 的实际内容之间执行 semantic round-trip。`final-result-parity.mjs` 从解压后的 TIDAS 文档及语义依赖重新形成期望值，核对完整 Result/Flow/Method 轴、单位、参考量、直接/派生元数据、所有 LCI 非零及 LCIA 数值，再调用原生工具逐行比较真实 HDF5。冻结 index 的每个成员都必须出现在所选 Result 完整闭包中；多余输入不能静默遗漏。LCI-only 与不同指标集合分别生成 artifact，零 LCIA 不表示缺少能力。
+
+返回 `tiangong.release.final-result-pair.v1`，明确 `pairQualified=true`、`candidateQualified=false`、`publicationAuthorized=false`，并绑定实际包、query manifests、回读和 parity 证据。失败时保留唯一工作目录、成功产物及结构化诊断；不出现成功的配对输出，不覆盖已有目录。当前该模块是内部构建能力；原 `package build` CLI 和 legacy Candidate v2 四包语义不变。最终身份登记、可信来源关联以及配对 Candidate 冻结仍由后续 Candidate 集成完成，不能把这个 receipt 直接交给旧发布入口。
+
+使用支持新 profile 的真实 Toolkit 运行可重复的跨项目资格测试：
+
+```bash
+RELEASE_PAIR_TIDAS_BIN=/absolute/path/to/tidas node --test workflows/release-candidate/test/final-result-pair.test.mjs
+```
+
+测试输入完全合成，包含同 UUID 两版本、LCI-only、LCIA 42/0、LCI 2.5/0/-3 和参考量 -2；另以手写二进制期望值验证实际 HDF5。未配置测试专用 `RELEASE_PAIR_TIDAS_BIN` 时只有真实 Toolkit 集成项明确 skipped，其余能力拒绝、输出保留及篡改反例照常执行；不能把 skipped 描述为双产物资格通过。`fixtures/paired-final-results.json` 保留全部输入与 provenance，不需要其他仓库私有模块。
