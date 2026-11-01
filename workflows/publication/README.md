@@ -13,9 +13,9 @@ whenToUpdate:
   - 当发布选择、目标差异、状态转换、写入、审批、恢复或回读规则变化时
 checkPaths:
   - workflows/publication/**
-lastReviewedAt: 2026-10-16
-lastReviewedCommit: 04cccd9dc06aa5ae3b1f9f72f027692894d0c2ff
-lastReviewedNote: "Reviewed Release #85: exact Node 24.22.0 aligns the local selector, six manifests, CI and existing toolchain assertions; pnpm 11.24.0, frozen dependency graph, internal SDK, overrides, recipe/numerical contracts and publication authorization are preserved."
+lastReviewedAt: 2026-11-01
+lastReviewedCommit: 0cbdafca34cd2a4a06b453c46bcdbaea8d781f2c
+lastReviewedNote: "Release #99: reviewed v3 conditional object transport, bounded full GET and five service-only registry RPCs, immutable receipt recovery, actual synthetic Candidate/S3/PostgreSQL proof and exact manifest fields. Actor publication authority and runtime policies remain separate and unchanged."
 related:
   - AGENTS.md
   - ../release-candidate/README.md
@@ -39,6 +39,52 @@ Release Candidate v2
 ```
 
 Dataset Transformation 不属于本 Workflow。任何 Process/LifeCycleModel 内容修改、规则聚合、UUID/Version 改变或重新计算，都必须先产生新的 Candidate，再进入 Publication。
+
+## 最终 Result v3 存储适配（内部 API）
+
+`lib/final-result-storage.mjs` 提供 `inspectFinalResultStorage` 和
+`executeFinalResultStorage`，消费已通过真实 HDF5/ZIP 回读及全局身份登记的
+Candidate v3。inspect 仅本地读取，返回精确 storage plan/hash；execute 需要同一
+hash 确认，并重新验证 Candidate。当前尚无 CLI 路由；原 `plan prepare` 等命令
+仍按下文 Candidate v2/actor recipe 运行，不能用它们发布 v3。
+
+受控 S3 adapter 只写入 `<prefix>/query-artifacts/<artifactId>/<manifestSha256>/`
+和 `<prefix>/release-candidates/<candidateSha256>/` 下的固定文件名。后者包括
+`release-candidate.json`、`publication-catalog.json`、`result.tidas.zip`、
+`result.ilcd.zip`。存储命名不改变 ZIP 内部内容与原下载文件名。每个对象最大
+32 GiB，16 MiB 顺序分片；默认每请求/完整 GET 最长 15 分钟，可在 100 ms 至
+1 小时内显式配置。内存按单分片和有界元数据使用，不把整张矩阵或 ZIP 读进内存。
+
+写入使用 S3 条件创建，现有相同 bytes 通过完整 GET 后复用；现有不同 bytes
+直接拒绝。上传响应丢失或条件冲突先完整回读，不无条件覆盖。分片失败只尝试
+Abort 本次 upload；创建响应丢失而没有 upload ID、或 Abort 失败会明确报告
+`multipartCleanupRequired`。它不是删除历史文件或共享文件的许可；目标环境
+需要独立的未完成 multipart 保留/清理策略。
+
+数据库 adapter 仅调用 Database #879 的五个 v2 存储 RPC。目标 hash 同时绑定
+CONN 的 host/port/database/user 身份和 S3 origin/region/bucket/prefix，密码
+轮换不改变目标。CONN 只允许 PostgreSQL URI 与 TLS 参数，拒绝 query 参数
+覆盖连接身份。原 actor token/publishable-key transport 保持独立；数据面凭据
+不放入命令参数、输出或回执。环境治理必须先确保 bucket/prefix 非公开；本模块
+不修改 IAM/bucket policy，完整 GET 也不证明隐私配置或 reader readiness。
+
+先核对远端全部 query 文件，再分批登记准确 Result 行并 seal；完整 ZIP/catalog
+回读通过后才登记 Candidate。seal 响应不明用 describe 查询权威原回执，重试
+始终复用同一身份。存储 receipt 明确 `publicationAuthorized=false`，还需要发布
+选择、非公开 reader/权限就绪验证、actor 批准、原子激活和发布后验证。
+
+验证入口为 `test/final-result-object-store.test.mjs`（真实 SDK 对 loopback 合成
+HTTP 服务）和 `test/final-result-storage.test.mjs`。后者的实际产物/数据库联调
+显式要求 `RELEASE_PAIR_TIDAS_BIN` 与 `RELEASE_STORAGE_TEST_CONN`，且拒绝
+`127.0.0.1:61432/postgres` 以外的连接；它只用于 Database #879 拥有的本地合成库。
+默认测试跳过该联调，不能称为通过。测试实际生成三个 Result、两组 HDF5 和两个
+ZIP，验证丢失 S3/数据库响应后的恢复、重试无对象写入以及远端损坏拒绝；身份和
+登记元数据留在任务测试库供 owner reset，HTTP 服务及临时文件在测试结束时释放。
+
+依赖锁定 `@aws-sdk/client-s3` 3.1161.0 与 `pg` 8.23.1（Node 24.22.0），原
+Calculation/Candidate 依赖不升级。条件写入依据 [S3 官方契约](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html)
+和所安装 SDK 的 `PutObject` / `CompleteMultipartUpload` 类型文档；ETag 仅用于
+multipart 协议，不充当内容摘要。
 
 ## 发布语义
 

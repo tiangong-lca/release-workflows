@@ -15,9 +15,9 @@ checkPaths:
   - .github/dependabot.yml
   - docs/dependency-updates.md
   - pnpm-lock.yaml
-lastReviewedAt: 2026-10-16
-lastReviewedCommit: e742f068222fe625faaa591f45c9dd832dd3d7b1
-lastReviewedNote: "Release #82 adds scoped monitoring using existing CI; lock-only maintenance retains review guidance without mandatory metadata churn, while manifests, source and runtime contracts keep their existing review requirements."
+lastReviewedAt: 2026-11-01
+lastReviewedCommit: 0cbdafca34cd2a4a06b453c46bcdbaea8d781f2c
+lastReviewedNote: "Release #99: reviewed v3 conditional object transport, bounded full GET and five service-only registry RPCs, immutable receipt recovery, actual synthetic Candidate/S3/PostgreSQL proof and exact manifest fields. Actor publication authority and runtime policies remain separate and unchanged."
 related:
   - ../AGENTS.md
   - ../.github/workflows/ci.yml

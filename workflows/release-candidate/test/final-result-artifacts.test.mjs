@@ -113,6 +113,15 @@ test("Release builds actual HDF5, indexes, and isolated derived identity from fi
   const manifest = JSON.parse(manifestBytes);
   assert.equal(manifest.schemaVersion, "tiangong.query-artifact.v2");
   assert.equal(manifest.resultCount, 1);
+  for (const file of manifest.files) {
+    assert.deepEqual(
+      Object.keys(file).sort(),
+      (file.name.endsWith(".gz")
+        ? ["name", "sha256", "byteSize", "plainByteSize"]
+        : ["name", "sha256", "byteSize"]
+      ).sort(),
+    );
+  }
   assert.equal(manifest.lciNonzeroCount, 1);
   const rows = JSON.parse(
     gunzipSync(await readFile(path.join(directory, "results.json.gz"))),

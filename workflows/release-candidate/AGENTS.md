@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/release-candidate/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 86ac3d9737b4cd6c061e50cd199a7711bc6e3e95
-lastReviewedNote: "Release #99: aligned Publication catalog reference schema with actual exact-key arrays and validated the generated catalog using the existing Draft 2020-12 test stack; runtime bytes and publication authorization are unchanged."
+lastReviewedCommit: 0cbdafca34cd2a4a06b453c46bcdbaea8d781f2c
+lastReviewedNote: "Release #99: reviewed v3 conditional object transport, bounded full GET and five service-only registry RPCs, immutable receipt recovery, actual synthetic Candidate/S3/PostgreSQL proof and exact manifest fields. Actor publication authority and runtime policies remain separate and unchanged."
 related:
   - README.md
   - ../AGENTS.md
@@ -143,3 +143,7 @@ Release Candidate 只有在以下条件同时成立时完成：
 - `result inspect` 只读并重新校验 producer 证据；`result register` 是唯一身份远程写入动作，使用既有受保护 CONN 和精确 confirmation hash。`result build` 只消费已登记输入，`result verify` 只检验候选文件。
 - build 缺少 release version 返回两包版本确认，不启动生成。每个动作拒绝其他动作的参数；JSON 单对象并返回 workflow-local 模板与 cwd-independent continuation。
 - 不完整目录保留已移动文件；最终资格文件最后提交。CLI 不显示原始 provider/SQL 错误，登记响应不明的恢复首先核对原请求和已收到凭证。
+
+HDF5 manifest 的数值文件只输出 name/sha256/byteSize；plainByteSize 仅用于 gzip
+索引并且必须是精确解压字节数，不能在 HDF5 文件上写 null 占位。该 wire shape
+与 Database v2 stage 的严格字段数以及 Worker optional field 解码保持一致。

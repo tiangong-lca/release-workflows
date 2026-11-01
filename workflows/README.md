@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 86ac3d9737b4cd6c061e50cd199a7711bc6e3e95
-lastReviewedNote: "Release #99: reviewed the catalog schema correction to the existing exact-key reference arrays; generated Candidate bytes, numeric/storage ownership and publication authorization remain unchanged."
+lastReviewedCommit: 0cbdafca34cd2a4a06b453c46bcdbaea8d781f2c
+lastReviewedNote: "Release #99: reviewed v3 conditional object transport, bounded full GET and five service-only registry RPCs, immutable receipt recovery, actual synthetic Candidate/S3/PostgreSQL proof and exact manifest fields. Actor publication authority and runtime policies remain separate and unchanged."
 related:
   - ../README.md
   - AGENTS.md
@@ -35,3 +35,5 @@ related:
 主线及当前跨 Workflow 能力限制见[根 README](../README.md#当前交接限制)。handoff 只表达目标与证据；执行前必须验证接收端确实支持该输入，不把导航或建议当作授权。
 
 最终 Result 的查询投影与原生 HDF5 编码由 [Release Candidate](release-candidate/README.md) 拥有。它与计算解耦；本地编码证据不替代 ZIP、Candidate 或 Publication 门禁。
+
+Publication 的最终 Result v3 内部存储 adapter 消费冻结 Candidate，负责不可覆盖上传、完整 GET 和 Database v2 存储登记；尚未提供 CLI 或 actor 激活，详见其 README 的独立 recipe 边界。

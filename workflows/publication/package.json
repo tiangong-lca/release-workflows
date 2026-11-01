@@ -13,7 +13,9 @@
     "test": "node --test"
   },
   "dependencies": {
-    "canonicalize": "4.0.0"
+    "@aws-sdk/client-s3": "3.1161.0",
+    "canonicalize": "4.0.0",
+    "pg": "8.23.1"
   },
   "devDependencies": {
     "ajv": "8.20.0"

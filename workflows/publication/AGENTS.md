@@ -13,9 +13,9 @@ whenToUpdate:
   - 当 Publication 的范围、状态、授权、写入、恢复或回读规则变化时
 checkPaths:
   - workflows/publication/**
-lastReviewedAt: 2026-10-16
-lastReviewedCommit: 04cccd9dc06aa5ae3b1f9f72f027692894d0c2ff
-lastReviewedNote: "Reviewed Release #85: exact Node 24.22.0 aligns the local selector, six manifests, CI and existing toolchain assertions; pnpm 11.24.0, frozen dependency graph, internal SDK, overrides, recipe/numerical contracts and publication authorization are preserved."
+lastReviewedAt: 2026-11-01
+lastReviewedCommit: 0cbdafca34cd2a4a06b453c46bcdbaea8d781f2c
+lastReviewedNote: "Release #99: reviewed v3 conditional object transport, bounded full GET and five service-only registry RPCs, immutable receipt recovery, actual synthetic Candidate/S3/PostgreSQL proof and exact manifest fields. Actor publication authority and runtime policies remain separate and unchanged."
 related:
   - README.md
   - ../AGENTS.md
@@ -66,7 +66,7 @@ F4 artifact 必须拒绝未知字段、绑定所有上游 hash，并保存在新
 - 普通数据集远程执行只使用 `app_dataset_create`、`save_lifecycle_model_bundle` 和 `app_dataset_publish`；
 - Result Process 120 写入只使用 Database-owned 的 prepare/publish/readback RPC；三者在执行时都以 `Content-Profile: api` 调用，actor 由服务端 `auth.uid()` 派生，每条路径（含 readback 与每次 retry）重新校验 live manager role；
 - Portal LCIA projection 只调用 Database-owned `api.qry_portal_lcia_result_package_publish_prepare_v1`、`api.cmd_portal_lcia_result_package_publish_v1`、`api.qry_portal_lcia_projection_prepare_v1`、`api.cmd_portal_lcia_projection_finalize_publication_v1`、`api.qry_portal_lcia_projection_publication_readback_v1` 和 `api.cmd_portal_lcia_projection_revoke_publication_v1`；所有 PostgREST RPC 请求显式选择 `Content-Profile: api`；package publish、projection finalize、revoke 分别要求 exact Package Plan、Projection Plan、finalized Event SHA-256 confirmation；
-- 不接受、读取或建议 service-role secret；
+- actor publication recipes 不接受、读取或建议 service-role secret；最终 Result v3 存储 adapter 的受控数据面 CONN 例外见下，它不取得 actor 发布权限；
 - `live/` 下的 opt-in live 验收使用真实 transport 与真实本地 PostgREST：CLI 入口不注入 transport；只需 loopback 字面量、拒绝共享/默认本地端口、要求 operator 声明的 instance label 与 exact expected endpoint、并校验有界 timeout。它不属于 `prepush:gate`，未运行时**不是**通过，也不得被表述为 live 证明。离线 mock 只覆盖 wire shape，不得被当作 live 证据。
 
 ## 必须 fail closed
@@ -132,3 +132,13 @@ stored-byte hash 与 canonical Candidate content identity。两者都必需，�
 事务回滚，不得留下 partial row 或声称成功。执行按 operation 顺序进行，跨 RPC 无事务。
 
 Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认且 package-published Event 已通过独立 prepare 回读、exact Projection Plan 已确认、idempotent finalize 成功、projection-verified Event 来自独立 readback 且同时验证 publication/package/content/evidence/count、`isCurrent=true` 和 `isPubliclyVisible=true` 后完成。Revoke 只有在 exact finalized Event 已确认且 revoked Event 来自独立 `revoked`、`isPubliclyVisible=false` 回读后完成。Supersede/unpublish 必须使后续 verification fail closed。
+
+## 最终 Result v3 存储适配
+
+- `lib/final-result-storage.mjs` 只消费重新验证的配对 Candidate v3。inspect 在本地绑定 Candidate/目标/完整文件集/行映射；execute 必须确认完全相同的 storage plan hash。此内部能力尚未接入 CLI，也不替代后继发布选择、reader readiness、actor approval 或 activation。
+- `adapters/final-result-object-store.mjs` 使用显式数据面 S3/IAM 凭据；`adapters/final-result-registry.mjs` 使用受保护 CONN、单客户端参数化事务与服务角色，仅调用五个 Database-owned v2 query stage/seal/describe 与 Candidate register/describe RPC。不读取 actor token，不接受任意 SQL，不写 canonical/state 120，不调用批准/激活接口。
+- 对象键只从 artifact UUID/manifest hash、Candidate byte hash 和固定文件名派生。PUT 和 multipart complete 使用 `If-None-Match: *`，不覆盖已有文件；只可中止本次已知 multipart upload，不能 DeleteObject。每次执行与重试都完整 GET 校验 bytes/hash，不把 ETag 或原数据库 seal 当成当前文件可用性的证明。
+- 本地已验证的索引/ZIP 与远端 GET 字节摘要相同后才登记实际 Result 轴和完整包范围。行按 500 条且 JSONB logical size 不超过 1 MiB 分批，映射摘要必须与 Database 的 ASCII 500-row block contract 一致。
+- 超时、响应丢失与并发同键写入必须先精确回读。query/Candidate seal 响应不明时用 service-only describe 恢复原回执；不能换 artifact、Candidate、Result 版本或覆盖原回执。中止分片无法确认或创建分片响应丢失时明确 `multipartCleanupRequired`，不得声称清理完成。
+- 目标 fingerprint 绑定数据库连接身份（不含密码）、存储 origin/region/bucket/prefix。配置必须指向已经治理的非公开存储；adapter 不改变 bucket policy，也不能以文件核验代替非公开环境准入。原 actor recipes 与 Portal projection 的 secret/locator 禁止仍保持。
+- 该阶段只产生不可变存储登记证据，始终 `publicationAuthorized=false`。普通用户访问、完整 ZIP 授权及原子 current 切换由版本化 Database/Edge/Platform 接入另行完成。

@@ -20,8 +20,8 @@ checkPaths:
   - workflows/**
   - .docpact/config.yaml
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 86ac3d9737b4cd6c061e50cd199a7711bc6e3e95
-lastReviewedNote: "Release #99: reviewed the catalog schema correction to the existing exact-key reference arrays; generated Candidate bytes, numeric/storage ownership and publication authorization remain unchanged."
+lastReviewedCommit: 0cbdafca34cd2a4a06b453c46bcdbaea8d781f2c
+lastReviewedNote: "Release #99: reviewed v3 conditional object transport, bounded full GET and five service-only registry RPCs, immutable receipt recovery, actual synthetic Candidate/S3/PostgreSQL proof and exact manifest fields. Actor publication authority and runtime policies remain separate and unchanged."
 related:
   - AGENTS.md
   - docs/architecture.md
@@ -57,7 +57,7 @@ Candidate 构建不构成发布授权。Publication 可选择引用完整的子�
 
 Transformation 的 inspect、freeze、execute 已实现；其 `completed` 只证明本节点产物和 handoff 已生成。Unit 聚合使旧 Result evidence 失效，需要新的计算；Result 聚合产生 Derived Result，不重新求解或补造 LifecycleModel。
 
-Materialization 的 `materialize derived` 接收精确 Derived Result handoff；Candidate 的 `result intake/inspect/register/build/verify` 接通结构化来源、全局身份登记和 Result-only 两包/HDF5 的 v3 冻结。`package build` 继续提供 legacy 四包路线。v3 的后继发布需要版本化 Publication adapter，不能交给旧四包发布入口。进入后继 Workflow 前应核对其真实输入契约；不能通过重命名产物、复用旧证据或补造 Model 绕过限制。具体节点和限制由各 Workflow 文档维护。
+Materialization 的 `materialize derived` 接收精确 Derived Result handoff；Candidate 的 `result intake/inspect/register/build/verify` 接通结构化来源、全局身份登记和 Result-only 两包/HDF5 的 v3 冻结。`package build` 继续提供 legacy 四包路线。Publication 已有 v3 的内部存储 inspect/execute adapter，完成条件上传、完整 GET 和 Database v2 登记；其 CLI、发布选择、reader readiness 和 actor 原子激活仍需接通，不能交给旧四包发布入口。进入后继 Workflow 前应核对其真实输入契约；不能通过重命名产物、复用旧证据或补造 Model 绕过限制。具体节点和限制由各 Workflow 文档维护。
 
 ## 开发与阅读
 

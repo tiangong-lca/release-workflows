@@ -371,7 +371,7 @@ async function describe(root, name) {
     hash.update(bytes);
     byteSize += bytes.length;
   }
-  return { name, sha256: hash.digest("hex"), byteSize, plainByteSize: null };
+  return { name, sha256: hash.digest("hex"), byteSize };
 }
 export function runEncoder(binary, args) {
   return new Promise((resolve, reject) => {

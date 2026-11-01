@@ -1,8 +1,8 @@
 version: 1
 layout: repo
 lastReviewedAt: "2026-11-01"
-lastReviewedCommit: "86ac3d9737b4cd6c061e50cd199a7711bc6e3e95"
-lastReviewedNote: "Release #99: reviewed the catalog schema correction to the existing exact-key reference arrays; generated Candidate bytes, numeric/storage ownership and publication authorization remain unchanged."
+lastReviewedCommit: "0cbdafca34cd2a4a06b453c46bcdbaea8d781f2c"
+lastReviewedNote: "Release #99: reviewed v3 conditional object transport, bounded full GET and five service-only registry RPCs, immutable receipt recovery, actual synthetic Candidate/S3/PostgreSQL proof and exact manifest fields. Actor publication authority and runtime policies remain separate and unchanged."
 
 catalog:
   repos:

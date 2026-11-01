@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/**
 lastReviewedAt: 2026-11-01
-lastReviewedCommit: 86ac3d9737b4cd6c061e50cd199a7711bc6e3e95
-lastReviewedNote: "Release #99: aligned Publication catalog reference schema with actual exact-key arrays and validated the generated catalog using the existing Draft 2020-12 test stack; runtime bytes and publication authorization are unchanged."
+lastReviewedCommit: 0cbdafca34cd2a4a06b453c46bcdbaea8d781f2c
+lastReviewedNote: "Release #99: reviewed v3 conditional object transport, bounded full GET and five service-only registry RPCs, immutable receipt recovery, actual synthetic Candidate/S3/PostgreSQL proof and exact manifest fields. Actor publication authority and runtime policies remain separate and unchanged."
 related:
   - ../AGENTS.md
   - ../README.md
@@ -57,3 +57,8 @@ Candidate 成功冻结后不可原地修改。Publication 可规划引用完整�
 ## 最终结果查询编码
 
 Candidate 内的最终 Result 投影和原生 HDF5 编码器拥有生成逻辑，Worker 查询服务继续拥有读取。编码只消费冻结标准内容及精确依赖，不从父 Bundle 替换加工后数值；本地 encoding receipt 不等于配对 Candidate、身份登记或发布批准。既有 Calculation v1 bridge 在消费者迁移前保留其原契约。
+
+最终 Result v3 的非公开对象上传、完整 GET 回读及 Database v2 存储登记属于
+Publication 的独立数据面 adapter；它只消费冻结 Candidate，不移动生成器、不
+重算内容、不写 state 120，也不取得 actor 批准或 current 激活权限。具体边界与
+恢复规则由 `publication/AGENTS.md` 维护。
