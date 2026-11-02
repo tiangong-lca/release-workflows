@@ -15,9 +15,9 @@ checkPaths:
   - .github/dependabot.yml
   - docs/dependency-updates.md
   - pnpm-lock.yaml
-lastReviewedAt: 2026-10-16
-lastReviewedCommit: e742f068222fe625faaa591f45c9dd832dd3d7b1
-lastReviewedNote: "Release #82 adds scoped monitoring using existing CI; lock-only maintenance retains review guidance without mandatory metadata churn, while manifests, source and runtime contracts keep their existing review requirements."
+lastReviewedAt: 2026-11-01
+lastReviewedCommit: 35824a25085dedf071930a89a8e9af542ad2a0b2
+lastReviewedNote: "Release #99: reviewed authority version planning, upstream regeneration and v2 publication continuation; runtime and dependency versions unchanged."
 related:
   - ../AGENTS.md
   - ../.github/workflows/ci.yml

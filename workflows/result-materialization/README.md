@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 materialization recipe、身份版本、数据集关系、验证或输出变化时
 checkPaths:
   - workflows/result-materialization/**
-lastReviewedAt: 2026-10-16
-lastReviewedCommit: 04cccd9dc06aa5ae3b1f9f72f027692894d0c2ff
-lastReviewedNote: "Reviewed Release #85: exact Node 24.22.0 aligns the local selector, six manifests, CI and existing toolchain assertions; pnpm 11.24.0, frozen dependency graph, internal SDK, overrides, recipe/numerical contracts and publication authorization are preserved."
+lastReviewedAt: 2026-11-01
+lastReviewedCommit: 35824a25085dedf071930a89a8e9af542ad2a0b2
+lastReviewedNote: "Release #99: reviewed authority version planning, upstream regeneration and v2 publication continuation; runtime and dependency versions unchanged."
 related:
   - AGENTS.md
   - design/result-process-and-lifecycle-model.md
@@ -36,7 +36,18 @@ related:
 - 已有请求与精确输入，用于重新执行或核验已有完整产物；部分生成结果不构成独立输入或 checkpoint；
 - 已完成 materialization、但需要针对新 recipe 或上一版 manifest 重新生成的 dataset collection。
 
-Dataset Transformation 已输出 `status=ready_for_result_materialization` handoff，绑定 Frozen Spec、Execution Receipt、Derived Result identity/version/hash 和父 Candidate；但本 Workflow 尚未实现该输入的消费者，当前 CLI 仍只接受 Calculation Bundle intake。不得将 handoff 改名为 Bundle 或补造 LifecycleModel。Result-only materialization 也尚不受 Release Candidate 的 package profile 支持；本节点产物完成不表示可直接构建新 Candidate。
+Dataset Transformation 的 `ready_for_result_materialization` 可通过独立 `materialize derived` 接收。它验证精确父 Candidate、Frozen Spec、Execution Receipt、handoff 及加工后字节，由 Transformation producer 重放核验；Materialization 只执行 SDK 校验并冻结原样的 Result，不重新求解、不改变权重或数值、不生成 LifecycleModel。
+
+```bash
+node workflows/result-materialization/cli.mjs materialize derived \
+  --candidate /absolute/parent-candidate \
+  --transformation /absolute/transformation-output \
+  --artifact-root /absolute/artifacts --json
+```
+
+新 Transformation output 携带冻结方案；旧产物须额外提供 `--spec /absolute/frozen-spec`。该入口输出 versioned Result Catalog/Materialization manifest v2 和 canonical index v1；默认路径为 `.release/result-materialization/derived/<materialization-key-hash>`，完整字节验证通过才复用。显式 `--out-dir` 不覆盖已有目录。
+
+Derived descriptor 保存 exact parent Results，原过程关联标记 `requires_verified_parent_lineage`。旧 Result 说明文字不是原过程关联凭证；后续 Candidate 需补齐可核验的结构化父血缘和依赖、取得身份登记并完成 ZIP/HDF5 配对。当前 `candidateQualified=false`、`publicationAuthorized=false`，现有 Candidate 入口仍拒绝 Result-only；此本地接收能力不表示端到端发布已打通。
 
 ## 为什么是独立 Workflow
 
@@ -193,6 +204,15 @@ Runner 在 phase/progress 更新以及每 5 秒记录结构化资源采样。`jo
 `materialize` 与 `materialize start` 使用同一个确定性 engine，冻结相同的 `materialization-request.json`，并根据 `outputType` 选择内部执行图。Result-only 路线只生成 selected `R(P)`；LifecycleModel 路线自动完成 direct provider Result 扩展、Result Catalog 冻结和 requested-root `M(P)` 生成。用户不需要、也不应该先单独运行一次 Result Process 生成。`R(P)` 的 UUIDv5 name 只包含 `U(P) UUID + reference flow UUID`，其他变化由 profile、semantic hash、dataset version 和 provenance 表达。
 
 生成命令必须二选一提供 `--first-generation` 或 `--previous-manifest <path>`。相同 semantic hash 与 version-significant hash 复用版本；语义变化升 major；仅 metadata 等公开内容变化升 minor；同一 UUID/version 出现不同 canonical content时 fail closed。
+
+权威登记发现版本冲突时，可按原请求显式增加 `--result-version-plan <file>`，消费 Release Candidate
+`result versions` 产生的内容绑定提案。它在冻结版本集合前按旧版本重渲染并校验 canonical hash，
+只对匹配的 direct Results 应用严格升 major 的方案；未消费条目、Derived 条目、内容漂移或版本
+碰撞均失败。Result 文档与 URI 重新生成，Model 随后基于新 Result Catalog 生成精确引用。
+计划文件及 hash 随 materialization 保存，并进入内容寻址 key，防止复用旧版本缓存。输出仍须
+重新进入 Result Intake 和权威原子登记，计划不提供远端预留或发布资格。前台与后台入口共用
+此参数。Derived 必须先在新的 Transformation Draft 中确认版本和 URI，再重放生产者流程；
+`materialize derived` 本身继续原样冻结经过验证的字节。
 
 同一次请求中多个 exact axes 可以共享一个 Result UUID lineage。Workflow 不按 UUID 去重，而是为每个 exact source Process revision 分配独立 dataset version；previous manifest 按 source UUID@version 精确匹配，LifecycleModel 也按 process index 引用对应的 Result UUID@version。first generation 和新增 revision 使用确定性顺序分配未占用的 major version。
 

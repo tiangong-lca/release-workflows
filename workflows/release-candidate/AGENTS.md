@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 intake、package、candidate qualification、scope refinement 或 Candidate 后继路径变化时
 checkPaths:
   - workflows/release-candidate/**
-lastReviewedAt: 2026-10-16
-lastReviewedCommit: 04cccd9dc06aa5ae3b1f9f72f027692894d0c2ff
-lastReviewedNote: "Reviewed Release #85: exact Node 24.22.0 aligns the local selector, six manifests, CI and existing toolchain assertions; pnpm 11.24.0, frozen dependency graph, internal SDK, overrides, recipe/numerical contracts and publication authorization are preserved."
+lastReviewedAt: 2026-11-01
+lastReviewedCommit: 35824a25085dedf071930a89a8e9af542ad2a0b2
+lastReviewedNote: "Release #99: reviewed authority version planning, upstream regeneration and v2 publication continuation; runtime and dependency versions unchanged."
 related:
   - README.md
   - ../AGENTS.md
@@ -64,14 +64,14 @@ related:
 - Release 只遍历当前契约明确声明的 LCIA Method -> Flow 依赖；通用引用闭合、TIDAS/eILCD validation、conversion、round-trip 和四包构建必须委托 `tidas-tools release build-packages`，不得在本 Workflow 重写。
 - 委托前必须对所选 `TIDAS_BIN` 执行 `version` 与 `validate --describe` 握手，要求 `tidas.operation-report.v1`、`tidas.validation-describe.v1`、`document-validation-batch.v1` 与 `package.name=tidas`；不绑定精确版本号，但缺少必需能力的二进制仍必须 fail closed，不得静默降级。
 - Release Candidate 的完整闭包构建和逐包 qualification 必须显式向全部 TIDAS 子进程传递同一内存预算。默认值由本 Workflow 拥有并设为 `2048 MiB`；调用者可通过 `--tidas-memory-budget-mib` 或 `TIDAS_MEMORY_BUDGET_MIB` 覆盖。`memory_budget_exceeded` 是可恢复的资源配置失败，必须保留失败证据并返回同一冻结输入、提高预算的精确重试命令，不得建议 `failure analyze` 或数据排除。
-- Candidate 必须正好包含四个 ZIP、每个文件的 byte size/SHA-256、完整工具报告、hash-bound `publication-catalog.json`，并显式记录 `publicationAuthorized=false`。
+- legacy Candidate v1/v2 必须正好包含四个 ZIP、每个文件的 byte size/SHA-256、完整工具报告、hash-bound `publication-catalog.json`，并显式记录 `publicationAuthorized=false`。
 - Candidate v2 的 Publication catalog 必须从当前 canonical bytes 确定性提取 exact required references，绑定 canonical index hash，并冻结 Unit Process/Result roots 与 component closure；不得从 ZIP 名称推断。
 - 四个分发包必须使用显式 release version 和产品级数据库名称；内部 profile ID 只保留在机器证据中。每个最终 ZIP 必须在候选冻结前重新列举、隔离解压，并分别通过 TIDAS 或 eILCD validation。
 - 用户未提供 release version 时，Agent 必须使用 CLI 返回的推荐版本和专用回复模板请求确认；确认前不得启动构建。不得把年月推荐值或 mutable `latest` 当作用户已确认。
-- 输出目录不可覆盖。只有四包回读校验全部通过才能原子提交可见 Candidate；包已经生成但 qualification 失败时，必须把 ZIP、结构化失败清单、已有验证报告和逐包回读目录保留为唯一 sibling failed build，并明确 `candidateCreated=false`、`publicationAuthorized=false`。它是诊断产物，不是 Candidate，也不得被发布。
+- 输出目录不可覆盖。legacy 路线只有四包回读校验全部通过才能原子提交可见 Candidate；包已经生成但 qualification 失败时，必须把 ZIP、结构化失败清单、已有验证报告和逐包回读目录保留为唯一 sibling failed build，并明确 `candidateCreated=false`、`publicationAuthorized=false`。它是诊断产物，不是 Candidate，也不得被发布。
 - `tidas release build-packages --format json` 非零退出时，必须把有界 stdout 解析为结构化 operation report 并写入 failed-build diagnostics；只有 stdout 不是有效 JSON 时才保留有界文本尾部。不得只保留 stderr 而丢失字段级 validation evidence。
 - CLI 的人类输出必须包含有界 `Summary / Next / Reply using template`；JSON 输出必须保持单对象、可解析，并携带 `outcome`、`completeness`、artifact 引用、`nextActions[]` 和 `replyTemplate`。
-- Candidate 成功结果还必须携带结构化 `nextDecision`，列出 Publication planning 和已可用的 Dataset Transformation inspect/freeze/execute 入口，同时披露 Derived Result 消费与 Result-only package 的能力缺口；不把可执行的本地节点描述成已完成的端到端路线。
+- legacy `package build` 成功结果还必须携带结构化 `nextDecision`，列出 Publication planning 和已可用的 Dataset Transformation inspect/freeze/execute 入口，同时说明 Derived Result 的显式接收步骤和 v3 的独立 Publication v2 入口；不把可执行的本地节点描述成已完成的端到端路线。
 - cache refresh 的 CLI 输出和错误不得包含连接串、S3 secret 或 presigned URL。成功结果可以披露 execution mode 与 SSH host，但不能披露临时 object locator。
 - CLI 返回的自身命令和跨 Result Materialization 命令必须使用由 `import.meta.url` 生成的绝对入口，确保从任意 cwd 可复制执行。Release Intake 准备成功后应返回确定的 Candidate 输出目录，不把 `<CANDIDATE_DIR>` 留给 Agent 猜测。
 - CLI 必须拒绝未知和重复参数。失败使用非零退出码，并区分人类可读 stderr 与 `--json` 结构化 stderr。
@@ -86,7 +86,7 @@ related:
 
 ## 硬边界
 
-- 不使用 service-role、secret key 或直接 SQL/REST mutation。
+- 不使用 actor service key、任意 SQL/REST mutation 或 canonical 表写入；仅最终输入身份 adapter 可经显式授权的数据面连接调用本契约列出的两个 Database-owned 服务 RPC，并在事务内设置服务角色。
 - 不解码、打印、持久化或放入命令参数的用户凭据。
 - 不从 mutable `latest` 补齐 graph、exchange、provider、method 或 version。
 - 不在 Package build 中生成或修改 Result Process、LifecycleModel、identity 或 dataset version。
@@ -106,3 +106,45 @@ Release Candidate 只有在以下条件同时成立时完成：
 - Candidate 原子冻结且明确记录 `publicationAuthorized=false`；
 - 证据和恢复信息已保存；
 - 下一步明确指向原 Candidate 的 Publication planning 或 Dataset Transformation。
+
+## 最终 Result 数值编码契约
+
+- `lib/final-result-projection.mjs` 从冻结 Result 和精确 Flow/Flow Property/Unit Group/LCIA Method 提取查询视图。参考 exchange 按内部 ID 单独表达，其余只接受 Elementary Flow；复合键必须保留方向、位置、function type 和精确单位身份。
+- 当前投影 profile 要求每条 exchange 的有效 `resultingAmount`（包括零），不提供 `meanAmount` 回退；LCIA 读取最终 `meanAmount`。不归一化、不换算、不重新特征化；缺失层/方法与合法零值分开。
+- `lib/final-result-artifacts.mjs` 按层/方法集分组，逐结果 spool；CSR LCI、dense LCIA 与索引均由 Candidate 拥有的 `native/` 工具生成/回读。索引和单行/总文件预算不可绕过，零行及负值保留，失败不能产生合格 Candidate。
+- encoding receipt 必须显式 `candidateQualified=false` 和 `publicationAuthorized=false`；只有后续独立 ZIP 一致性、身份权威登记及配对 Candidate 门禁成立才能取得相应资格。不能通过 v1 Calculation 绑定把新 Result 轴伪装成 source Unit 轴。
+- 独立预期值测试分别验证领域投影与真实 HDF5 文件；不能仅以 writer 自己生成的相同错误值互比证明正确。
+
+### 双产物局部资格
+
+- `buildFinalResultPair` 内部能力显式选择 `result-process-full-closure.v1` 两包，不修改 legacy `package build` 四包契约。工具必须声明 profile 与 report v2 能力。
+- 配对须覆盖实际 ZIP 解压验证、实际归档语义 round-trip、完整冻结文档与依赖、最终 Result 轴及实际 HDF5 全量数值。缺少方法能力不能补零，完整零结果不能丢行。
+- 配对 receipt 只证明本地文件一致，不替代身份登记、来源证据、Candidate 资格或发布批准。失败保留成功产物和诊断；不创建合格 Candidate、不覆盖原输出。
+
+### 最终输入与身份登记
+
+- `inspectFinalResultInput` 只读重验 canonical bytes、完整语义依赖和 Materialization lineage，形成精确输入 hash；`prepareFinalResultInput` 必须确认同一 hash 后才能打开身份 authority。输入层仍不是 Candidate。
+- 最终身份登记仅调用 Database 的 `svc_result_identity_versions` 与 `svc_result_identity_register`，使用显式 operator 数据面连接、单客户端事务和有界参数；不引入 actor service key、任意 SQL、canonical 表写入或发布权限。实际远程登记仍需该操作的授权。
+- `first-generation` 不能免除权威占用查询和原子登记。legacy 占用、内容冲突须回上游重新生成版本和引用；不改写已冻结文件。响应丢失保留请求与已收到的凭证，只核对/重试同一输入，不自动换版本。
+- 直接关联来自 manifest 绑定的 Result Catalog sourceProcess；派生关联必须经过精确父 Candidate、父 Result 内容和 Transformation spec/receipt/handoff 的绑定。legacy 父 Candidate 要求原始 Package Plan 绑定的 Materialization witness；不得解析说明字段或将祖先视为直接替代结果。新父格式的关联读取有显式版本边界。
+- 编排层在消费 Derived Materialization 前仍调用 producer 的确定性 handoff/replay 校验；纯 lineage 解析不替代 canonical 文件验证或 Transformation 的业务验证。
+
+### 配对 Candidate v3
+
+- `buildFinalResultCandidate` 消费已登记且完整重验的 final input；精确 input hash 和显式 release version 决定本地构建。它不登记新身份或改写输入。
+- v3 明确使用 Result-only 两包 profile，绑定 final input、输入计划、来源、canonical index、publication closure catalog、配对回读证据、各 query artifact 与完整 Result→artifact/ordinal catalog。缺少任何行、身份凭证或真实文件完整性即失败。
+- 候选标记最后提交，已存在的输出目录（包括空目录）不可覆盖；失败保留工作目录及不完整目标，均不得作为 Candidate。v3 `candidateQualified=true` 仅证明本地资格，`publicationAuthorized=false` 保持不变。
+- `loadFinalResultCandidate` 按显式 v3 重验绑定、实际 ZIP/HDF5 文件和结果轴。Transformation 可消费这种候选的 Result 包；无 Unit 包时不能进入 Unit 聚合。legacy Publication 不接受 v3，必须经后继版本化发布契约。
+
+### Result-only Intake 与 CLI
+
+- `result intake` 明确区分 direct Release Intake 与 Derived Materialization/parent/Transformation 路线。直接 expected methods 从冻结源轴读取；派生必须调用 producer replay，legacy 父包需要原始 Materialization witness。
+- 复用 publication reference catalog 选择 Result component，标准闭包与 TIDAS qualification 仍委托 Toolkit；不能截取工具有界摘要中的前 256 个 keys 当作完整闭包。
+- `result versions` 用现有 authority adapter 只读分页查询并生成有界、内容绑定的建议版本文件；采用 `conflict-next-major.v1`，不预留、不写身份、不原地改文件。Direct 回到 Materialization 重渲染，Derived 新建并复核 Transformation Draft；成功后都重新 intake/register/build。响应不明先核对原输入，不能自动变更版本。
+- `result inspect` 只读并重新校验 producer 证据；`result register` 是唯一身份远程写入动作，使用既有受保护 CONN 和精确 confirmation hash。`result build` 只消费已登记输入，`result verify` 只检验候选文件。
+- build 缺少 release version 返回两包版本确认，不启动生成。每个动作拒绝其他动作的参数；JSON 单对象并返回 workflow-local 模板与 cwd-independent continuation。
+- 不完整目录保留已移动文件；最终资格文件最后提交。CLI 不显示原始 provider/SQL 错误，登记响应不明的恢复首先核对原请求和已收到凭证。
+
+HDF5 manifest 的数值文件只输出 name/sha256/byteSize；plainByteSize 仅用于 gzip
+索引并且必须是精确解压字节数，不能在 HDF5 文件上写 null 占位。该 wire shape
+与 Database v2 stage 的严格字段数以及 Worker optional field 解码保持一致。

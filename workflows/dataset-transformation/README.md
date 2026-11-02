@@ -13,9 +13,9 @@ whenToUpdate:
   - 当支持的加工机制、DSL、冲突策略、验证或返回路径变化时
 checkPaths:
   - workflows/dataset-transformation/**
-lastReviewedAt: 2026-10-16
-lastReviewedCommit: 04cccd9dc06aa5ae3b1f9f72f027692894d0c2ff
-lastReviewedNote: "Reviewed Release #85: exact Node 24.22.0 aligns the local selector, six manifests, CI and existing toolchain assertions; pnpm 11.24.0, frozen dependency graph, internal SDK, overrides, recipe/numerical contracts and publication authorization are preserved."
+lastReviewedAt: 2026-11-01
+lastReviewedCommit: b972a085d013ebb24b72a44b9ece549b782d46f5
+lastReviewedNote: "Release #99: reviewed direct/Derived Result Intake, explicit inspect/register/build/verify commands, parent replay, final Candidate consumers and marker-last recovery; publication remains separate."
 related:
   - AGENTS.md
   - dsl-v0.md
@@ -30,7 +30,7 @@ related:
 Dataset Transformation 是 Release Candidate 完成后的可选再加工入口。加权操作先由 Agent 说明并推荐目标层，用户确认后进入对应路线：
 
 ```text
-Validated Candidate v1/v2
+Validated Candidate v1/v2 或已通过配对资格的 v3
   -> Draft DSL
   -> choose Unit Process or Result Process semantics
   -> exact input inspection
@@ -54,7 +54,7 @@ Validated Candidate v1/v2
 - Result Process 的共同 Calculation lineage、精确 exchange set 和 LCIA method UUID/version set 检查；
 - LCI exchange 与 LCIA result 的确定性加权；
 - 新 identity、review reset、lineage、execution receipt 和 operation-specific handoff；
-- Release Candidate v1/v2 读取，便于已有验证 Candidate 与新 Candidate 共同使用。
+- Release Candidate v1/v2 或已通过配对资格的 v3 读取，便于已有验证 Candidate 与新 Candidate 共同使用。
 
 DSL 详细语义见 [Dataset Transformation DSL v0](dsl-v0.md)。
 
@@ -109,7 +109,7 @@ result-process.weighted-aggregate.v0
 
 Unit Process 路线改变过程清单语义，因此父 Candidate 中已有 Result Process/LifecycleModel evidence 标记为 `invalidated`。Result Process 路线把输入 Result evidence 标记为 `derived`，不重新调用 Worker，也不隐式聚合 LifecycleModel。父 Candidate 不被覆盖；新 Candidate 必须绑定 Transformation Frozen Spec、Execution Receipt 和对应的新计算或物化证据。
 
-**当前限制：** Materialization 尚未实现 Derived Result handoff 消费，当前入口仍是 Calculation Bundle intake；Candidate 只接受 LifecycleModel full-closure profile，Result-only 输入会被拒绝。Unit handoff 也不能直接作为 Calculation API 输入，必须先满足其业务对象和授权契约。不要将目标路线当作自动可执行闭环。
+**当前限制：** Materialization 已提供 `materialize derived --candidate <parent> --transformation <output>` 消费精确 Derived Result；旧 output 额外提供 `--spec <frozen-spec>`；Candidate 的 `result intake` 消费该物化、精确父 Candidate 与 Transformation output，再经 inspect、授权登记、build 和 verify 生成 Result-only 配对 v3；legacy 父 Candidate 还须提供原 Package Plan 绑定的 Materialization witness。v3 不能使用旧四包发布入口。Unit handoff 也不能直接作为 Calculation API 输入，必须先满足其业务对象和授权契约。不要将目标路线当作自动可执行闭环。
 
 ## CLI
 

@@ -16,9 +16,9 @@ whenToUpdate:
 checkPaths:
   - workflows/calculation/**
   - workflows/result-materialization/**
-lastReviewedAt: 2026-10-07
-lastReviewedCommit: 89847052770fede8ebe2eeb8aba32af9b3b71989
-lastReviewedNote: "Reviewed for Release #80: current Bundle-only intake and unsupported Derived Result handoff are explicit; materialization and path behavior remain unchanged."
+lastReviewedAt: 2026-11-01
+lastReviewedCommit: 35824a25085dedf071930a89a8e9af542ad2a0b2
+lastReviewedNote: "Release #99: reviewed optional registry plan hash in immutable materialization paths and existing ownership/routing coverage."
 related:
   - ../README.md
   - ../AGENTS.md
@@ -123,6 +123,8 @@ canonical 路径使用完整 UUID 和完整 SHA-256，不使用短 hash。CLI �
 - `resolvedProcesses` 使用精确 UUID@version，去重后按 canonical 顺序排列；
 - `all_eligible` 仍记录本次 Bundle 实际解析出的完整 root set，不能只记录字符串 `all`；
 - previous manifest 会影响 dataset version 分配，因此其内容 hash 必须进入 key；
+- 显式使用 `--result-version-plan` 时，key 增加可选 `resultVersionPlanSha256`，绑定完整权威查询提案；未使用时保持原 key 字节与路径。提案文件随输出保存，request/manifest 绑定同一 hash，复用时重新核验三者；
+- 版本方案改变时生成新目录，Result 文档、URI、catalog 和 Model 引用重新生成，不能把旧内容目录改名当作新版本；
 - metadata completion policy 会改变最终 dataset 内容，因此必须进入 key；
 - recipe/renderer 的语义契约发生变化时必须改变 `recipeContractVersion`；
 - 时间、用户显示名称、命令参数顺序和绝对文件路径不得进入 key。
@@ -231,3 +233,13 @@ canonical 路径不使用：
 - 并发相同 key 不产生两个 canonical 目录；
 - 冲突、残缺或 hash 不一致时 fail closed；
 - `--artifact-root` 和显式 `--out-dir` 的行为、JSON 输出和错误均有测试。
+
+## Derived Result 默认路径
+
+`materialize derived` 不虚构 calculation ID 或 Bundle hash。它在同一 artifact root
+下写入 `result-materialization/derived/<materialization-key-hash>/`，key 使用
+`tiangong.release.derived-materialization-key.v1`，绑定 exact parent Candidate、
+Frozen Spec、Execution Receipt 和 handoff hashes。UUID/version 已由 Transformation
+冻结，接收时不重新分配。所有 evidence、Result 原始 bytes、catalog、index 和
+manifest 完整一致才返回 `reused_existing`；残缺或漂移返回 `artifact_path_conflict`。
+路径不证明身份登记、Candidate 资格或发布状态。

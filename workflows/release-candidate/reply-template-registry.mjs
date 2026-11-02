@@ -68,6 +68,25 @@ const templates = Object.freeze({
       "nextActions",
     ],
   ],
+  ...Object.fromEntries(
+    ["intake", "inspect", "versions", "register", "build", "verify"].map(
+      (action) => [
+        `result ${action}`,
+        [
+          "final-result-workflow",
+          "final-result-workflow.md",
+          [
+            "command",
+            "outcome",
+            "completeness",
+            "artifacts",
+            "publicationAuthorized",
+            "nextActions",
+          ],
+        ],
+      ],
+    ),
+  ),
   "package build": [
     "release-candidate-built",
     "release-candidate-built.md",

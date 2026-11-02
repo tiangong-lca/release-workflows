@@ -18,7 +18,68 @@ const portalCommandFailed = [
   ["command", "outcome", "completeness", "error", "nextActions"],
 ];
 
+const finalPublication = [
+  "final-result-publication",
+  "final-result-publication.md",
+  [
+    "command",
+    "outcome",
+    "completeness",
+    "releaseRunId",
+    "publicationAuthorized",
+    "artifacts",
+    "nextActions",
+  ],
+];
 const templates = Object.freeze({
+  "result-publication plan": finalPublication,
+  "result-publication approval-plan": finalPublication,
+  "result-publication approve": finalPublication,
+  "result-publication activation-plan": finalPublication,
+  "result-publication activate": finalPublication,
+  "result-publication prepare": finalPublication,
+  "result-publication status": finalPublication,
+  "result-publication readback": finalPublication,
+  "result-readiness verify": [
+    "final-result-readiness",
+    "final-result-readiness.md",
+    [
+      "command",
+      "outcome",
+      "completeness",
+      "verificationId",
+      "publicationAuthorized",
+      "expiresAt",
+      "artifacts",
+      "nextActions",
+    ],
+  ],
+  "result-storage inspect": [
+    "final-result-storage",
+    "final-result-storage.md",
+    [
+      "command",
+      "outcome",
+      "completeness",
+      "storagePlanHash",
+      "publicationAuthorized",
+      "artifacts",
+      "nextActions",
+    ],
+  ],
+  "result-storage execute": [
+    "final-result-storage",
+    "final-result-storage.md",
+    [
+      "command",
+      "outcome",
+      "completeness",
+      "storagePlanHash",
+      "publicationAuthorized",
+      "artifacts",
+      "nextActions",
+    ],
+  ],
   "plan prepare": [
     "publish-plan-prepared",
     "publish-plan-prepared.md",

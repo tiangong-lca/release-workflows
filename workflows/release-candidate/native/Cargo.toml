@@ -1,0 +1,10 @@
+[package]
+name = "release-result-hdf5"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.93"
+publish = false
+
+[dependencies]
+hdf5 = "=0.8.1"
+hdf5-sys = { version = "=0.8.1", features = ["static", "zlib"] }

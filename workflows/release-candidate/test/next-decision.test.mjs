@@ -31,6 +31,6 @@ test("Candidate next choices reach real read-only help from another cwd", async 
   assert.match(transformation.description, /handoff, not a new Candidate/);
   assert.match(
     transformation.description,
-    /Derived Result consumption.*Result-only Candidate packaging are not implemented/,
+    /result intake\/inspect\/register\/build.*v2 publication adapter remains required/,
   );
 });

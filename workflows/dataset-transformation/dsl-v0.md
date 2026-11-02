@@ -16,9 +16,9 @@ checkPaths:
   - workflows/dataset-transformation/lib/**
   - workflows/dataset-transformation/cli.mjs
   - workflows/dataset-transformation/test/**
-lastReviewedAt: 2026-10-16
-lastReviewedCommit: 04cccd9dc06aa5ae3b1f9f72f027692894d0c2ff
-lastReviewedNote: "Reviewed Release #85: exact Node 24.22.0 aligns the local selector, six manifests, CI and existing toolchain assertions; pnpm 11.24.0, frozen dependency graph, internal SDK, overrides, recipe/numerical contracts and publication authorization are preserved."
+lastReviewedAt: 2026-11-01
+lastReviewedCommit: b972a085d013ebb24b72a44b9ece549b782d46f5
+lastReviewedNote: "Release #99: reviewed direct/Derived Result Intake, explicit inspect/register/build/verify commands, parent replay, final Candidate consumers and marker-last recovery; publication remains separate."
 related:
   - README.md
   - contracts/dataset-transformation-dsl.v0.schema.json
@@ -35,7 +35,7 @@ unit-process.weighted-aggregate.v1
 result-process.weighted-aggregate.v0
 ```
 
-`process.weighted-aggregate.v0` 保留为既有 Unit Process operation 的兼容入口。新协商从 `weighted-aggregate.choose-target.v0` 开始，由 Agent 解释并推荐，用户确认后改写为上述一个明确 operation。输入必须是同一已验证 Release Candidate v1/v2 中两个或更多、role 与 operation 一致的精确 Process。
+`process.weighted-aggregate.v0` 保留为既有 Unit Process operation 的兼容入口。新协商从 `weighted-aggregate.choose-target.v0` 开始，由 Agent 解释并推荐，用户确认后改写为上述一个明确 operation。输入必须是同一已验证 Release Candidate v1/v2 或已通过配对资格的 v3 中两个或更多、role 与 operation 一致的精确 Process。
 
 Unit Process operation 表达“构造新的代表性过程并重新计算”；Result Process operation 表达“组合已有计算结果而不重新求解供应链”。LifecycleModel、任意表达式、任意 JSON patch、单位映射或参考流转换仍不支持。
 
@@ -57,7 +57,7 @@ Transformed Process + Execution Receipt + Handoff
   -> intended Result consumer: Result Materialization
 ```
 
-handoff 描述目标与绑定证据，不证明消费者已实现。当前 Materialization 尚不消费 Derived Result handoff，Candidate 不支持 Result-only package；实际接收限制见 [Workflow README](README.md#result-evidence-与返回路径)。不得为打通路线补造 Model、改写输入类型或复用无效证据。
+handoff 描述目标与绑定证据，不证明消费者已实现。Materialization 已通过 `materialize derived` 消费精确 Derived Result handoff；Candidate 的 `result` 命令族支持后续 Result-only 配对；登记与构建是分别确认的动作，版本化发布接入仍独立；实际接收限制见 [Workflow README](README.md#result-evidence-与返回路径)。不得为打通路线补造 Model、改写输入类型或复用无效证据。
 
 `needs_decision` 是正常业务状态。只有 malformed contract、Candidate/input drift、运行时故障或生成结果违反确定性检查时才返回 system error / `needs_repair`。
 
@@ -307,7 +307,7 @@ execute 至少检查：
 - review 已重置；
 - receipt、output 和 handoff hash 可重算。
 
-Unit Process 输出使旧 Result Process/LifecycleModel evidence 无效，handoff 进入 Calculation。Result Process 输出是 hash-bound Derived Result，handoff 指向 Result Materialization，但须等待接收能力实现；Transformation 不调用 Worker Calculation，也不自动生成或聚合 LifecycleModel。Transformation 不会原地改写父 Candidate，也不会自行发布。
+Unit Process 输出使旧 Result Process/LifecycleModel evidence 无效，handoff 进入 Calculation。Result Process 输出是 hash-bound Derived Result，handoff 指向 Result Materialization 的 `materialize derived` 接收入口；Transformation 不调用 Worker Calculation，也不自动生成或聚合 LifecycleModel。Transformation 不会原地改写父 Candidate，也不会自行发布。
 
 ## 11. CLI
 

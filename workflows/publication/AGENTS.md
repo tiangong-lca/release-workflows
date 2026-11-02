@@ -13,9 +13,9 @@ whenToUpdate:
   - 当 Publication 的范围、状态、授权、写入、恢复或回读规则变化时
 checkPaths:
   - workflows/publication/**
-lastReviewedAt: 2026-10-16
-lastReviewedCommit: 04cccd9dc06aa5ae3b1f9f72f027692894d0c2ff
-lastReviewedNote: "Reviewed Release #85: exact Node 24.22.0 aligns the local selector, six manifests, CI and existing toolchain assertions; pnpm 11.24.0, frozen dependency graph, internal SDK, overrides, recipe/numerical contracts and publication authorization are preserved."
+lastReviewedAt: 2026-11-01
+lastReviewedCommit: 35824a25085dedf071930a89a8e9af542ad2a0b2
+lastReviewedNote: "Release #99: reviewed authority version planning, upstream regeneration and v2 publication continuation; runtime and dependency versions unchanged."
 related:
   - README.md
   - ../AGENTS.md
@@ -66,7 +66,7 @@ F4 artifact 必须拒绝未知字段、绑定所有上游 hash，并保存在新
 - 普通数据集远程执行只使用 `app_dataset_create`、`save_lifecycle_model_bundle` 和 `app_dataset_publish`；
 - Result Process 120 写入只使用 Database-owned 的 prepare/publish/readback RPC；三者在执行时都以 `Content-Profile: api` 调用，actor 由服务端 `auth.uid()` 派生，每条路径（含 readback 与每次 retry）重新校验 live manager role；
 - Portal LCIA projection 只调用 Database-owned `api.qry_portal_lcia_result_package_publish_prepare_v1`、`api.cmd_portal_lcia_result_package_publish_v1`、`api.qry_portal_lcia_projection_prepare_v1`、`api.cmd_portal_lcia_projection_finalize_publication_v1`、`api.qry_portal_lcia_projection_publication_readback_v1` 和 `api.cmd_portal_lcia_projection_revoke_publication_v1`；所有 PostgREST RPC 请求显式选择 `Content-Profile: api`；package publish、projection finalize、revoke 分别要求 exact Package Plan、Projection Plan、finalized Event SHA-256 confirmation；
-- 不接受、读取或建议 service-role secret；
+- actor publication recipes 不接受、读取或建议 service-role secret；最终 Result v3 存储 adapter 的受控数据面 CONN 例外见下，它不取得 actor 发布权限；
 - `live/` 下的 opt-in live 验收使用真实 transport 与真实本地 PostgREST：CLI 入口不注入 transport；只需 loopback 字面量、拒绝共享/默认本地端口、要求 operator 声明的 instance label 与 exact expected endpoint、并校验有界 timeout。它不属于 `prepush:gate`，未运行时**不是**通过，也不得被表述为 live 证明。离线 mock 只覆盖 wire shape，不得被当作 live 证据。
 
 ## 必须 fail closed
@@ -132,3 +132,109 @@ stored-byte hash 与 canonical Candidate content identity。两者都必需，�
 事务回滚，不得留下 partial row 或声称成功。执行按 operation 顺序进行，跨 RPC 无事务。
 
 Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认且 package-published Event 已通过独立 prepare 回读、exact Projection Plan 已确认、idempotent finalize 成功、projection-verified Event 来自独立 readback 且同时验证 publication/package/content/evidence/count、`isCurrent=true` 和 `isPubliclyVisible=true` 后完成。Revoke 只有在 exact finalized Event 已确认且 revoked Event 来自独立 `revoked`、`isPubliclyVisible=false` 回读后完成。Supersede/unpublish 必须使后续 verification fail closed。
+
+## 最终 Result v3 存储适配
+
+- `lib/final-result-storage.mjs` 只消费重新验证的配对 Candidate v3。inspect 在本地绑定 Candidate/目标/完整文件集/行映射；execute 必须确认完全相同的 storage plan hash。`result-storage inspect/execute` 是独立 opt-in CLI；它不替代后继发布选择、reader readiness、actor approval 或 activation。inspect 不打开远程客户端，不要求 S3 写凭据；execute 在确认及新输出目录检查之后才构造受控 adapter。
+- `adapters/final-result-object-store.mjs` 使用显式数据面 S3/IAM 凭据；`adapters/final-result-registry.mjs` 使用受保护 CONN、单客户端参数化事务与服务角色，仅调用五个 Database-owned v2 query/Candidate 存储 RPC 与四个 readiness begin/artifacts/seal/describe RPC。不读取 actor token，不接受任意 SQL，不写 canonical/state 120，不调用批准/激活接口。
+- 对象键只从 artifact UUID/manifest hash、Candidate byte hash 和固定文件名派生。PUT 和 multipart complete 使用 `If-None-Match: *`，不覆盖已有文件；只可中止本次已知 multipart upload，不能 DeleteObject。每次执行与重试都完整 GET 校验 bytes/hash，不把 ETag 或原数据库 seal 当成当前文件可用性的证明。
+- 本地已验证的索引/ZIP 与远端 GET 字节摘要相同后才登记实际 Result 轴和完整包范围。行按 500 条且 JSONB logical size 不超过 1 MiB 分批，映射摘要必须与 Database 的 ASCII 500-row block contract 一致。
+- 超时、响应丢失与并发同键写入必须先精确回读。query/Candidate seal 响应不明时用 service-only describe 恢复原回执；不能换 artifact、Candidate、Result 版本或覆盖原回执。中止分片无法确认或创建分片响应丢失时明确 `multipartCleanupRequired`，不得声称清理完成。
+- 目标 fingerprint 绑定数据库连接身份（不含密码）、存储 origin/region/bucket/prefix。配置必须指向已经治理的非公开存储；adapter 不改变 bucket policy，也不能以文件核验代替非公开环境准入。原 actor recipes 与 Portal projection 的 secret/locator 禁止仍保持。
+- CLI 只读取显式进程环境中的 `CONN` 与既有 `S3_*` 白名单，不隐式载入 `.env` 或 AWS credential provider chain，不接受凭据参数。证据输出必须位于冻结 Candidate 外部，含符号链接解析。每次 execute 使用新的输出目录：先写 attempt、成功后写 receipt；失败保留 attempt/failure，精确重试用新目录，不能删除记录伪造完成。stdout/stderr 只返回有界摘要与安全错误码；原始 provider/连接异常不外泄。
+- 该阶段只产生不可变存储登记证据，始终 `publicationAuthorized=false`。普通用户访问、完整 ZIP 授权及原子 current 切换由版本化 Database/Edge/Platform 接入另行完成。
+
+## 最终 Result reader 验证
+
+- `adapters/final-result-reader.mjs` 是受控服务验证 transport，只签名固定
+  `/internal/results/query-v2` 的 readiness scope、精确 artifact 与 Result；不接受
+  publication scope、任意 URL path、过滤器或原始 locator。每个请求及冷缓存重试前
+  必须重新通过 actor 权限检查，服务密钥与 actor session 分离，拒绝重定向。
+- `lib/final-result-reader-verification.mjs` 从与 Candidate 完全一致的冻结 final input
+  重建预期投影，逐项核对实际 reader 返回的定量参考、单位、LCI 非零项、全部分页和
+  LCIA；明确区分 LCIA 缺失与 LCIA 零。首个 LCI 页大小为 1，以覆盖有多项时的 cursor。
+  每页绑定准入 reader binary SHA、runtime revision、选择及 live manager 前置条件；
+  最后一次响应后再次核对权限。权限回调接收 AbortSignal，必须使用可取消的有界调用。
+- 新 `verifyQuery/verifyCandidate` 只完整 GET 校验，缺失或损坏时失败，不修复、不上传。
+  只读回读不能使用 `ensure*` 的缺失补传行为。
+- `tiangong.final-result-reader-probe.v1` 是单个精确 Result 的实测证据，不是发布范围
+  全覆盖、数据库 readiness seal 或批准。整体 verifier 按下述契约枚举选中范围并登记证据；Database 在激活时仍须独立核对。
+  `result-readiness verify` 提供整体验证入口；不能把验证回执当成发布完成状态。
+
+## 最终 Result 整体就绪验证
+
+- `adapters/final-result-actor.mjs` 只以用户 JWT 调用两个固定的、显式 `api`
+  profile 的 probe RPC。只允许 HTTPS 或字面量 loopback HTTP origin，拒绝重定向、
+  secret/service token 与过期会话；JWT 解码只排除错误凭据类型，权限由服务器每次
+  校验。读取与响应体均有期限和大小限制；原始远端错误与凭据不进入输出。
+- `lib/final-result-readiness.mjs` 对同一 Candidate/final input 先枚举完整的选中
+  artifact 范围，严格验证分页、唯一性、选中数量与首末 probe；绑定用户、目标、
+  Candidate、选择、runtime revision 与 reader SHA。数据面数据库 target hash
+  必须与对象存储 target 的数据库身份相同。
+- attempt 时钟在远端 GET 前开始。完整核验四个 Candidate 文件和全部选中 artifact
+  文件后，再运行独立数值 probe，避免较慢 GET 提前耗尽 reader 的有效窗口。
+  每个 Worker 请求仍重新检查用户权限；seal 前再读取当前上下文。
+- 调用者必须在新的不可变本地证据目录实现 `record(event)`：attempt、header、每个
+  artifact proof 必须在相应下一次数据库写入之前持久化。未落盘就停止。每个 proof
+  不超过 Database 的 64 KiB JSONB 预算，单 artifact 分批登记；完整 seal 的数量、
+  上下文和有效期必须独立 describe 回读一致后才能记录成功。
+- 仅对提交结果不明的同一不可变 payload 重试一次，数据库以原 UUID 仲裁；连续不明
+  或冲突必须停止。失败重开验证使用新 UUID 与新观察，不能延长、改写或补造历史证据。
+  成功回执仍 `publicationAuthorized=false`；不生成批准、不激活、不写业务数据。
+- 整体本地资格验证须覆盖真实 Toolkit ZIP、Release HDF5、S3 SDK/HTTP、Worker
+  与隔离 PostgreSQL 的 identity/storage/selection/runtime/readiness RPC。测试用
+  HTTP facade 只接收固定合成 token 并执行真实 actor SQL；不将其描述为 hosted JWT、
+  Edge 或 Platform 的端到端证明。
+
+- `result-readiness verify` 仅从显式环境读取三组独立凭据，不加载 `.env`、自动登录
+  或刷新会话。命令在 Candidate/final input 外创建新的私有目录；证据使用独占创建、
+  文件模式 `0600` 与 Node `flush` 落盘，再登记远端证据。失败保留 attempt/proof，
+  新验证用新目录与 UUID；不复用历史时间戳、不修复远端文件、不批准或激活。
+
+## 最终 Result 用户发布控制面
+
+- `result-publication plan/prepare/status` 只使用显式用户 JWT 与公开客户端 key，
+  不读取数据面凭据、不自动登录。probe adapter 仍只读；共享 HTTP 实现只允许固定
+  v2 routine，响应受期限/大小约束，写调用不明结果必须独立精确回读。
+- 本地计划是 F4 envelope：绑定 actor、API origin hash、冻结 Candidate 本地路径、
+  exact members 与数据库计划原始文本。`localPlanHash` 确认本地 envelope，
+  `publishPlanHash` 标识 Database plan bytes，两者不可互代。未知字段和漂移拒绝。
+- 选择可缩小 Result 集合但不添加 Candidate 外成员、父 Result 或修改内容；
+  全部默认范围也必须显式确认。current 前置条件在 plan 时冻结，后续不得自动重基。
+- prepare 先落盘意图和有界成员批次，再调用 actor RPC；run/selection seal 必须
+  独立回读。历史 sealed run 只观察，不重开、不续期。普通用户的状态只由 Database
+  当次权限决定。status 的 run 状态与 publication 当前性必须分开表达。
+- approve/activate 传输原语不构成用户授权，也不绕过上层 intent 的精确确认；
+  它们不接受 client-supplied actor。真正批准/激活仍由 Database 原子检查，
+  确认入口按下节执行，独立公开查询由 `result-publication readback` 执行。
+
+## 最终 Result 批准与激活意图
+
+- Approval Intent 与 Activation Intent 均为 F4：拒绝未知字段，绑定精确本地计划
+  hash、用户/API target、就绪回执和操作身份；意图准备只读，执行必须确认该意图 hash。
+- 批准人可不同于计划创建人，执行人可不同于批准人；readiness 必须绑定批准人，
+  不能把执行人的 probe 权限冒充批准人的就绪证明。数据库执行时仍检查两者资格。
+- 批准意图冻结 expected active approval、原因与至多 24 小时的未来有效期；
+  激活意图冻结精确 approval hash、verification、执行 key 和会话指纹。
+  指纹是版本域分离的 JWT SHA-256，仅用于审计绑定；原令牌和解码 claims 不落盘。
+- 新执行在落盘后重新校验上下文，首次激活要求会话指纹未变；用户会话续期不自动
+  改写旧意图。恢复已提交操作允许同一用户以新会话查询原审计，但不能产生新写入。
+- 写响应不明必须独立读取原 identity，无精确观察则停止；不自动重试批准或激活。
+  历史 consumed/expired/revoked approval 和非 current publication 只恢复观察，
+  不复活授权。记录失败时保留意图和已有证据，新尝试仍用原操作身份查询恢复。
+- 数据库激活观察不是公开读取完成；回执必须保持 `publicReadbackVerified=false`，
+  不能在未通过真实 Edge/Platform/下载链路检查时宣称发布验证完成。
+
+## 最终 Result 公开回读
+
+`result-publication readback` 只使用当前 actor 和相同 API origin 的公开 Edge。
+逐一对全部选定 Result 的冻结标准投影核对 overview、完整 LCI 和声明的 LCIA，
+固定 publication/runtime；查询失败不得用原 Bundle 或私有 reader 成功替代。
+可授权 ZIP 必须独立完整 GET 校验长度/hash，明确不可用单独记录，其余错误失败。
+签名 URL 只在内存中使用，不保存、不转发 actor 凭据、不跟随跳转。
+
+观测原文必须先独占落盘，再登记 immutable manager attestation，并独立读回原文摘要。
+Database 重新检查 current、选择、reader、实时角色/ZIP 权限和新鲜度。写入结果不明
+先恢复同一 run 记录，禁止换新内容覆盖凭证。`readback_verified` 是发布后的审计状态，
+不能作为首次公开可见性的额外门槛；失败不隐式撤回、回滚或再次激活。历史凭证不
+承诺当前持续可用，也不冒充浏览器交互或 hosted JWT 验收。

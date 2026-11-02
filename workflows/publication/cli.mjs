@@ -20,12 +20,25 @@ import {
   prepareResultProcessPublication,
   verifyResultProcessReadback,
 } from "./lib/result-process.mjs";
+import { runFinalResultStorageCommand } from "./lib/final-result-storage-command.mjs";
+import { runFinalResultPublicationCommand } from "./lib/final-result-publication-command.mjs";
+import { runFinalResultReadinessCommand } from "./lib/final-result-readiness-command.mjs";
 import { replyTemplateFor } from "./reply-template-registry.mjs";
 
 const CLI_PATH = fileURLToPath(new URL("./cli.mjs", import.meta.url));
 const COMMAND = `node ${shellQuote(CLI_PATH)}`;
 const VALUE_OPTIONS = new Set([
   "candidate",
+  "target-hash",
+  "readiness-receipt",
+  "intent-dir",
+  "approval-id",
+  "selection",
+  "release-version",
+  "rollback-of",
+  "final-input",
+  "run-id",
+  "publish-plan-hash",
   "component",
   "target",
   "include",
@@ -54,7 +67,7 @@ const BOOLEAN_OPTIONS = new Set(["json", "help"]);
 
 const HELP = `release-publication <command> [options]
 
-Candidate-bound dataset Publication plus an opt-in Portal LCIA package/projection workflow. Remote reads and writes always use an actor-scoped session; service-role secrets are not accepted.
+Candidate-bound dataset Publication plus an opt-in Portal LCIA package/projection workflow. Actor publication recipes use actor-scoped sessions. The separate result-storage recipe uses explicit operator CONN and S3 credentials only for immutable file storage and registration; it cannot publish.
 
 Dataset publication target state follows the dataset role, per operation: Result Process
 datasets target state 120 through the manager-attested Database command, and ordinary Unit
@@ -62,6 +75,17 @@ Process, LifecycleModel and support datasets keep the existing state 100 platfor
 A plan is therefore mixed-state, not a single global state.
 
 Commands:
+  result-publication plan     Freeze exact Result selection and current-publication precondition
+  result-publication prepare  Confirm and seal that selection using the manager session
+  result-publication status   Observe one exact run without changing its authority
+  result-publication readback Verify public Edge rows and authorized ZIPs after activation
+  result-publication approval-plan    Inspect exact approval intent for confirmation
+  result-publication approve          Confirm intent and independently read the approval
+  result-publication activation-plan  Inspect exact activation intent for confirmation
+  result-publication activate         Confirm intent, activate and independently read authority
+  result-readiness verify  Verify all selected files and reader probes; register readiness only
+  result-storage inspect  Locally verify a final Result v3 Candidate and freeze its storage plan
+  result-storage execute  Confirm that plan, store/read back files and register immutable evidence
   plan prepare          Resolve dependency-safe scope into an unapproved Draft Plan
   payload materialize  Extract only the resolved TIDAS datasets from the Candidate
   target inspect        Compare exact UUID + Version + content against the platform
@@ -79,7 +103,7 @@ Commands:
   projection revoke     Confirm, revoke, and independently verify the exact binding
 
 Core options:
-  --candidate <path>              Release Candidate v2 directory
+  --candidate <path>              Candidate v2 directory; result-storage requires v3
   --plan-dir <path>               Publication Draft Plan directory
   --payload-dir <path>            Materialized Publication payload directory
   --inspection-dir <path>         Target inspection directory
@@ -150,7 +174,57 @@ Notes:
   prepare/publish/readback RPCs; the platform dataset commands are never used for them and
   no intermediate 0 or 100 row is ever created.
 
-Required remote environment:
+result-storage inspect:
+  --candidate <v3-directory> --out-dir <new-directory>
+
+result-storage execute:
+  --candidate <v3-directory> --confirm <storage-plan-sha256> --out-dir <new-attempt-directory>
+  Requires explicit CONN, S3_ENDPOINT, S3_REGION, S3_BUCKET; optional S3_PREFIX.
+  Execute also requires S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY; optional S3_SESSION_TOKEN.
+  Inspect makes no remote requests and requires no S3 credentials. No .env is loaded.
+  Retry the same Candidate/target/confirmation in a NEW output directory; preserve prior attempts.
+  Storage success does not authorize publication or make a result visible.
+
+result-publication plan:
+  --candidate <v3-directory> --target-hash <registered-storage-target-sha256>
+  --reason <text> --out-dir <new-directory>
+  Optional --selection <JSON-array-of-uuid/version>, --release-version <YYYY.MM.N>,
+  --rollback-of <terminal-publication-uuid>, --run-id <uuid>. Defaults to all Candidate Results.
+result-publication prepare:
+  --plan-dir <frozen-plan-directory> --confirm <local-plan-content-sha256> --out-dir <new-directory>
+result-publication readback:
+  --plan-dir <prepared-plan-directory> --final-input <frozen-input-directory> --out-dir <new-directory>
+  Uses the current actor, public Edge and short-lived ZIP links. Records immutable observations;
+  does not activate, roll back or withdraw. A failed observation leaves publication authority unchanged.
+result-publication status:
+  --run-id <uuid> --out-dir <new-directory>
+  These recipes use only explicit API origin, publishable key and actor JWT below.
+  No CONN/S3/Worker secrets, implicit login or .env. Selection preparation is not approval.
+  localPlanHash binds the local envelope; publishPlanHash binds exact database plan bytes.
+
+result-publication approval-plan:
+  --plan-dir <directory> --readiness-receipt <file> --expires-at <timestamp> --reason <text>
+  --out-dir <new-directory>; optional --approval-id <uuid>
+result-publication activation-plan:
+  --plan-dir <directory> --readiness-receipt <file> --approval-id <uuid> --out-dir <new-directory>
+result-publication approve / activate:
+  --plan-dir <directory> --intent-dir <directory> --confirm <intent-content-sha256>
+  --out-dir <new-directory>
+  These are separate confirmed authority operations. Unknown responses are resolved by
+  exact identity reads, never blind repeat activation. Old consumed/withdrawn history is not revived.
+  Activation observation does not prove public Edge/Platform readback. A new session requires
+  a new unexecuted activation intent; existing execution history remains recoverable.
+
+result-readiness verify:
+  --candidate <v3-directory> --final-input <frozen-input-directory>
+  --run-id <uuid> --publish-plan-hash <sha256> --out-dir <new-attempt-directory>
+  Requires explicit storage CONN/S3 settings above, TIANGONG_LCA_API_BASE_URL,
+  TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY, TIANGONG_LCA_ACCESS_TOKEN (actor JWT),
+  RESULT_QUERY_ENDPOINT and RESULT_QUERY_SERVICE_SECRET. No implicit login or .env.
+  Full GET and reader checks only: no missing-file repair, approval or activation.
+  File evidence is flushed before registration. Failed attempts remain; use a new directory.
+
+Actor remote environment:
   TIANGONG_LCA_API_BASE_URL
   TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY
   TIANGONG_LCA_ACCESS_TOKEN or TIANGONG_LCA_API_KEY
@@ -164,6 +238,28 @@ async function main() {
   }
   const commandName = `${command} ${actionName ?? ""}`.trim();
   const handlers = {
+    "result-publication approval-plan": (options) =>
+      runFinalResultPublicationCommand("approval-plan", options),
+    "result-publication approve": (options) =>
+      runFinalResultPublicationCommand("approve", options),
+    "result-publication activation-plan": (options) =>
+      runFinalResultPublicationCommand("activation-plan", options),
+    "result-publication activate": (options) =>
+      runFinalResultPublicationCommand("activate", options),
+    "result-publication plan": (options) =>
+      runFinalResultPublicationCommand("plan", options),
+    "result-publication prepare": (options) =>
+      runFinalResultPublicationCommand("prepare", options),
+    "result-publication readback": (options) =>
+      runFinalResultPublicationCommand("readback", options),
+    "result-publication status": (options) =>
+      runFinalResultPublicationCommand("status", options),
+    "result-readiness verify": (options) =>
+      runFinalResultReadinessCommand("verify", options),
+    "result-storage inspect": (options) =>
+      runFinalResultStorageCommand("inspect", options),
+    "result-storage execute": (options) =>
+      runFinalResultStorageCommand("execute", options),
     "plan prepare": planPrepare,
     "payload materialize": payloadMaterialize,
     "target inspect": targetInspect,
@@ -904,20 +1000,26 @@ main().catch((error) => {
       message: error.message,
       details: error.details ?? {},
     },
-    nextActions: [
-      {
-        kind: "inspect_publication_help",
-        command: `${COMMAND} --help`,
-        argv: ["node", CLI_PATH, "--help"],
-      },
-    ],
+    nextActions:
+      (commandName.startsWith("result-storage ") ||
+        commandName.startsWith("result-readiness ") ||
+        commandName.startsWith("result-publication ")) &&
+      error.nextActions
+        ? error.nextActions
+        : [
+            {
+              kind: "inspect_publication_help",
+              command: `${COMMAND} --help`,
+              argv: ["node", CLI_PATH, "--help"],
+            },
+          ],
     replyTemplate: replyTemplateFor(commandName, { ok: false }),
   };
   if (process.argv.includes("--json"))
     process.stderr.write(`${JSON.stringify(payload)}\n`);
   else
     process.stderr.write(
-      `${payload.error.code}: ${payload.error.message}\n\nNext:\n- ${payload.nextActions[0].command}\n\nReply using template:\n- ${payload.replyTemplate.path}\n`,
+      `${payload.error.code}: ${payload.error.message}\n\nNext:\n- ${payload.nextActions[0]?.command ?? `${COMMAND} --help`}\n\nReply using template:\n- ${payload.replyTemplate.path}\n`,
     );
   process.exitCode = 1;
 });

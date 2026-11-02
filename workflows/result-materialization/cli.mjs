@@ -8,6 +8,7 @@ import {
   startMaterializationJob,
 } from "./lib/background-job.mjs";
 import { materialize } from "./lib/materialize.mjs";
+import { materializeDerivedResult } from "./lib/derived-result.mjs";
 import {
   MATERIALIZATION_COMMAND,
   RELEASE_COMMAND,
@@ -19,6 +20,7 @@ const HELP = `release-result-materialization <command> [options]
 Commands:
   intake              Verify a local Calculation Bundle v2 ZIP/directory and freeze an intake
   materialize         Generate the requested Result Process or LifecycleModel delivery
+  materialize derived Verify and freeze already-processed Derived Result bytes
   materialize start   Start the same Materialization engine as an observable nohup job
   job get             Read bounded local status for one exact background job
   job logs            Read the last 1-500 lines from one exact background job log
@@ -39,6 +41,7 @@ materialize options:
   --out-dir <path>     Advanced explicit immutable output path
   --first-generation   Confirm that no previous Release Manifest exists
   --previous-manifest <path>  Previous materialization/release manifest
+  --result-version-plan <path> Exact read-only registry plan; regenerate matched Results before freezing
   --concurrency <count>   Bounded render/write workers; defaults to 2, maximum 16
 
 job options:
@@ -53,8 +56,9 @@ Common:
 
 const ACTION_HELP = {
   intake: `release-result-materialization intake --bundle <path> [--artifact-root <path> | --out-dir <path>] [--json]\n\nVerify a local Calculation Bundle and freeze an immutable, content-addressed intake.\n`,
-  materialize: `release-result-materialization materialize --intake <path> (--processes <UUID@version,...> | --all) --output-type <result-process|lifecycle-model> --result-process-layer <lci|lci-lcia> (--first-generation | --previous-manifest <path>) [--artifact-root <path> | --out-dir <path>] [--concurrency <1-16>] [--json]\n\nRun Result Materialization in the foreground. The default output path is content-addressed and safely reusable.\n`,
-  "materialize start": `release-result-materialization materialize start --intake <path> (--processes <UUID@version,...> | --all) --output-type <result-process|lifecycle-model> --result-process-layer <lci|lci-lcia> (--first-generation | --previous-manifest <path>) [--artifact-root <path>] [--out-dir <path>] [--concurrency <1-16>] [--json]\n\nStart the same deterministic engine as an observable local nohup job. With explicit --out-dir, --artifact-root only relocates job records.\n`,
+  materialize: `release-result-materialization materialize --intake <path> (--processes <UUID@version,...> | --all) --output-type <result-process|lifecycle-model> --result-process-layer <lci|lci-lcia> (--first-generation | --previous-manifest <path>) [--artifact-root <path> | --out-dir <path>] [--result-version-plan <path>] [--concurrency <1-16>] [--json]\n\nRun Result Materialization in the foreground. The default output path is content-addressed and safely reusable.\n`,
+  "materialize derived": `release-result-materialization materialize derived --candidate <path> --transformation <path> [--spec <path>] [--artifact-root <path> | --out-dir <path>] [--json]\n\nVerify the producer handoff and freeze exact Result bytes, without a solve or synthesized Model. Older handoffs require --spec pointing to their frozen spec.\n`,
+  "materialize start": `release-result-materialization materialize start --intake <path> (--processes <UUID@version,...> | --all) --output-type <result-process|lifecycle-model> --result-process-layer <lci|lci-lcia> (--first-generation | --previous-manifest <path>) [--artifact-root <path>] [--out-dir <path>] [--result-version-plan <path>] [--concurrency <1-16>] [--json]\n\nStart the same deterministic engine as an observable local nohup job. With explicit --out-dir, --artifact-root only relocates job records.\n`,
   "job get": `release-result-materialization job get --job-id <uuid> [--artifact-root <path>] [--json]\n\nRead bounded status, progress, resources, throughput, and ETA for one job.\n`,
   "job logs": `release-result-materialization job logs --job-id <uuid> [--tail <1-500>] [--artifact-root <path>] [--json]\n\nRead a bounded tail of one job's structured local log.\n`,
   "job cancel": `release-result-materialization job cancel --job-id <uuid> [--artifact-root <path>] [--json]\n\nRequest cancellation after verifying the exact runner identity.\n`,
@@ -73,6 +77,26 @@ async function main() {
     const route = subcommand ? `${command} ${subcommand}` : command;
     process.stdout.write(ACTION_HELP[route] ?? HELP);
     return;
+  }
+  if (command === "materialize" && subcommand === "derived") {
+    const allowed = new Set([
+      "candidate",
+      "transformation",
+      "spec",
+      "out-dir",
+      "artifact-root",
+      "json",
+    ]);
+    const seen = new Set();
+    for (const token of tokens.filter((value) => value.startsWith("--"))) {
+      const key = token.slice(2);
+      if (!allowed.has(key) || seen.has(key))
+        throw Object.assign(
+          new Error(`Unsupported or duplicate Derived Result option: ${token}`),
+          { code: "invalid_arguments" },
+        );
+      seen.add(key);
+    }
   }
   const options = parseArgs(tokens);
   if (command === "intake") {
@@ -101,6 +125,34 @@ async function main() {
         command: `${MATERIALIZATION_COMMAND} materialize start --intake ${shellQuote(result.path)} --processes <UUID@VERSION,...> --output-type <result-process|lifecycle-model> --result-process-layer <lci|lci-lcia> --first-generation --json`,
         description:
           "Choose scope, final dataset type, and the Result Process content layer, then start an observable background run. Omit 'start' for a foreground run. LifecycleModel itself does not contain LCI/LCIA results.",
+      },
+    });
+    return;
+  }
+  if (command === "materialize" && subcommand === "derived") {
+    requireOptions(options, ["candidate", "transformation"]);
+    requireExclusivePaths(options);
+    const result = await materializeDerivedResult({
+      candidateDir: options.candidate,
+      transformationDir: options.transformation,
+      specDir: options.spec,
+      outDir: options["out-dir"],
+      artifactRoot: options["artifact-root"],
+    });
+    respond(options, {
+      ok: true,
+      command: "materialize derived",
+      outcome: result.disposition,
+      output: result.path,
+      outputType: "result-process",
+      resultProcessLayer: result.request.resultProcessLayer,
+      completeness: result.manifest.completeness,
+      candidateQualified: false,
+      publicationAuthorized: false,
+      nextAction: {
+        kind: "prepare_result_only_release",
+        description:
+          "Resolve verified parent lineage and frozen dependencies for a Result-only Candidate; this local Materialization is not publication-ready.",
       },
     });
     return;
@@ -260,6 +312,9 @@ function materializationRequestFromOptions(options) {
     firstGeneration: Boolean(options["first-generation"]),
     previousManifestPath: options["previous-manifest"]
       ? path.resolve(options["previous-manifest"])
+      : undefined,
+    resultVersionPlanPath: options["result-version-plan"]
+      ? path.resolve(options["result-version-plan"])
       : undefined,
     concurrency:
       options.concurrency === undefined

@@ -13,9 +13,9 @@ whenToUpdate:
   - 当发布选择、目标差异、状态转换、写入、审批、恢复或回读规则变化时
 checkPaths:
   - workflows/publication/**
-lastReviewedAt: 2026-10-16
-lastReviewedCommit: 04cccd9dc06aa5ae3b1f9f72f027692894d0c2ff
-lastReviewedNote: "Reviewed Release #85: exact Node 24.22.0 aligns the local selector, six manifests, CI and existing toolchain assertions; pnpm 11.24.0, frozen dependency graph, internal SDK, overrides, recipe/numerical contracts and publication authorization are preserved."
+lastReviewedAt: 2026-11-01
+lastReviewedCommit: 35824a25085dedf071930a89a8e9af542ad2a0b2
+lastReviewedNote: "Release #99: reviewed authority version planning, upstream regeneration and v2 publication continuation; runtime and dependency versions unchanged."
 related:
   - AGENTS.md
   - ../release-candidate/README.md
@@ -39,6 +39,111 @@ Release Candidate v2
 ```
 
 Dataset Transformation 不属于本 Workflow。任何 Process/LifeCycleModel 内容修改、规则聚合、UUID/Version 改变或重新计算，都必须先产生新的 Candidate，再进入 Publication。
+
+## 最终 Result v3 文件存储
+
+`lib/final-result-storage.mjs` 提供 `inspectFinalResultStorage` 和
+`executeFinalResultStorage`，消费已通过真实 HDF5/ZIP 回读及全局身份登记的
+Candidate v3。inspect 仅本地读取，返回精确 storage plan/hash；execute 需要同一
+hash 确认，并重新验证 Candidate。CLI 为 `result-storage inspect/execute`；原 `plan prepare` 等命令
+仍按下文 Candidate v2/actor recipe 运行，不能用它们发布 v3。
+
+受控 S3 adapter 只写入 `<prefix>/query-artifacts/<artifactId>/<manifestSha256>/`
+和 `<prefix>/release-candidates/<candidateSha256>/` 下的固定文件名。后者包括
+`release-candidate.json`、`publication-catalog.json`、`result.tidas.zip`、
+`result.ilcd.zip`。存储命名不改变 ZIP 内部内容与原下载文件名。
+
+进程环境必须显式提供 `CONN`、`S3_ENDPOINT`、`S3_REGION`、`S3_BUCKET`，
+可选 `S3_PREFIX`。inspect 只解析目标并校验本地 Candidate，不联网、不读取
+S3 secret。execute 还要求 `S3_ACCESS_KEY_ID`、`S3_SECRET_ACCESS_KEY`，可选
+`S3_SESSION_TOKEN`；不会隐式读取 `.env` 或其他 AWS credential provider。
+目标必须是已经治理的非公开存储，CLI 不改变 bucket policy。
+
+```bash
+node workflows/publication/cli.mjs result-storage inspect \
+  --candidate /absolute/path/final-candidate --out-dir /absolute/path/storage-plan --json
+```
+
+检查输出目录中的 `storage-plan.json` 与不含密码的 `storage-target.json`，再使用
+CLI 返回的绝对路径 `nextActions`。`storage-plan.json` 保存无末尾换行的 canonical
+JSON，其文件 SHA-256 等于返回的 `storagePlanHash`；确认值直接取该字段。
+
+```bash
+node workflows/publication/cli.mjs result-storage execute \
+  --candidate /absolute/path/final-candidate --confirm '<storagePlanHash>' \
+  --out-dir /absolute/path/storage-attempt-1 --json
+```
+
+存储证据目录必须在冻结 Candidate 外部；符号链接别名也不能绕过此边界。
+execute 在确认 hash、校验 Candidate 和检查新输出目录后才构造远程客户端。
+它先保留 `storage-attempt.json`，成功后写 `storage-receipt.json`；失败保留
+attempt 与可写入的 `storage-failure.json`，不覆盖历史，也不输出原始连接/provider
+异常。使用相同 Candidate、目标和确认值，在新目录重试；数据库回执及远端完整
+GET 决定恢复结果，不能以本地旧 receipt 跳过回读。成功仍然
+`publicationAuthorized=false`，CLI 明确报告后继发布适配尚未完成。
+
+每个对象最大 32 GiB，16 MiB 顺序分片；默认每请求/完整 GET 最长 15 分钟，可在 100 ms 至
+1 小时内显式配置。内存按单分片和有界元数据使用，不把整张矩阵或 ZIP 读进内存。
+
+写入使用 S3 条件创建，现有相同 bytes 通过完整 GET 后复用；现有不同 bytes
+直接拒绝。上传响应丢失或条件冲突先完整回读，不无条件覆盖。分片失败只尝试
+Abort 本次 upload；创建响应丢失而没有 upload ID、或 Abort 失败会明确报告
+`multipartCleanupRequired`。它不是删除历史文件或共享文件的许可；目标环境
+需要独立的未完成 multipart 保留/清理策略。
+
+数据库 adapter 调用 Database #879 的五个 v2 存储 RPC 和四个 readiness 证据 RPC。目标 hash 同时绑定
+CONN 的 host/port/database/user 身份和 S3 origin/region/bucket/prefix，密码
+轮换不改变目标。CONN 只允许 PostgreSQL URI 与 TLS 参数，拒绝 query 参数
+覆盖连接身份。原 actor token/publishable-key transport 保持独立；数据面凭据
+不放入命令参数、输出或回执。环境治理必须先确保 bucket/prefix 非公开；本模块
+不修改 IAM/bucket policy，完整 GET 也不证明隐私配置或 reader readiness。
+
+先核对远端全部 query 文件，再分批登记准确 Result 行并 seal；完整 ZIP/catalog
+回读通过后才登记 Candidate。seal 响应不明用 describe 查询权威原回执，重试
+始终复用同一身份。存储 receipt 明确 `publicationAuthorized=false`，还需要发布
+选择、非公开 reader/权限就绪验证、actor 批准、原子激活和发布后验证。
+
+验证入口为 `test/final-result-object-store.test.mjs`（真实 SDK 对 loopback 合成
+HTTP 服务）和 `test/final-result-storage.test.mjs`。后者还通过真实子进程 CLI 验证 inspect、execute 和只读复用；其实际产物/数据库联调
+显式要求 `RELEASE_PAIR_TIDAS_BIN` 与 `RELEASE_STORAGE_TEST_CONN`，且拒绝
+`127.0.0.1:61432/postgres` 以外的连接；它只用于 Database #879 拥有的本地合成库。
+默认测试跳过该联调，不能称为通过。测试实际生成三个 Result、两组 HDF5 和两个
+ZIP，验证丢失 S3/数据库响应后的恢复、重试无对象写入以及远端损坏拒绝；身份和
+登记元数据留在任务测试库供 owner reset，HTTP 服务及临时文件在测试结束时释放。
+
+依赖锁定 `@aws-sdk/client-s3` 3.1161.0 与 `pg` 8.23.1（Node 24.22.0），原
+Calculation/Candidate 依赖不升级。条件写入依据 [S3 官方契约](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html)
+和所安装 SDK 的 `PutObject` / `CompleteMultipartUpload` 类型文档；ETag 仅用于
+multipart 协议，不充当内容摘要。
+
+### 私有 reader 验证库
+
+`createFinalResultProbeVerifier({candidateDir, inputDir, reader})` 消费同一冻结输入和
+Candidate v3；`verify(probe, {authorize})` 核对 Database 的精确 probe 描述，每次网络
+请求前和最后响应后通过 `authorize(signal)` 重查同一 actor/runtime/选择/权限上下文。
+返回单个 Result 的 `tiangong.final-result-reader-probe.v1`，始终
+`publicationAuthorized=false`。调用者必须保留 final input，不能用 HDF5 自身作为预期数值。
+
+`createFinalResultReader({endpoint, secret, timeoutMs, preparingMs})` 使用独立的服务密钥，
+只访问固定 v2 readiness 接口。默认请求/权限检查期限 30 秒，冷缓存准备窗口 5 分钟；
+响应上限 2 MiB。只允许 HTTPS，测试可用字面 loopback HTTP；不跟随重定向。
+对象 adapter 的 `verifyQuery/verifyCandidate` 只做完整 GET，与上传入口分开。
+
+单 Result probe 不进行 Database readiness seal、审批或 current 切换。完整范围由下述
+整体 verifier 与 `result-readiness verify` 处理；发布选择由下述 `result-publication` 入口处理；批准/激活使用下述独立意图确认入口；公开查询的发布后验证使用独立的 `result-publication readback`，见下文。
+
+合成联调使用实际 Release 编码器/Toolkit ZIP 和独立 Worker binary：
+
+```bash
+RELEASE_PAIR_TIDAS_BIN=/absolute/path/to/tidas \
+RELEASE_QUERY_WORKER_BIN=/absolute/path/to/result_query_service \
+node --test workflows/publication/test/final-result-reader.test.mjs \
+  workflows/publication/test/final-result-reader-verification.test.mjs \
+  workflows/publication/test/final-result-object-store.test.mjs
+```
+
+测试只启动本地临时 HTTP 对象服务和自有 Worker/cache，退出时关闭并清理；不需要业务
+数据库或云凭据。未提供上述 binary 的 opt-in 用例会跳过，不能记为真实链路通过。
 
 ## 发布语义
 
@@ -453,3 +558,178 @@ Revoke 只作用于 finalized Event 绑定的 exact publication + projection con
 - 所有输出目录不可覆盖，Plan/Event locator-free，stdout 只返回有界 identity/hash/count 和本地 artifact path；
 - 所有 RPC 显式发送 `Content-Profile: api`，不依赖默认 `public` schema；
 - recipe 不改 package/artifact bytes、Candidate dataset publication 或 private artifact ACL。
+
+### 整体就绪验证库
+
+`verifyFinalResultReadiness` 接收同一 `candidateDir`/`inputDir`、精确 run/plan hash、
+新的 verification UUID、用户只读 actor adapter、只读 object store、受控 registry、
+reader 与持久化 `record` 回调。它枚举全部选中 artifact，先完整 GET 四个 Candidate
+文件和所有选中文件，再从冻结输入重建预期数值、验证每个 artifact 的首末选中 Result。
+LCI 全部分页和 LCIA 明确可用性均须通过。上下文、数量或权限变化立即停止。
+
+验证事件必须先落盘再登记数据库。单 artifact proof 受 64 KiB 限制，seal 由 Database
+检查完整范围与有效期；调用者独立 describe 回读原回执后才记录成功。同一不可变写入
+丢失响应时只精确重试一次，不能延长证据时间或把已有观察换成新内容。失败后用新的
+UUID 开始一轮实际验证。回执不等于批准或发布，仍需后继 actor 流程。
+
+`createFinalResultActor` 使用显式 origin、publishable key 和 actor JWT；只调用固定
+probe API，不接受服务凭据、不调用批准/激活。每次由数据库验证 live manager 资格。
+它不自动登录或刷新会话。用户凭据、Worker HMAC 与数据面 CONN/S3 凭据分别保管。
+
+除上述真实文件/Worker 验证外，可在 owner-reset 的任务专用合成数据库使用
+`RELEASE_READINESS_TEST_CONN` 运行 `final-result-readiness-database.test.mjs`。
+该测试强制本地 `127.0.0.1:61432/postgres` 和 `hdf5-final-879` owner 标签，验证真实
+SQL 登记与 lost-ACK 恢复，保留不可变合成审计供 owner reset。它的 HTTP 用户认证是
+固定 token 测试 facade，不替代 hosted PostgREST/Edge/Platform 验证。不要对共享或
+业务数据库运行该测试，也不要用合成回执执行真实发布。
+
+增加 `RELEASE_QUERY_EDGE_ROOT`（明确的 Edge checkout）和可选 `RELEASE_QUERY_DENO_BIN`
+可同时运行 Edge 的 `test/fixtures/final-result-gateway.ts`：真实 handler 和 Supabase SDK
+通过上述 SQL facade 查询已激活的合成结果，并由真实 Worker 从 Release HDF5 读取全部
+LCI 分页和 LCIA。测试还验证 runtime pin、源数据及 ZIP 权限拒绝；临时输入只有合成 token，
+随 fixture 删除。该资格证明跨仓库数值/协议与数据库鉴权，不证明 hosted JWT 或生产发布。
+
+### 整体就绪验证命令
+
+在已经登记 Candidate、封存发布选择且配置 reader runtime 的目标上运行：
+
+```bash
+node workflows/publication/cli.mjs result-readiness verify \
+  --candidate /absolute/path/to/candidate-v3 \
+  --final-input /absolute/path/to/frozen-final-input \
+  --run-id <release-run-uuid> --publish-plan-hash <exact-plan-sha256> \
+  --out-dir /absolute/path/to/new-readiness-attempt --json
+```
+
+显式环境要求 `CONN`、`S3_ENDPOINT`、`S3_REGION`、`S3_BUCKET`（可选 `S3_PREFIX`）、
+`S3_ACCESS_KEY_ID`、`S3_SECRET_ACCESS_KEY`（可选 `S3_SESSION_TOKEN`），以及
+`TIANGONG_LCA_API_BASE_URL`、`TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY`、
+`TIANGONG_LCA_ACCESS_TOKEN` 用户 JWT、`RESULT_QUERY_ENDPOINT` 和
+`RESULT_QUERY_SERVICE_SECRET`。凭据只放进进程环境；不放命令参数，命令不加载 `.env`，
+不使用 API key 自动登录。服务密钥只用于私有 reader，用户令牌只用于 probe 准入。
+
+输出目录必须在冻结 Candidate 和 final input 外，且尚不存在。命令先写
+`command-attempt.json`，之后依次保留 `readiness-attempt.json`、`readiness-header.json`、
+`proofs/<artifact-uuid>.json` 和独立 describe 确认后的 `readiness-receipt.json`。
+文件以独占创建、`0600` 和 `flush` 写入，目录为 `0700`（实际权限语义取决于系统）；
+这些设置不替代主机自身的持久化与访问控制。成功摘要包含有效期和精确 verification UUID，
+仍 `publicationAuthorized=false`，不表示已批准、激活或已完成 Platform 查询验证。
+
+失败保留已有文件与不含远端原始错误的 `failure.json`，按返回的 `nextActions` 解决原因后
+在新目录重新验证。不会上传/修复缺失文件，也不会覆盖旧证据或续期旧回执。若数据库已经
+封存但最后落盘失败，历史记录仍保留，新尝试必须使用新 UUID 和新观察。
+上述 opt-in 数据库联调同时运行真实子进程 CLI，并核对磁盘回执与数据库原记录相同。
+
+### 最终 Result 发布选择与状态
+
+`result-publication` 使用用户 API origin、publishable key 和 actor JWT，
+不读取 `CONN`、S3、Worker 服务密钥或 API key，不加载 `.env`、自动登录或刷新会话。
+先在已登记的精确存储目标上冻结选择：
+
+```bash
+node workflows/publication/cli.mjs result-publication plan \
+  --candidate /absolute/path/to/candidate-v3 \
+  --target-hash <registered-storage-target-sha256> --reason '发布范围说明' \
+  --out-dir /absolute/path/to/new-plan --json
+node workflows/publication/cli.mjs result-publication prepare \
+  --plan-dir /absolute/path/to/new-plan --confirm <local-plan-content-sha256> \
+  --out-dir /absolute/path/to/new-selection-attempt --json
+node workflows/publication/cli.mjs result-publication status \
+  --run-id <release-run-uuid> --out-dir /absolute/path/to/new-observation --json
+```
+
+plan 默认选择 Candidate 的全部 Result，可用 `--selection` 指向只含 `{uuid, version}`
+的 JSON 数组缩小范围；重复、空集合和 Candidate 外的成员被拒绝，不隐式选择 Derived
+的父结果。`--release-version` 可指定新发布版本，默认使用 Candidate 的版本；
+`--rollback-of` 指定历史 publication，Database 仍核对历史 Candidate 和精确选择。
+计划读取当时的 current publication 并把它固化为 CAS 条件，不在执行时重新替换。
+
+`publication-plan.json` 绑定用户、API origin hash、本地冻结 Candidate 路径和选中列表。
+本地 `localPlanHash` 为完整 envelope 的 canonical content hash（无末尾换行），
+`publishPlanHash` 是内嵌 Database plan 的原始 UTF-8 bytes hash（含 canonical LF）；
+两个 hash 不互换。prepare 确认前者，后续 readiness 使用后者。计划目录和 Candidate
+目录不可作为新证据目录；迁移本地路径需创建并确认新计划，不静默改写已冻结 envelope。
+
+prepare 先持久化意图，再登记 run、按每批 500 条登记选择、封存并独立读取状态。
+原始响应丢失时先读取同一 run，成员批次只精确幂等重试一次；缺少明确回读时停止。
+重试使用同一计划与确认 hash、新输出目录。已经封存的历史 run 只回读，不恢复批准
+或发布。失败保留证据并提供精确 status 命令。三条命令都 `publicationAuthorized=false`。
+status 分别显示 run 状态、publicationStatus 和 isCurrent，不能仅凭 run 曾 published
+就称其仍为当前发布；完整观察保存在本地文件中。
+
+`adapters/final-result-publication.mjs` 提供固定 manager RPC 的传输与响应校验，
+包含 prepare/members/seal、独立 run/head/approval 观察及 approve/activate 原语。
+它不自动重试批准或激活，不把丢失响应当作回滚；需要独立查询原身份后恢复。
+这些原语由下述精确 intent 确认命令编排。只读 probe adapter 仍未暴露写方法。
+合成数据库 opt-in 测试先证明 readiness 不发布，然后在明确独立的测试阶段批准/激活
+合成记录、读取审批消费状态并验证幂等；它还运行 plan/prepare/status 真正 CLI，环境
+只有用户凭据。所有这些写入仅限任务测试库，不证明线上部署或 Platform 查询已通过。
+
+### 精确批准与原子激活
+
+批准与激活分别生成不可变意图，并用返回的 `intentHash` 确认，不能把选择确认或
+readiness 回执当作这两步的授权。下列操作使用同一显式用户环境；无需数据面凭据。
+
+```bash
+node workflows/publication/cli.mjs result-publication approval-plan \
+  --plan-dir /absolute/path/to/selection-plan \
+  --readiness-receipt /absolute/path/to/readiness/readiness-receipt.json \
+  --expires-at <future-ISO-timestamp-within-24-hours> --reason '批准说明' \
+  --out-dir /absolute/path/to/new-approval-intent --json
+node workflows/publication/cli.mjs result-publication approve \
+  --plan-dir /absolute/path/to/selection-plan --intent-dir /absolute/path/to/new-approval-intent \
+  --confirm <approval-intent-hash> --out-dir /absolute/path/to/new-approval-attempt --json
+node workflows/publication/cli.mjs result-publication activation-plan \
+  --plan-dir /absolute/path/to/selection-plan \
+  --readiness-receipt /absolute/path/to/readiness/readiness-receipt.json \
+  --approval-id <exact-approval-uuid> --out-dir /absolute/path/to/new-activation-intent --json
+node workflows/publication/cli.mjs result-publication activate \
+  --plan-dir /absolute/path/to/selection-plan --intent-dir /absolute/path/to/new-activation-intent \
+  --confirm <activation-intent-hash> --out-dir /absolute/path/to/new-activation-attempt --json
+```
+
+审批人可与选择计划创建人不同，但 readiness 必须属于审批人。批准意图绑定当前 active
+approval 的精确 UUID（首次为 null）、有效期、原因、全部就绪上下文及精确计划。
+执行先落盘，再重新检查 live manager/runtime/选择/权限和替换前置条件；Database
+是实际批准权威。`approval-plan` 可通过 `--approval-id` 指定新 UUID，默认生成新值。
+
+执行人可与审批人不同；激活必须使用审批人产生的有效 readiness，或相同批准上下文下
+新验证得到的回执。激活意图绑定 approval hash、verification UUID、执行人、唯一执行
+key 和会话指纹。指纹是带版本域的用户 JWT SHA-256，仅作不可逆审计绑定，不保存令牌
+或用指纹授予权限。新执行要求仍使用规划时的会话；刷新会话后须生成并确认新激活意图。
+
+approve/activate 都不盲目重试写入：先查询原审批或执行身份；提交响应丢失后再独立查询，
+只有精确内容匹配才记录观察。回读仍无记录时停止，按 status 排查后在新目录重试同一
+意图。原审批已使用/撤回/过期，或发布已被替换/撤回时，只返回历史状态，不恢复它。
+原执行已提交后，更新会话仍可恢复读取原记录；不伪称更新后的会话执行了旧操作。
+
+激活后的回执 `publicReadbackVerified=false`，只证明独立查询确认了数据库发布状态。
+它不能替代下面独立的公开回读，浏览器交互验收另行执行。
+
+### 激活后公开回读
+
+```bash
+node workflows/publication/cli.mjs result-publication readback \
+  --plan-dir /absolute/path/to/selection-plan \
+  --final-input /absolute/path/to/frozen-final-input \
+  --out-dir /absolute/path/to/new-public-readback --json
+```
+
+使用与发布相同 API origin 的显式当前用户 JWT/公开客户端 key。逐一读回选择内
+所有 Result 的 overview、完整 LCI 分页和声明的 LCIA，按冻结标准文件重新投影并
+精确比较身份、参考数量、单位、正负值和零；首次 reader revision 固定到最后一页。
+不调用计算、不访问 Worker 私有接口。冷缓存最多五次、间隔两秒；单次 Edge 请求
+十五秒/2 MiB，超出后保留失败证据，另开目录重试。
+
+每个格式独立申请短期链接，对可访问的 ZIP 流式 GET 全部字节并比对长度与 SHA-256。
+单文件上限 32 GiB、GET 至多 120 秒；不转发用户认证头、不跟随重定向、不保存签名
+URL。部分选择或支持数据权限导致的明确 404 记录 `unavailable`，不冒充下载成功；
+其他错误和字节不匹配都失败。Database 记录时再次核对这两项的实时授权结果。
+
+先将完整观测文本写入新目录，再调用 manager-only 回读登记，独立 status 确认同一
+原文 SHA-256。数据库核对 current publication、Candidate、选择、reader、live role
+及至多五分钟前的结束时间，保存不可变凭证并将运行审计状态置为 `readback_verified`。
+这一状态不授予公开读取资格：首次原子激活已满足资格。失败不会撤回旧/新发布，
+也不会自动回滚。确认失败先保留 `public-readback-intent.json` 并 `status` 查询原 run；
+已有凭证只恢复历史观察，不覆盖或重新激活。该 CLI 证明 API 与文件回读，不代替
+Platform 浏览器验收、真实 hosted JWT 资格或持续可用性监控。

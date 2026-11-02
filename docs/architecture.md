@@ -17,9 +17,9 @@ checkPaths:
   - README.md
   - .docpact/config.yaml
   - workflows/**
-lastReviewedAt: 2026-10-30
-lastReviewedCommit: 8a9aa0bbb273d630247264318201f84e6b72b9ba
-lastReviewedNote: "Release #97: reviewed Calculation-owned query artifact transport/metadata registration and unchanged numeric, ZIP, actor Publication, dependency and delivery boundaries."
+lastReviewedAt: 2026-11-01
+lastReviewedCommit: 35824a25085dedf071930a89a8e9af542ad2a0b2
+lastReviewedNote: "Release #99: reviewed authority version planning, upstream regeneration and v2 publication continuation; runtime and dependency versions unchanged."
 related:
   - ../AGENTS.md
   - ../README.md
@@ -42,7 +42,7 @@ Calculation -> verified Calculation Bundle
 
 Calculation 内部包含完整性验证；Result/Model 是 Materialization recipe；packaging/qualification 属于 Candidate。它们不是新增顶层 Workflow。Publication 内的 Portal LCIA recipe 从 ready V3 package / prepared projection 开始，与 Candidate dataset recipe 独立。
 
-Transformation handoff 表达目标：Unit 返回计算，Result 返回物化，最终形成新 Candidate。**当前接收边界未闭合**：Materialization 只接受 Calculation Bundle intake，未实现 Derived Result handoff 消费；Candidate 拒绝 Result-only profile。不得把 producer 输出、接口字段或设计箭头当作消费者实现证据。补齐路线需要各 owner 的明确契约与真实跨节点验证。
+Transformation handoff 表达目标：Unit 返回计算，Result 返回物化，最终形成新 Candidate。Materialization 通过 `materialize derived` 验证加工后字节；Candidate 的 `result` 命令族接通 Result-only Intake、结构化父血缘、登记和 v3 两包/HDF5 配对。身份登记是独立数据面动作；本地文件构建不登记身份。Publication 的 `result-storage inspect/execute` 接通 v3 的存储 adapter：本地精确计划、条件创建非公开对象、完整 GET、精确行/包登记及丢失回执恢复；`result-readiness verify` 以独立用户准入、完整 GET、实测 reader 和不可变磁盘证据连接 Database seal，仍不取得 actor 发布权限；`result-publication plan/prepare/status` 提供版本化选择与状态观察，批准/激活 CLI 分别确认精确意图并独立回读数据库状态，公开查询的发布后验证待接通。不得把 producer 输出、接口字段或设计箭头当作消费者实现证据。补齐路线需要各 owner 的明确契约与真实跨节点验证。
 
 ## 权威来源
 
@@ -89,8 +89,8 @@ Release 自己拥有 cache 格式、只读远端导出编排、临时传输校�
 
 确定性实现生成数值、hash、验证和 package；Agent 不模拟这些结果。provider payload 在 adapter 边界解析，不让外部非破坏性字段影响内部路线。共享代码只提取多个 Workflow 已实际复用的机制。
 
-JavaScript/MJS 与禁止生产 compiler/codegen 的约束由依赖图测试守护；精确工具链、workspace 有效配置、单一 lockfile 和 CI 行为由根工具链测试验证。文档不重复这些配置值。业务协议、授权与 numerical invariants 的测试留在各 Workflow。
+JavaScript/MJS 与禁止生产 TypeScript/compiler/codegen 的约束由依赖图测试守护；Candidate 数值编码使用独立锁定的 Rust/HDF5 工具，按流式数值协议与 MJS 编排隔离；精确工具链、workspace 有效配置、单一 pnpm lockfile 和 CI 行为由根工具链测试验证。文档不重复这些配置值。业务协议、授权与 numerical invariants 的测试留在各 Workflow。
 
 ## 查询产物存储边界
 
-Calculation 的 opt-in query-artifact adapter 调用 Worker 公共 CLI 上传数值查询文件，独立验证 S3 bytes 后登记 Database-owned metadata/source/release 关联。它不属于 actor Publication recipe，也不创建 canonical dataset、ZIP、Approval 或 publication。Worker 拥有 HDF5 编码和数值校验，Database 拥有封闭服务 RPC 的 lineage/幂等约束，Edge 每次读取仍检查 actor 与 current publication。操作及恢复入口见 Calculation README。
+Calculation 的 opt-in query-artifact adapter 调用 Worker 公共 CLI 上传数值查询文件，独立验证 S3 bytes 后登记 Database-owned metadata/source/release 关联。它不属于 actor Publication recipe，也不创建 canonical dataset、ZIP、Approval 或 publication。该 v1 入口仍使用 Worker 编码；最终 Result v2 编码由 Release Candidate 拥有，不能经原 Bundle-only 绑定接口注册。Database 拥有封闭服务 RPC 的 lineage/幂等约束，Edge 每次读取仍检查 actor 与 current publication。操作及恢复入口见 Calculation README。

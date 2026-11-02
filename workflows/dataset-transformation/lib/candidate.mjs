@@ -11,10 +11,13 @@ import {
 } from "./common.mjs";
 import { containedPath, readJson } from "./io.mjs";
 
+import { loadFinalResultCandidate } from "../../release-candidate/lib/final-result-candidate.mjs";
+
 const execFileAsync = promisify(execFile);
 const CANDIDATE_VERSIONS = new Set([
   "tiangong.release.release-candidate.v1",
   "tiangong.release.release-candidate.v2",
+  "tiangong.release.release-candidate.v3",
 ]);
 
 export async function loadCandidate(
@@ -35,8 +38,10 @@ export async function loadCandidate(
   )
     fail(
       "release_candidate_unsupported",
-      "Dataset Transformation requires a validated, unapproved Release Candidate v1 or v2",
+      "Dataset Transformation requires a validated, unapproved Release Candidate v1, v2 or qualified v3",
     );
+  if (candidate.schemaVersion === "tiangong.release.release-candidate.v3")
+    await loadFinalResultCandidate(root);
   const { value: index } = await readJson(
     path.join(root, "canonical-dataset-index.json"),
     "candidate_dataset_index_missing",

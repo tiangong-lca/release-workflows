@@ -12,9 +12,9 @@ whenToUpdate:
   - 当所有 Workflow 共享的证据、权限、恢复或文档规则变化时
 checkPaths:
   - workflows/**
-lastReviewedAt: 2026-10-30
-lastReviewedCommit: 8a9aa0bbb273d630247264318201f84e6b72b9ba
-lastReviewedNote: "Release #97: Calculation owns the opt-in Worker query-artifact upload/readback and parameterized metadata registration adapter. Numeric generation, ZIP recipes, actor Publication authorization and source provenance remain with their existing owners."
+lastReviewedAt: 2026-11-01
+lastReviewedCommit: 35824a25085dedf071930a89a8e9af542ad2a0b2
+lastReviewedNote: "Release #99: reviewed authority version planning, upstream regeneration and v2 publication continuation; runtime and dependency versions unchanged."
 related:
   - ../AGENTS.md
   - ../README.md
@@ -43,13 +43,26 @@ Candidate 成功冻结后不可原地修改。Publication 可规划引用完整�
 
 - 不修改其他仓库或导入其内部源码；控制面调用公开 actor-scoped API/CLI。
 - 所属 Workflow 可通过受控 adapter 使用 ignored `.env` 数据库/S3 配置；SQL 参数化、有界并声明读写模式。canonical 写入须同时具备 Workflow 契约和用户明确授权；批量写入采用 staging、验证及原子提升边界。
-- 不解码、输出、持久化用户凭据；不把数据库/S3/Supabase secret 放入命令参数、日志或证据。signed URL 不持久化。
+- 不输出或持久化用户凭据，不以解码 claims 判定权限；不把数据库/S3/Supabase secret 放入命令参数、日志或证据。signed URL 不持久化。
 - 外部能力不足时报告明确 blocker；transport success 不证明 domain validity 或发布完成。
 
 ## 维护与验证
 
-所有 JavaScript/MJS Workflow 共用根 pnpm workspace 和唯一 lockfile；仅从仓库根 frozen install。业务代码、schema、fixture 和测试留在所属 Workflow；根 `test/` 只负责仓库工具链/跨 Workflow 自动化契约。
+所有 JavaScript/MJS Workflow 共用根 pnpm workspace 和唯一 pnpm lockfile；仅从仓库根 frozen install。业务代码、schema、fixture 和测试留在所属 Workflow；根 `test/` 只负责仓库工具链/跨 Workflow 自动化契约。
 
 各 Workflow 的精确 Node engine 必须与根 `.node-version`、根 manifest 和 CI 选择一致。运行时更新沿用 frozen install 与完整 `prepush:gate`，不通过放宽 engine、修改依赖图或降低业务验证来替代资格验证。
 
 每个 Workflow 的 AGENTS 维护执行红线及触发式阅读入口，README 维护当前操作与限制。源码、schema、配置和测试解释当前可执行行为；文档与实现冲突时应显式修正，不能擅自改变授权或业务语义。任务进度、历史验收和临时 workaround 不累计为常驻规则。
+
+## 最终结果查询编码
+
+Candidate 内的最终 Result 投影和原生 HDF5 编码器拥有生成逻辑，Worker 查询服务继续拥有读取。编码只消费冻结标准内容及精确依赖，不从父 Bundle 替换加工后数值；本地 encoding receipt 不等于配对 Candidate、身份登记或发布批准。既有 Calculation v1 bridge 在消费者迁移前保留其原契约。
+
+最终 Result v3 的非公开对象上传、完整 GET 回读及 Database v2 存储登记属于
+Publication 的独立数据面 adapter；它只消费冻结 Candidate，不移动生成器、不
+重算内容、不写 state 120，也不取得 actor 批准或 current 激活权限。具体边界与
+恢复规则由 `publication/AGENTS.md` 维护。
+
+最终 Result 的私有 reader 验证由 Publication 消费冻结 final input 和 Candidate，
+与存储登记、后继数据库 readiness seal/actor approval 分开。单个 Result probe 成功
+不等于发布范围全部合格，也不自动授权激活；精确调用边界见 Publication 契约。
