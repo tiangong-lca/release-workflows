@@ -24,6 +24,82 @@ test("target identity binds database, storage origin and prefix without credenti
     });
 });
 
+test("Supabase base path is retained in the immutable target", () => {
+  const endpoint =
+    "https://abcdefghijklmnopqrst.storage.supabase.co/storage/v1/s3";
+  const actual = finalResultStorageTarget({ ...target, endpoint });
+  assert.equal(actual.target.endpoint, endpoint);
+  // Independent Python SHA-256 over sorted compact JSON; shared with Edge.
+  assert.equal(
+    actual.targetHash,
+    "5a28a7316cbdf68e3169f93f35527b0da247b40949954fa2d3c303ef02b3da23",
+  );
+  assert.equal(
+    finalResultStorageTarget({ ...target, endpoint, bucket: "lca_results" })
+      .targetHash,
+    "f76a8f2ce1f462bba6f446b7a02a1871c182bbbdc03cabd67ac1961f62487c35",
+  );
+  assert.throws(() =>
+    finalResultStorageTarget({ ...target, bucket: "lca_results" }),
+  );
+  for (const bucket of [
+    "../bucket",
+    "bucket/child",
+    "bucket?key",
+    "bucket%2Fkey",
+    "a".repeat(64),
+  ])
+    assert.throws(() =>
+      finalResultStorageTarget({ ...target, endpoint, bucket }),
+    );
+  assert.notEqual(
+    actual.targetHash,
+    finalResultStorageTarget({ ...target, endpoint: new URL(endpoint).origin })
+      .targetHash,
+  );
+  assert.equal(
+    finalResultStorageTarget({
+      ...target,
+      endpoint: "https://storage.example.invalid/",
+    }).targetHash,
+    "de1df92faaa979b2e608e579ee2733b451cfc4396e98574c7179a73f9d1b9e41",
+  );
+  for (const bad of [
+    endpoint + "/",
+    endpoint + "?key=value",
+    endpoint + "#fragment",
+    endpoint.replace("https:", "http:"),
+    endpoint.replace(".supabase.co", ".supabase.co.evil.invalid"),
+    endpoint.replace("/storage/v1/s3", "/storage/v1/other"),
+    endpoint.replace("https://", "https://user:password@"),
+  ])
+    assert.throws(
+      () => finalResultStorageTarget({ ...target, endpoint: bad }),
+      { code: "final_storage_contract_invalid" },
+    );
+});
+
+test("real pinned SDK retains the Supabase base path for upload and full readback", async (t) => {
+  const f = await fixture(t, {
+    endpointPath: "/storage/v1/s3",
+    bucket: "lca_results",
+  });
+  assert.equal(
+    (await f.store.ensureQuery(ref, f.descriptor, f.filePath)).reused,
+    false,
+  );
+  assert.deepEqual(
+    f.requests.map((r) => r.method),
+    ["GET", "PUT", "GET"],
+  );
+  assert.ok(
+    f.requests.every(
+      (r) => r.key === f.key && r.key.startsWith("/storage/v1/s3/lca_results/"),
+    ),
+  );
+  assert.deepEqual(f.objects.get(f.key), f.bytes);
+});
+
 test("real SDK conditionally PUTs then full-GET verifies; exact retry is read-only", async (t) => {
   const f = await fixture(t);
   const first = await f.store.ensureQuery(ref, f.descriptor, f.filePath);

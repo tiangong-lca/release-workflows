@@ -17,9 +17,9 @@ checkPaths:
   - README.md
   - .docpact/config.yaml
   - workflows/**
-lastReviewedAt: 2026-11-01
-lastReviewedCommit: 35824a25085dedf071930a89a8e9af542ad2a0b2
-lastReviewedNote: "Release #99: reviewed authority version planning, upstream regeneration and v2 publication continuation; runtime and dependency versions unchanged."
+lastReviewedAt: 2026-11-02
+lastReviewedCommit: 7ce184ead831629cbca50a83fa4f22abb2ebb4b2
+lastReviewedNote: "Release #101: reviewed paired Supabase S3 target compatibility; workflow ownership, exact-target approval and runtime constraints are unchanged."
 related:
   - ../AGENTS.md
   - ../README.md
