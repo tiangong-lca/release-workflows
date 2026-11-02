@@ -13,9 +13,9 @@ whenToUpdate:
   - 当发布选择、目标差异、状态转换、写入、审批、恢复或回读规则变化时
 checkPaths:
   - workflows/publication/**
-lastReviewedAt: 2026-11-01
-lastReviewedCommit: 35824a25085dedf071930a89a8e9af542ad2a0b2
-lastReviewedNote: "Release #99: reviewed authority version planning, upstream regeneration and v2 publication continuation; runtime and dependency versions unchanged."
+lastReviewedAt: 2026-11-02
+lastReviewedCommit: 7ce184ead831629cbca50a83fa4f22abb2ebb4b2
+lastReviewedNote: "Release #101: reviewed Supabase S3 base-path preservation, paired target hashing and pinned SDK upload/readback; publication authority is unchanged."
 related:
   - AGENTS.md
   - ../release-candidate/README.md
@@ -58,6 +58,13 @@ hash 确认，并重新验证 Candidate。CLI 为 `result-storage inspect/execut
 S3 secret。execute 还要求 `S3_ACCESS_KEY_ID`、`S3_SECRET_ACCESS_KEY`，可选
 `S3_SESSION_TOKEN`；不会隐式读取 `.env` 或其他 AWS credential provider。
 目标必须是已经治理的非公开存储，CLI 不改变 bucket policy。
+
+S3 endpoint 支持 HTTPS 根地址，以及 Supabase 项目存储域名上的精确
+`/storage/v1/s3` 路径；字面量 loopback 也支持该路径用于本地验证。
+该路径同时保留在目标哈希和实际 SDK 请求中，不可截成 origin。
+根地址既有哈希不变；凭据、查询串、fragment 和其他非根路径仍拒绝。
+Release、Reader 和 Edge 必须显式使用相同的 bucket/prefix；运行时登记还须绑定
+Release 的精确数据库目标身份，不能从 Worker queue 连接端口推断。
 
 ```bash
 node workflows/publication/cli.mjs result-storage inspect \

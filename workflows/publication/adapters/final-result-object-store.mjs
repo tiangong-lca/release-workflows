@@ -87,12 +87,15 @@ export function finalResultStorageTarget({
         !url.password &&
         !url.search &&
         !url.hash &&
-        url.pathname === "/" &&
+        (url.pathname === "/" ||
+          (url.pathname === "/storage/v1/s3" &&
+            (/^[a-z0-9]{20}\.storage\.supabase\.co$/u.test(url.hostname) ||
+              ["127.0.0.1", "[::1]"].includes(url.hostname)))) &&
         (url.protocol === "https:" ||
           (url.protocol === "http:" &&
             ["127.0.0.1", "[::1]"].includes(url.hostname))),
     );
-    normalized = url.origin;
+    normalized = url.origin + (url.pathname === "/" ? "" : url.pathname);
   }
   const target = {
     schemaVersion: "tiangong.final-result-storage-target.v1",

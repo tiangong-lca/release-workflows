@@ -31,6 +31,7 @@ export async function fixture(
     bytes = Buffer.from("synthetic-final-file"),
     timeoutMs = 3000,
     databaseTargetHash = target.databaseTargetHash,
+    endpointPath = "",
   } = {},
 ) {
   const directory = await mkdtemp(path.join(tmpdir(), "final-object-store-"));
@@ -148,7 +149,7 @@ export async function fixture(
     target: {
       ...target,
       databaseTargetHash,
-      endpoint: `http://127.0.0.1:${server.address().port}`,
+      endpoint: `http://127.0.0.1:${server.address().port}${endpointPath}`,
     },
     credentials: {
       accessKeyId: "synthetic-access",
@@ -161,7 +162,7 @@ export async function fixture(
     sha256: hash(bytes),
     byteSize: bytes.length,
   };
-  const key = `/synthetic-results/test-owned/query-artifacts/${ref.artifactId}/${ref.manifestSha256}/lci.h5`;
+  const key = `${endpointPath}/synthetic-results/test-owned/query-artifacts/${ref.artifactId}/${ref.manifestSha256}/lci.h5`;
   return {
     store,
     descriptor,
@@ -171,6 +172,6 @@ export async function fixture(
     parts,
     key,
     bytes,
-    endpoint: `http://127.0.0.1:${server.address().port}`,
+    endpoint: `http://127.0.0.1:${server.address().port}${endpointPath}`,
   };
 }
