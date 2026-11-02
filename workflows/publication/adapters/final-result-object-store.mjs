@@ -65,7 +65,7 @@ export function finalResultStorageTarget({
 }) {
   requireValue(
     HASH.test(databaseTargetHash ?? "") &&
-      /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/u.test(bucket ?? "") &&
+      typeof bucket === "string" &&
       typeof region === "string" &&
       /^[a-z0-9-]{1,64}$/u.test(region) &&
       typeof prefix === "string" &&
@@ -97,6 +97,11 @@ export function finalResultStorageTarget({
     );
     normalized = url.origin + (url.pathname === "/" ? "" : url.pathname);
   }
+  // Supabase's existing path-style buckets may contain underscores.
+  const bucketPattern = normalized?.endsWith("/storage/v1/s3")
+    ? /^[a-z0-9][a-z0-9._-]{1,61}[a-z0-9]$/u
+    : /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/u;
+  requireValue(bucketPattern.test(bucket));
   const target = {
     schemaVersion: "tiangong.final-result-storage-target.v1",
     databaseTargetHash,

@@ -63,6 +63,8 @@ S3 endpoint 支持 HTTPS 根地址，以及 Supabase 项目存储域名上的精
 `/storage/v1/s3` 路径；字面量 loopback 也支持该路径用于本地验证。
 该路径同时保留在目标哈希和实际 SDK 请求中，不可截成 origin。
 根地址既有哈希不变；凭据、查询串、fragment 和其他非根路径仍拒绝。
+仅上述 Supabase base path 允许桶名包含下划线（如现有 `lca_results`）；
+桶名仍受长度和安全字符限制，不允许路径、转义或查询分隔符。
 Release、Reader 和 Edge 必须显式使用相同的 bucket/prefix；运行时登记还须绑定
 Release 的精确数据库目标身份，不能从 Worker queue 连接端口推断。
 

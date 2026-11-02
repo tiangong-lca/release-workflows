@@ -32,6 +32,7 @@ export async function fixture(
     timeoutMs = 3000,
     databaseTargetHash = target.databaseTargetHash,
     endpointPath = "",
+    bucket = target.bucket,
   } = {},
 ) {
   const directory = await mkdtemp(path.join(tmpdir(), "final-object-store-"));
@@ -148,6 +149,7 @@ export async function fixture(
   store = createFinalResultObjectStore({
     target: {
       ...target,
+      bucket,
       databaseTargetHash,
       endpoint: `http://127.0.0.1:${server.address().port}${endpointPath}`,
     },
@@ -162,7 +164,7 @@ export async function fixture(
     sha256: hash(bytes),
     byteSize: bytes.length,
   };
-  const key = `${endpointPath}/synthetic-results/test-owned/query-artifacts/${ref.artifactId}/${ref.manifestSha256}/lci.h5`;
+  const key = `${endpointPath}/${bucket}/test-owned/query-artifacts/${ref.artifactId}/${ref.manifestSha256}/lci.h5`;
   return {
     store,
     descriptor,

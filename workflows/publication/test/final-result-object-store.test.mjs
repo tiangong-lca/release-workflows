@@ -34,6 +34,24 @@ test("Supabase base path is retained in the immutable target", () => {
     actual.targetHash,
     "5a28a7316cbdf68e3169f93f35527b0da247b40949954fa2d3c303ef02b3da23",
   );
+  assert.equal(
+    finalResultStorageTarget({ ...target, endpoint, bucket: "lca_results" })
+      .targetHash,
+    "f76a8f2ce1f462bba6f446b7a02a1871c182bbbdc03cabd67ac1961f62487c35",
+  );
+  assert.throws(() =>
+    finalResultStorageTarget({ ...target, bucket: "lca_results" }),
+  );
+  for (const bucket of [
+    "../bucket",
+    "bucket/child",
+    "bucket?key",
+    "bucket%2Fkey",
+    "a".repeat(64),
+  ])
+    assert.throws(() =>
+      finalResultStorageTarget({ ...target, endpoint, bucket }),
+    );
   assert.notEqual(
     actual.targetHash,
     finalResultStorageTarget({ ...target, endpoint: new URL(endpoint).origin })
@@ -62,7 +80,10 @@ test("Supabase base path is retained in the immutable target", () => {
 });
 
 test("real pinned SDK retains the Supabase base path for upload and full readback", async (t) => {
-  const f = await fixture(t, { endpointPath: "/storage/v1/s3" });
+  const f = await fixture(t, {
+    endpointPath: "/storage/v1/s3",
+    bucket: "lca_results",
+  });
   assert.equal(
     (await f.store.ensureQuery(ref, f.descriptor, f.filePath)).reused,
     false,
@@ -73,9 +94,7 @@ test("real pinned SDK retains the Supabase base path for upload and full readbac
   );
   assert.ok(
     f.requests.every(
-      (r) =>
-        r.key === f.key &&
-        r.key.startsWith("/storage/v1/s3/synthetic-results/"),
+      (r) => r.key === f.key && r.key.startsWith("/storage/v1/s3/lca_results/"),
     ),
   );
   assert.deepEqual(f.objects.get(f.key), f.bytes);
