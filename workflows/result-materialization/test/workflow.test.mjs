@@ -318,6 +318,22 @@ test("intake, Result Catalog, and resolved one-hop Model complete locally", asyn
     await mkdir(path.join(bundle, directory), { recursive: true });
   }
   const process = validUnitProcess(PROCESS_ID, FLOW_ID, "Fixture Unit Process");
+  const originalComment = structuredClone(
+    process.processDataSet.processInformation.dataSetInformation[
+      "common:generalComment"
+    ],
+  );
+  const historicalNotes = [
+    { "@xml:lang": "en", "#text": "Retained historical note." },
+    { "@xml:lang": "zh", "#text": "保留历史备注。" },
+  ];
+  process.processDataSet.processInformation.mathematicalRelations = {
+    variableParameter: { comment: historicalNotes },
+  };
+  process.processDataSet.administrativeInformation[
+    "common:commissionerAndGoal"
+  ]["common:intendedApplications"] = [];
+  const originalProcess = structuredClone(process);
   const sourceReferenceExchange = process.processDataSet.exchanges.exchange[0];
   sourceReferenceExchange.allocations = {
     allocation: {
@@ -457,6 +473,18 @@ test("intake, Result Catalog, and resolved one-hop Model complete locally", asyn
   const primaryDocument = JSON.parse(
     await readFile(path.join(results.path, primaryResult.path), "utf8"),
   );
+  assert.deepEqual(
+    primaryDocument.processDataSet.processInformation.dataSetInformation[
+      "common:generalComment"
+    ].slice(0, -1),
+    [originalComment, ...historicalNotes],
+  );
+  assert.match(
+    primaryDocument.processDataSet.processInformation.dataSetInformation[
+      "common:generalComment"
+    ].at(-1)["#text"],
+    /generated for/,
+  );
   const generatedReferenceExchange =
     primaryDocument.processDataSet.exchanges.exchange[0];
   assert.equal(generatedReferenceExchange.allocations, undefined);
@@ -494,6 +522,26 @@ test("intake, Result Catalog, and resolved one-hop Model complete locally", asyn
   );
   assert.equal(models.manifest.validation.modelSchemas, "passed");
   assert.equal(models.catalog.datasets[0].providerCount, 1);
+  const modelDocument = JSON.parse(
+    await readFile(
+      path.join(models.path, models.catalog.datasets[0].path),
+      "utf8",
+    ),
+  );
+  assert.deepEqual(
+    modelDocument.lifeCycleModelDataSet.lifeCycleModelInformation.dataSetInformation[
+      "common:generalComment"
+    ].slice(0, -1),
+    [originalComment, ...historicalNotes],
+  );
+  assert.deepEqual(
+    process.processDataSet.processInformation,
+    originalProcess.processDataSet.processInformation,
+  );
+  assert.deepEqual(
+    process.processDataSet.administrativeInformation,
+    originalProcess.processDataSet.administrativeInformation,
+  );
 
   const previousManifestPath = path.join(
     models.path,

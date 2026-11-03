@@ -4,7 +4,10 @@ import { sourceKey } from "./context.mjs";
 import { modelIdentity, MODEL_PROFILE } from "./identity.mjs";
 import { globalReference, suffixName } from "./references.mjs";
 import { validateOneHopReconstruction } from "./reconstruction.mjs";
-import { normalizeCompatibleProcessDocument } from "./process-compat.mjs";
+import {
+  appendProcessComments,
+  normalizeCompatibleProcessDocument,
+} from "./process-compat.mjs";
 
 export function renderLifecycleModel(context, axis, resultCatalog, version) {
   const source = context.sources.get(
@@ -127,11 +130,16 @@ export function renderLifecycleModel(context, axis, resultCatalog, version) {
             version: ownResult.version,
             description: "Generated aggregated Result Process",
           }),
-          "common:generalComment": {
-            "@xml:lang": "en",
-            "#text":
-              "Deterministically generated resolved one-hop model from a frozen Unit Process, direct provider edges, and Result Catalog.",
-          },
+          "common:generalComment": appendProcessComments(
+            sourceData.processInformation.dataSetInformation[
+              "common:generalComment"
+            ],
+            {
+              "@xml:lang": "en",
+              "#text":
+                "Deterministically generated resolved one-hop model from a frozen Unit Process, direct provider edges, and Result Catalog.",
+            },
+          ),
         },
         quantitativeReference: { referenceToReferenceProcess: 0 },
         technology: { processes: { processInstance: processInstances } },

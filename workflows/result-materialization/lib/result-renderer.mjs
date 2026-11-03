@@ -3,7 +3,10 @@ import { fail, nearlyEqual } from "./common.mjs";
 import { resultIdentity, RESULT_PROFILES } from "./identity.mjs";
 import { sourceKey } from "./context.mjs";
 import { globalReference, suffixName } from "./references.mjs";
-import { normalizeCompatibleProcessDocument } from "./process-compat.mjs";
+import {
+  appendProcessComments,
+  normalizeCompatibleProcessDocument,
+} from "./process-compat.mjs";
 
 export function renderResultProcess(
   context,
@@ -53,10 +56,14 @@ export function renderResultProcess(
     data.processInformation.dataSetInformation.name,
     resultLabel,
   );
-  data.processInformation.dataSetInformation["common:generalComment"] = {
-    "@xml:lang": "en",
-    "#text": `${resultLabel} generated for ${axis.rootProcess.id}@${axis.rootProcess.version} under calculation ${context.intake.source.calculationId}.`,
-  };
+  data.processInformation.dataSetInformation["common:generalComment"] =
+    appendProcessComments(
+      data.processInformation.dataSetInformation["common:generalComment"],
+      {
+        "@xml:lang": "en",
+        "#text": `${resultLabel} generated for ${axis.rootProcess.id}@${axis.rootProcess.version} under calculation ${context.intake.source.calculationId}.`,
+      },
+    );
   data.modellingAndValidation.LCIMethodAndAllocation.typeOfDataSet =
     "LCI result";
   const publication = data.administrativeInformation.publicationAndOwnership;

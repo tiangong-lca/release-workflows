@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/result-materialization/**
 lastReviewedAt: 2026-11-03
-lastReviewedCommit: 7085dd38e54ea8de031eb4e34aa16c19f1076cf6
-lastReviewedNote: "Release #103: reviewed SDK 0.6.0 adoption and nonblocking dependency engines policy on unchanged Node 24.22.0; complete native/workflow checks pass, and calculation/publication authority is unchanged."
+lastReviewedCommit: 1a1ca5860f08acaba578030a5a8428a71396a8f6
+lastReviewedNote: "Release #106: copy-only historical Process compatibility preserves empty text and source comments; recipe v2 prevents stale materialization reuse without changing calculation or publication authority."
 related:
   - AGENTS.md
   - design/result-process-and-lifecycle-model.md
@@ -222,6 +222,21 @@ Quantitative reference 不假设为 Output。新 process-axis v2 直接提供 ra
 
 CLI 的 `--json` 输出保持有界，包含 completeness、产物路径和状态感知的下一条可复制命令；错误也返回
 当前动作的绝对 help 恢复命令。大数据集始终写入文件。
+
+## 历史数据的读取兼容
+
+当前 metadata policy v2 仅处理已经保存的历史格式，不更新数据库或冻结的 source closure：
+
+| 源字段/形状                                                                                                                                        | 副本中的兼容处理                             |
+| -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `common:generalComment`、`technologyDescriptionAndIncludedProcesses`、`dataCutOffAndCompletenessPrinciples`、`common:intendedApplications` 的 `[]` | 转为英文空文本条目，保留“没有内容”的含义     |
+| `mathematicalRelations.variableParameter: {}`                                                                                                      | 省略这个可选节点                             |
+| `variableParameter` 仅含有效文本结构的 `comment`                                                                                                   | 将原文按顺序追加到一般说明，再省略空参数节点 |
+| review 数组、真实参数和其他字段                                                                                                                    | 原样保留并交由 SDK 校验                      |
+
+一般说明中的原文与迁移备注都进入 Result 和 Model；生成说明只追加。不会填写虚构参数名、用途或技术内容，也不会修复缺失/null/其他错误结构。旧 name 字段的单空格兼容继续保留。兼容是幂等的，不改变源对象、交换数值或引用身份。
+
+`result-materialization.v2` 和 metadata policy hash 共同改变 materialization key，保证不复用旧 renderer 产物；不改变 Result UUID 算法或数值/引用门禁。重新物化无需重新计算，完成后仍需独立的 Candidate 与 Publication 流程。
 
 ## 需要用户决定的内容
 

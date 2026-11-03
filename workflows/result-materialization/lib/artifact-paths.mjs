@@ -6,10 +6,14 @@ import { hashJson } from "./versioning.mjs";
 
 export const MATERIALIZATION_KEY_SCHEMA =
   "tiangong.release.materialization-key.v1";
-export const RECIPE_CONTRACT_VERSION = "result-materialization.v1";
+export const RECIPE_CONTRACT_VERSION = "result-materialization.v2";
 export const METADATA_POLICY = Object.freeze({
-  schemaVersion: "tiangong.release.result-metadata-policy.v1",
+  schemaVersion: "tiangong.release.result-metadata-policy.v2",
   missingTextCompatibility: "single-space",
+  historicalEmptyTextArrays: "four-known-fields-en-empty-text",
+  emptyVariableParameter: "omit",
+  commentOnlyVariableParameter: "append-to-general-comment",
+  generatedGeneralComment: "preserve-source-and-append-provenance",
   sourceAdministrativeMetadata: "preserve-compatible",
 });
 

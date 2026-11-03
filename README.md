@@ -20,8 +20,8 @@ checkPaths:
   - workflows/**
   - .docpact/config.yaml
 lastReviewedAt: 2026-11-03
-lastReviewedCommit: 7085dd38e54ea8de031eb4e34aa16c19f1076cf6
-lastReviewedNote: "Release #103: reviewed SDK 0.6.0 adoption and nonblocking dependency engines policy on unchanged Node 24.22.0; complete native/workflow checks pass, and calculation/publication authority is unchanged."
+lastReviewedCommit: "1a1ca5860f08acaba578030a5a8428a71396a8f6"
+lastReviewedNote: "Release #106: reviewed scoped historical Process read compatibility; workflow ownership, frozen source immutability and independent calculation/publication boundaries remain unchanged."
 related:
   - AGENTS.md
   - docs/architecture.md

@@ -17,8 +17,8 @@ checkPaths:
   - workflows/calculation/**
   - workflows/result-materialization/**
 lastReviewedAt: 2026-11-03
-lastReviewedCommit: 7085dd38e54ea8de031eb4e34aa16c19f1076cf6
-lastReviewedNote: "Release #103: reviewed SDK 0.6.0 adoption and nonblocking dependency engines policy on unchanged Node 24.22.0; complete native/workflow checks pass, and calculation/publication authority is unchanged."
+lastReviewedCommit: 1a1ca5860f08acaba578030a5a8428a71396a8f6
+lastReviewedNote: "Release #106: reviewed copy-only historical metadata compatibility and comment preservation; recipe v2 and metadata policy v2 isolate regenerated artifacts without changing identity or numerical reconstruction."
 related:
   - ../README.md
   - ../AGENTS.md
