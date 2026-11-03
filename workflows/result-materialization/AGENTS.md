@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/result-materialization/**
 lastReviewedAt: 2026-11-03
-lastReviewedCommit: 7085dd38e54ea8de031eb4e34aa16c19f1076cf6
-lastReviewedNote: "Release #103: reviewed SDK 0.6.0 adoption and nonblocking dependency engines policy on unchanged Node 24.22.0; complete native/workflow checks pass, and calculation/publication authority is unchanged."
+lastReviewedCommit: 1a1ca5860f08acaba578030a5a8428a71396a8f6
+lastReviewedNote: "Release #106: copy-only historical Process compatibility preserves empty text and source comments; recipe v2 prevents stale materialization reuse without changing calculation or publication authority."
 related:
   - README.md
   - design/result-process-and-lifecycle-model.md
@@ -119,6 +119,13 @@ related:
 - `R(P)` reference exchange 保留 raw direction、使用 normalized amount；`M(P)` 根 `U(P)` instance 使用 normalization scale。
 - `R(P)` reference exchange 必须从已验证的源 reference exchange 做显式字段投影，只保留 Flow reference、可选 location、direction、normalized amount 和生成状态；不得复制依赖源 Process 其他 exchange 或 variable definitions 的 allocation、`referenceToVariable`、formula 或 uncertainty。
 - 写出前必须对 generated Process 执行聚焦的内部引用检查：quantitative reference、exchange ID、allocation co-product 和 variable reference 必须在生成文档内闭合。该检查只保护 renderer 自己建立的引用，不复制或替代 Release 的完整 TIDAS/eILCD 语义门禁。
+
+## 历史 Process 兼容
+
+- 仅在源文档副本上兼容四个已知空文本数组：一般说明、技术说明、数据截断与完整性原则、预期用途。`[]` 转成 `[{"@xml:lang":"en","#text":""}]`，不补造业务内容，不推断语言；缺失字段、null 和其他非法值仍由 SDK 拒绝。
+- 可选 `variableParameter: {}` 省略；只有 `comment` 的对象在备注和一般说明均为文本结构时，将原备注逐条追加到一般说明后省略。保留文本、语言与顺序，不造参数名，不删除有其他字段的参数。
+- 保留 review 数组；Result 和 Model 都继承兼容后的源一般说明并追加生成说明，不覆盖原文。旧 name 字段的单空格兼容保持不变。
+- 使用 metadata policy v2 与 `result-materialization.v2`；旧冻结输入与产物不改写，新请求得到独立内容寻址 key。所有兼容后源和生成文档仍必须通过真实 SDK。
 
 ## 可由 Agent 提出的内容
 
