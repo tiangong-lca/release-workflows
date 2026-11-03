@@ -213,7 +213,7 @@ export async function materializeModels({
       },
       datasets: [...resultDatasets, ...modelDatasets],
       validation: {
-        tidasSdk: "@tiangong-lca/tidas-sdk@0.2.0",
+        tidasSdk: "@tiangong-lca/tidas-sdk@0.6.0",
         sourceDocuments: "verified",
         resultReferences: "verified",
         modelSchemas: "passed",

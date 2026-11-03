@@ -15,14 +15,14 @@ const processBytes = fixtureBytes(processFixture);
 const modelBytes = fixtureBytes(modelFixture);
 const FIXTURE_EVIDENCE = Object.freeze({
   schema: "tiangong.release.tidas-sdk-fixture-evidence.v1",
-  sdk: "@tiangong-lca/tidas-sdk@0.2.0",
+  sdk: "@tiangong-lca/tidas-sdk@0.6.0",
   processSha256:
     "0469b5b6fa53e874dce582d592b0b90b53e78e03e68f4aba079a8cff7fc15ed1",
   lifecycleModelSha256:
     "7c21c0abe0d309d091065a7e2aae58fb19f5ae554a3f011470173cb2010ab486",
 });
 
-test("Result Materialization pins and reports the released SDK 0.2.0", async () => {
+test("Result Materialization pins and reports the released SDK 0.6.0", async () => {
   const workflowManifest = JSON.parse(
     await readFile(new URL("../package.json", import.meta.url), "utf8"),
   );
@@ -37,9 +37,9 @@ test("Result Materialization pins and reports the released SDK 0.2.0", async () 
   );
   assert.equal(
     workflowManifest.dependencies["@tiangong-lca/tidas-sdk"],
-    "0.2.0",
+    "0.6.0",
   );
-  assert.equal(sdkPackage.version, "0.2.0");
+  assert.equal(sdkPackage.version, "0.6.0");
 
   for (const relativePath of [
     "../lib/materialize-results.mjs",
@@ -50,8 +50,8 @@ test("Result Materialization pins and reports the released SDK 0.2.0", async () 
       new URL(relativePath, import.meta.url),
       "utf8",
     );
-    assert.match(runtimeEvidence, /@tiangong-lca\/tidas-sdk@0\.2\.0/);
-    assert.doesNotMatch(runtimeEvidence, /@tiangong-lca\/tidas-sdk@0\.1\.46/);
+    assert.match(runtimeEvidence, /@tiangong-lca\/tidas-sdk@0\.6\.0/);
+    assert.doesNotMatch(runtimeEvidence, /@tiangong-lca\/tidas-sdk@0\.2\.0/);
   }
 });
 

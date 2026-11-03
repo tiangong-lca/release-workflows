@@ -16,9 +16,9 @@ whenToUpdate:
 checkPaths:
   - workflows/calculation/**
   - workflows/result-materialization/**
-lastReviewedAt: 2026-11-01
-lastReviewedCommit: 35824a25085dedf071930a89a8e9af542ad2a0b2
-lastReviewedNote: "Release #99: reviewed optional registry plan hash in immutable materialization paths and existing ownership/routing coverage."
+lastReviewedAt: 2026-11-03
+lastReviewedCommit: 7085dd38e54ea8de031eb4e34aa16c19f1076cf6
+lastReviewedNote: "Release #103: reviewed SDK 0.6.0 adoption and nonblocking dependency engines policy on unchanged Node 24.22.0; complete native/workflow checks pass, and calculation/publication authority is unchanged."
 related:
   - ../README.md
   - ../AGENTS.md

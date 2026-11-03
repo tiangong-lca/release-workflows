@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 materialization recipe、身份版本、数据集关系、验证或输出变化时
 checkPaths:
   - workflows/result-materialization/**
-lastReviewedAt: 2026-11-01
-lastReviewedCommit: 35824a25085dedf071930a89a8e9af542ad2a0b2
-lastReviewedNote: "Release #99: reviewed authority version planning, upstream regeneration and v2 publication continuation; runtime and dependency versions unchanged."
+lastReviewedAt: 2026-11-03
+lastReviewedCommit: 7085dd38e54ea8de031eb4e34aa16c19f1076cf6
+lastReviewedNote: "Release #103: reviewed SDK 0.6.0 adoption and nonblocking dependency engines policy on unchanged Node 24.22.0; complete native/workflow checks pass, and calculation/publication authority is unchanged."
 related:
   - AGENTS.md
   - design/result-process-and-lifecycle-model.md
@@ -158,7 +158,7 @@ node cli.mjs materialize \
   --json
 ```
 
-依赖只从仓库根唯一 `pnpm-lock.yaml` 安装。Process 和 LifeCycleModel 的 schema 门禁使用发布版 `@tiangong-lca/tidas-sdk@0.2.0`；本 Workflow 保持纯 JavaScript/MJS，不携带 TypeScript compiler 或 schema codegen 运行时。
+依赖只从仓库根唯一 `pnpm-lock.yaml` 安装。Process 和 LifeCycleModel 的 schema 门禁使用发布版 `@tiangong-lca/tidas-sdk@0.6.0`；本 Workflow 保持纯 JavaScript/MJS，不携带 TypeScript compiler 或 schema codegen 运行时。
 
 大批量任务使用同一个 materialization engine 的薄 `nohup` 包装：
 

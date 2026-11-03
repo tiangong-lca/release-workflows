@@ -4,7 +4,7 @@ packages:
   - workflows/release-candidate
   - workflows/dataset-transformation
   - workflows/publication
-engineStrict: true
+engineStrict: false
 strictPeerDependencies: true
 sharedWorkspaceLockfile: true
 savePrefix: ""

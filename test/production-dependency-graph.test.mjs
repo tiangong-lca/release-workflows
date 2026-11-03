@@ -20,7 +20,7 @@ const RETIRED_PRODUCTION_PACKAGES = new Set([
 ]);
 const PNPM_INVOCATION = resolvePnpmInvocation(process.env.npm_execpath);
 
-test("the installed production graph uses SDK 0.2.0 without retired compiler/codegen", () => {
+test("the installed production graph uses SDK 0.6.0 without retired compiler/codegen", () => {
   const result = spawnSync(
     PNPM_INVOCATION.command,
     [
@@ -60,7 +60,7 @@ test("the installed production graph uses SDK 0.2.0 without retired compiler/cod
     ),
   ].sort();
 
-  assert.deepEqual(sdkVersions, ["0.2.0"]);
+  assert.deepEqual(sdkVersions, ["0.6.0"]);
   assert.deepEqual(retired, []);
 });
 
