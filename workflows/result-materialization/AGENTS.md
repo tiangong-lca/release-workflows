@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 recipe、identity/version、metadata、reference、validation 或输出契约变化时
 checkPaths:
   - workflows/result-materialization/**
-lastReviewedAt: 2026-11-01
-lastReviewedCommit: 35824a25085dedf071930a89a8e9af542ad2a0b2
-lastReviewedNote: "Release #99: reviewed authority version planning, upstream regeneration and v2 publication continuation; runtime and dependency versions unchanged."
+lastReviewedAt: 2026-11-03
+lastReviewedCommit: 7085dd38e54ea8de031eb4e34aa16c19f1076cf6
+lastReviewedNote: "Release #103: reviewed SDK 0.6.0 adoption and nonblocking dependency engines policy on unchanged Node 24.22.0; complete native/workflow checks pass, and calculation/publication authority is unchanged."
 related:
   - README.md
   - design/result-process-and-lifecycle-model.md
@@ -30,7 +30,7 @@ related:
 
 ## 本地验证
 
-从仓库根运行 `pnpm --filter @tiangong-lca/release-result-materialization-workflow test` 验证本 Workflow；`pnpm test` 已包含全部 Workflow case。Process 与 LifeCycleModel 必须由真实 `@tiangong-lca/tidas-sdk@0.2.0` schema 验证，生产依赖图不得带入 TypeScript/compiler/codegen。
+从仓库根运行 `pnpm --filter @tiangong-lca/release-result-materialization-workflow test` 验证本 Workflow；`pnpm test` 已包含全部 Workflow case。Process 与 LifeCycleModel 必须由真实 `@tiangong-lca/tidas-sdk@0.6.0` schema 验证，生产依赖图不得带入 TypeScript/compiler/codegen。
 
 ## Agent 的职责
 

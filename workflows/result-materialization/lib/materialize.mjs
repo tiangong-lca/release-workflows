@@ -365,7 +365,7 @@ async function finalizeResultOnly({
     },
     datasets: results.catalog.datasets,
     validation: {
-      tidasSdk: "@tiangong-lca/tidas-sdk@0.2.0",
+      tidasSdk: "@tiangong-lca/tidas-sdk@0.6.0",
       sourceDocuments: "verified",
       resultReferences: "verified",
       modelSchemas: "not_applicable",

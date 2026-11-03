@@ -28,7 +28,7 @@ test("the repository pins one exact Node and pnpm toolchain", () => {
     assert.equal(
       manifest.engines?.node,
       "24.22.0",
-      `${relativePath} must reject every other Node release`,
+      `${relativePath} must match the recorded Node runtime`,
     );
   }
 
@@ -50,7 +50,7 @@ test("the repository pins one exact Node and pnpm toolchain", () => {
   assert.equal(result.status, 0, result.stderr);
 
   const effectiveConfig = JSON.parse(result.stdout);
-  assert.equal(effectiveConfig.engineStrict, true);
+  assert.equal(effectiveConfig.engineStrict, false);
   assert.equal(effectiveConfig.strictPeerDependencies, true);
   assert.equal(effectiveConfig.sharedWorkspaceLockfile, true);
   assert.equal(effectiveConfig.savePrefix, "");

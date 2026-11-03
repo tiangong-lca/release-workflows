@@ -25,9 +25,9 @@ checkPaths:
   - pnpm-lock.yaml
   - .node-version
   - .github/workflows/ci.yml
-lastReviewedAt: 2026-11-02
-lastReviewedCommit: 7ce184ead831629cbca50a83fa4f22abb2ebb4b2
-lastReviewedNote: "Release #101: reviewed paired Supabase S3 target compatibility; workflow ownership, exact-target approval and runtime constraints are unchanged."
+lastReviewedAt: 2026-11-03
+lastReviewedCommit: 7085dd38e54ea8de031eb4e34aa16c19f1076cf6
+lastReviewedNote: "Release #103: reviewed SDK 0.6.0 adoption and nonblocking dependency engines policy on unchanged Node 24.22.0; complete native/workflow checks pass, and calculation/publication authority is unchanged."
 related:
   - README.md
   - .docpact/config.yaml
@@ -64,6 +64,7 @@ related:
 - 本地、五个 Workflow 与 CI 使用 `.node-version` 指定的同一精确 Node LTS 版本，各 package 的 `engines.node` 必须一致；package manager 读根 `package.json`，workspace 策略读 `pnpm-workspace.yaml`，JavaScript 全仓只维护一个 pnpm lockfile；原生工具使用所属 Cargo lockfile。
 - 仅在仓库根安装：`pnpm install --frozen-lockfile`。
 - 仓库验证门：`pnpm run prepush:gate`，包含原生格式/Clippy/构建和所有 Workflow 测试；原生构建需要 Rust（MSRV 见 Cargo manifest）和 CMake。HDF5/zlib 静态链接；支持 Linux x64、Windows x64、macOS ARM64，不支持 macOS Intel。局部测试入口读目标 package 的 `scripts.test`。
+- 依赖包的 `engines` 声明只作为安装提示，不以 `engineStrict` 阻断安装或据此降级仓库 Node；兼容性由当前锁定 Node 上的 frozen install 与完整验证门确认。
 - 依赖与 Actions 更新复用现有 CI；监控分组、节奏和审查要求见 `docs/dependency-updates.md`，不授予远程操作或发布权限。
 - 发布 live 验收是单独的 opt-in 操作，按 `workflows/publication/live/README.md` 执行；离线测试不证明 live 发布成功。
 

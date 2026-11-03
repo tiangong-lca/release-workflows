@@ -12,9 +12,9 @@ whenToUpdate:
   - 当所有 Workflow 共享的证据、权限、恢复或文档规则变化时
 checkPaths:
   - workflows/**
-lastReviewedAt: 2026-11-02
-lastReviewedCommit: 7ce184ead831629cbca50a83fa4f22abb2ebb4b2
-lastReviewedNote: "Release #101: reviewed Supabase S3 base-path preservation, paired target hashing and pinned SDK upload/readback; publication authority is unchanged."
+lastReviewedAt: 2026-11-03
+lastReviewedCommit: 7085dd38e54ea8de031eb4e34aa16c19f1076cf6
+lastReviewedNote: "Release #103: reviewed SDK 0.6.0 adoption and nonblocking dependency engines policy on unchanged Node 24.22.0; complete native/workflow checks pass, and calculation/publication authority is unchanged."
 related:
   - ../AGENTS.md
   - ../README.md
@@ -50,7 +50,7 @@ Candidate 成功冻结后不可原地修改。Publication 可规划引用完整�
 
 所有 JavaScript/MJS Workflow 共用根 pnpm workspace 和唯一 pnpm lockfile；仅从仓库根 frozen install。业务代码、schema、fixture 和测试留在所属 Workflow；根 `test/` 只负责仓库工具链/跨 Workflow 自动化契约。
 
-各 Workflow 的精确 Node engine 必须与根 `.node-version`、根 manifest 和 CI 选择一致。运行时更新沿用 frozen install 与完整 `prepush:gate`，不通过放宽 engine、修改依赖图或降低业务验证来替代资格验证。
+各 Workflow 的精确 Node engine 必须与根 `.node-version`、根 manifest 和 CI 选择一致。依赖包的 `engines` 声明不作为安装硬门禁；运行时或依赖更新仍须通过所选 Node 上的 frozen install 与完整 `prepush:gate`，不降低业务验证。
 
 每个 Workflow 的 AGENTS 维护执行红线及触发式阅读入口，README 维护当前操作与限制。源码、schema、配置和测试解释当前可执行行为；文档与实现冲突时应显式修正，不能擅自改变授权或业务语义。任务进度、历史验收和临时 workaround 不累计为常驻规则。
 

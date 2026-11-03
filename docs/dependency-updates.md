@@ -15,9 +15,9 @@ checkPaths:
   - .github/dependabot.yml
   - docs/dependency-updates.md
   - pnpm-lock.yaml
-lastReviewedAt: 2026-11-01
-lastReviewedCommit: 35824a25085dedf071930a89a8e9af542ad2a0b2
-lastReviewedNote: "Release #99: reviewed authority version planning, upstream regeneration and v2 publication continuation; runtime and dependency versions unchanged."
+lastReviewedAt: 2026-11-03
+lastReviewedCommit: 7085dd38e54ea8de031eb4e34aa16c19f1076cf6
+lastReviewedNote: "Release #103: reviewed SDK 0.6.0 adoption and nonblocking dependency engines policy on unchanged Node 24.22.0; complete native/workflow checks pass, and calculation/publication authority is unchanged."
 related:
   - ../AGENTS.md
   - ../.github/workflows/ci.yml
@@ -38,6 +38,8 @@ pnpm run prepush:gate
 ```
 
 审查实际 manifest/lockfile diff、升级说明和测试结果；保留 `.node-version` 与根 manifest 指定的工具链、`pnpm-workspace.yaml` 的有效策略、`exceljs>uuid` override，以及精确内部 SDK 引用。更新这些契约时，需要显式兼容性判断及相关 Workflow 验证；不得为了让依赖 PR 通过而放宽生产依赖图、API、schema 或数值测试。
+
+依赖包的 `engines` 声明与仓库实际运行版本不一致时保留安装提示，不阻断安装，也不因此降级 Node。`engineStrict: false` 不替代兼容性验证：仍需在仓库锁定的 Node 上完成 frozen install 和完整 `prepush:gate`。
 
 仅有 lock resolution 变化时，Docpact 要求根契约与本指南存在，不强制制造文档 review metadata diff；仍须人工检查解析变化并运行既有测试。manifest、workspace 策略、运行时、源码及 Workflow 的既有 review 义务保持有效；包含这些路径的混合变更继续触发它们，不能借 lockfile 规则豁免。
 

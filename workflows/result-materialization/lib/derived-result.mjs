@@ -191,7 +191,7 @@ function buildManifest(source, catalog, dataset, index) {
     canonicalDatasetIndexSha256: hashJson(index),
     datasets: [dataset],
     validation: {
-      tidasSdk: "@tiangong-lca/tidas-sdk@0.2.0",
+      tidasSdk: "@tiangong-lca/tidas-sdk@0.6.0",
       transformedBytes: "verified",
       producerReplay: "verified",
       modelSchemas: "not_applicable",
