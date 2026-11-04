@@ -3,6 +3,8 @@ import { fail } from "./common.mjs";
 const ABSOLUTE_TOLERANCE = 1e-10;
 const RELATIVE_TOLERANCE = 1e-8;
 
+const FLOW_RELATIVE_WARNING_LIMIT = 1e-5;
+
 export function validateOneHopReconstruction(context, processIndex) {
   const reconstructed = new Map();
   for (const record of context.biosphere.get(processIndex) ?? []) {
@@ -32,6 +34,11 @@ export function validateOneHopReconstruction(context, processIndex) {
     const target = expected.get(key) ?? 0;
     const difference = Math.abs(observed - target);
     maxAbsoluteDifference = Math.max(maxAbsoluteDifference, difference);
+    if (!Number.isFinite(difference))
+      fail(
+        "non_finite_reconstruction_value",
+        "Non-finite inventory difference",
+      );
     const comparisonGroup = comparableQuantityGroup(key);
     groupScales.set(
       comparisonGroup,
@@ -49,6 +56,8 @@ export function validateOneHopReconstruction(context, processIndex) {
       comparisonGroup,
     });
   }
+  const warnings = [];
+  const blockers = [];
   let maxAllowedDifference = 0;
   let maxRelativeDifference = 0;
   let maxToleranceRatio = 0;
@@ -74,26 +83,40 @@ export function validateOneHopReconstruction(context, processIndex) {
       );
     }
     if (difference > allowedDifference) {
-      fail(
-        "one_hop_reconstruction_mismatch",
-        `One-hop inventory reconstruction differs for ${key}`,
-        {
-          processIndex,
-          observed,
-          expected: target,
-          absoluteDifference: difference,
-          comparisonGroup,
-          comparisonScale,
-          allowedDifference,
-          absoluteTolerance: ABSOLUTE_TOLERANCE,
-          relativeTolerance: RELATIVE_TOLERANCE,
-        },
-      );
+      const flowScale = Math.max(Math.abs(target), Math.abs(observed));
+      const withinWarningLimit =
+        reconstructed.has(key) &&
+        expected.has(key) &&
+        difference <= FLOW_RELATIVE_WARNING_LIMIT * flowScale;
+      const finding = {
+        key,
+        observed,
+        expected: target,
+        absoluteDifference: difference,
+        comparisonGroup,
+        comparisonScale,
+        allowedDifference,
+        flowRelativeDifference: difference / flowScale,
+      };
+      (withinWarningLimit ? warnings : blockers).push(finding);
     }
   }
+  if (blockers.length) {
+    fail(
+      "one_hop_reconstruction_mismatch",
+      "One-hop inventory exceeds per-flow tolerance",
+      {
+        processIndex,
+        warnings,
+        blockers,
+      },
+    );
+  }
   return {
-    outcome: "passed",
+    outcome: warnings.length ? "passed_with_warnings" : "passed",
     processIndex,
+    warnings,
+    flowRelativeWarningLimit: FLOW_RELATIVE_WARNING_LIMIT,
     flowCount: keys.size,
     providerEdgeCount: edges.length,
     maxAbsoluteDifference,
@@ -103,6 +126,24 @@ export function validateOneHopReconstruction(context, processIndex) {
     comparisonScale: "direction_and_unit",
     absoluteTolerance: ABSOLUTE_TOLERANCE,
     relativeTolerance: RELATIVE_TOLERANCE,
+  };
+}
+
+export function summarizeReconstructionError(error) {
+  if (
+    error.code !== "one_hop_reconstruction_mismatch" ||
+    !error.details?.findings
+  ) {
+    return error.details ?? {};
+  }
+  const { blockerCount, warningCount, findings } = error.details;
+  const first = findings.find((item) => item.blockers.length);
+  return {
+    blockerCount,
+    warningCount,
+    processIndex: first.processIndex,
+    sourceProcess: first.sourceProcess,
+    ...first.blockers[0],
   };
 }
 

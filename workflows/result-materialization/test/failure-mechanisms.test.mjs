@@ -138,6 +138,38 @@ test("reconstruction tolerance still blocks missing and material inventory", () 
   );
 });
 
+test("the per-flow warning limit includes its boundary and excludes larger differences", () => {
+  const expected = record("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "kg", 100000);
+  const compare = (value) =>
+    validateOneHopReconstruction(
+      reconstructionContext([{ ...expected, meanAmount: value }], [expected]),
+      0,
+    );
+  assert.equal(compare(99999).outcome, "passed_with_warnings");
+  assert.throws(() => compare(99998.9), {
+    code: "one_hop_reconstruction_mismatch",
+  });
+  assert.throws(() => compare(Infinity), {
+    code: "non_finite_reconstruction_value",
+  });
+});
+
+test("a near-zero mismatch keeps its own flow scale after exceeding the group tolerance", () => {
+  const trace = record("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "kg", 1e-6);
+  const large = record("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", "kg", 1);
+  const context = reconstructionContext(
+    [large, trace],
+    [large, { ...trace, meanAmount: 1e-15 }],
+  );
+  assert.throws(
+    () => validateOneHopReconstruction(context, 0),
+    (error) =>
+      error.code === "one_hop_reconstruction_mismatch" &&
+      error.details.blockers.length === 1 &&
+      error.details.warnings.length === 0,
+  );
+});
+
 test("model variants keep one lineage and receive exact dataset versions", () => {
   const uuid = "cccccccc-cccc-5ccc-8ccc-cccccccccccc";
   const hash = (value) => value.repeat(64);

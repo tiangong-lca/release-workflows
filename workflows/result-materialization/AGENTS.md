@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 recipe、identity/version、metadata、reference、validation 或输出契约变化时
 checkPaths:
   - workflows/result-materialization/**
-lastReviewedAt: 2026-11-03
-lastReviewedCommit: 1a1ca5860f08acaba578030a5a8428a71396a8f6
-lastReviewedNote: "Release #106: copy-only historical Process compatibility preserves empty text and source comments; recipe v2 prevents stale materialization reuse without changing calculation or publication authority."
+lastReviewedAt: 2026-11-04
+lastReviewedCommit: "62d2f9e749deb0dd4f0b69ae4ab6207788c04cd7"
+lastReviewedNote: "Release #109: reviewed graded reconstruction evidence and model recipe v3 within Result Materialization."
 related:
   - README.md
   - design/result-process-and-lifecycle-model.md
@@ -125,7 +125,7 @@ related:
 - 仅在源文档副本上兼容四个已知空文本数组：一般说明、技术说明、数据截断与完整性原则、预期用途。`[]` 转成 `[{"@xml:lang":"en","#text":""}]`，不补造业务内容，不推断语言；缺失字段、null 和其他非法值仍由 SDK 拒绝。
 - 可选 `variableParameter: {}` 省略；只有 `comment` 的对象在备注和一般说明均为文本结构时，将原备注逐条追加到一般说明后省略。保留文本、语言与顺序，不造参数名，不删除有其他字段的参数。
 - 保留 review 数组；Result 和 Model 都继承兼容后的源一般说明并追加生成说明，不覆盖原文。旧 name 字段的单空格兼容保持不变。
-- 使用 metadata policy v2 与 `result-materialization.v2`；旧冻结输入与产物不改写，新请求得到独立内容寻址 key。所有兼容后源和生成文档仍必须通过真实 SDK。
+- 使用 metadata policy v2 与按输出类型选择的 recipe（Result v2，Model v3）；旧冻结输入与产物不改写，新请求得到独立内容寻址 key。所有兼容后源和生成文档仍必须通过真实 SDK。
 
 ## 可由 Agent 提出的内容
 
@@ -147,11 +147,11 @@ Agent 提议不能替代用户对模型结构、重要 metadata 和首次 lineag
 - 不让 LifecycleModel 引用另一次 materialization 的未验证 Result Process。
 - 不忽略有效 direct provider edge，也不从源 Process 文本猜测 provider connection 或 factor。
 - 不跳过 TIDAS、引用闭合和数值一致性验证。
-- one-hop 数值一致性按相同 direction/unit 的可比数量组计算尺度，冻结容差为 `1e-10 + 1e-8 × groupScale`；绝对项用于容纳近零 quantity 的正常线性求解消减残差，相对项只使用同 direction/unit 的组内尺度，不得跨方向或单位借用尺度。
+- 基础容差为 `1e-10 + 1e-8 × groupScale`，尺度只取相同 direction/unit 组。超出基础容差时，仅当两侧均存在相同 flow UUID/version、方向、单位和位置，且差值不超过两侧该流绝对量较大者的 `1e-5` 时记为告警。其余超限项阻断，非有限数值和结构错误阻断。
 - 并发 worker 首次失败后不得领取新任务，必须等待已经启动的 worker 收敛后再清理；清理异常不得覆盖原始业务异常。
 - 不打包或远程发布。
 - 不写入远程 authoring tables。
 
 ## 完成条件
 
-完成的 materialization 必须产生冻结的 selection、Result Catalog、canonical dataset collection、独立 `canonical-dataset-index.v1`、materialization manifest 和验证报告；Manifest 必须绑定 Index hash。每个输出都能追溯到精确输入、recipe、direct edge、identity/version 决策和 validator evidence；每个 one-hop Model 必须在冻结容差内重构对应 Result Process。
+完成的 materialization 必须产生冻结的 selection、Result Catalog、canonical dataset collection、独立 `canonical-dataset-index.v1`、materialization manifest 和验证报告；Manifest 必须绑定 Index hash。每个输出都能追溯到精确输入、recipe、direct edge、identity/version 决策和 validator evidence；每个 one-hop Model 必须完成分级重构校验，告警随产物保留。

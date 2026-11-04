@@ -23,7 +23,11 @@ import {
   readMaterializationJobLogs,
   startMaterializationJob,
 } from "../lib/background-job.mjs";
-import { resolveReferencePivot, sourceKey } from "../lib/context.mjs";
+import {
+  loadMaterializationContext,
+  resolveReferencePivot,
+  sourceKey,
+} from "../lib/context.mjs";
 import { modelIdentity, resultIdentity } from "../lib/identity.mjs";
 import { materializeModels } from "../lib/materialize-models.mjs";
 import {
@@ -522,6 +526,51 @@ test("intake, Result Catalog, and resolved one-hop Model complete locally", asyn
   );
   assert.equal(models.manifest.validation.modelSchemas, "passed");
   assert.equal(models.catalog.datasets[0].providerCount, 1);
+  assert.equal(models.manifest.validation.oneHopReconstruction, "passed");
+  const warningContext = await loadMaterializationContext(intakePath);
+  const flow = {
+    flow: { id: FLOW_ID, version: "01.00.000" },
+    unit: "kg",
+    direction: "Input",
+  };
+  warningContext.lci.set(1, [{ ...flow, meanAmount: 50 }]);
+  warningContext.lci.set(0, [{ ...flow, meanAmount: 100.0005 }]);
+  const warningRun = {
+    context: warningContext,
+    resultCatalogPath: path.join(resultPath, "result-catalog.json"),
+    outDir: path.join(temp, "models-with-warnings"),
+    firstGeneration: true,
+  };
+  const withWarnings = await materializeModels(warningRun);
+  assert.equal(
+    withWarnings.manifest.validation.oneHopReconstruction,
+    "passed_with_warnings",
+  );
+  const report = JSON.parse(
+    await readFile(
+      path.join(withWarnings.path, "materialization-report.json"),
+      "utf8",
+    ),
+  );
+  assert.equal(report.oneHopReconstruction.warningCount, 1);
+  assert.deepEqual(
+    report.oneHopReconstruction.findings[0].warnings,
+    withWarnings.catalog.datasets[0].reconstruction.warnings,
+  );
+  warningContext.lci
+    .get(0)
+    .push({ ...flow, direction: "Output", meanAmount: 0.01 });
+  await assert.rejects(
+    materializeModels({
+      ...warningRun,
+      outDir: path.join(temp, "blocked-models"),
+    }),
+    (error) =>
+      error.code === "one_hop_reconstruction_mismatch" &&
+      error.details.blockerCount === 1 &&
+      error.details.warningCount === 1 &&
+      error.details.findings[0].sourceProcess.id === PROCESS_ID,
+  );
   const modelDocument = JSON.parse(
     await readFile(
       path.join(models.path, models.catalog.datasets[0].path),

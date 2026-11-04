@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 materialization recipe、身份版本、数据集关系、验证或输出变化时
 checkPaths:
   - workflows/result-materialization/**
-lastReviewedAt: 2026-11-03
-lastReviewedCommit: 1a1ca5860f08acaba578030a5a8428a71396a8f6
-lastReviewedNote: "Release #106: copy-only historical Process compatibility preserves empty text and source comments; recipe v2 prevents stale materialization reuse without changing calculation or publication authority."
+lastReviewedAt: 2026-11-04
+lastReviewedCommit: "62d2f9e749deb0dd4f0b69ae4ab6207788c04cd7"
+lastReviewedNote: "Release #109: reviewed graded reconstruction evidence and model recipe v3 within Result Materialization."
 related:
   - AGENTS.md
   - design/result-process-and-lifecycle-model.md
@@ -236,7 +236,7 @@ CLI 的 `--json` 输出保持有界，包含 completeness、产物路径和状�
 
 一般说明中的原文与迁移备注都进入 Result 和 Model；生成说明只追加。不会填写虚构参数名、用途或技术内容，也不会修复缺失/null/其他错误结构。旧 name 字段的单空格兼容继续保留。兼容是幂等的，不改变源对象、交换数值或引用身份。
 
-`result-materialization.v2` 和 metadata policy hash 共同改变 materialization key，保证不复用旧 renderer 产物；不改变 Result UUID 算法或数值/引用门禁。重新物化无需重新计算，完成后仍需独立的 Candidate 与 Publication 流程。
+Result 的 `result-materialization.v2`、Model 的 `result-materialization.v3` 分别与 metadata policy hash 共同改变 materialization key，保证不复用旧 renderer 产物；不改变 Result UUID 算法或数值/引用门禁。重新物化无需重新计算，完成后仍需独立的 Candidate 与 Publication 流程。
 
 ## 需要用户决定的内容
 
@@ -284,7 +284,7 @@ Materialization Manifest 至少绑定：
 - Unit、Flow、direction 和 location 映射正确；
 - Calculation Bundle 到 Result Process 的 LCI/LCIA 数值一致；
 - one-hop Model 重构库存与对应 Result Process 数值一致；
-- one-hop 比较只在相同 direction/unit 的可比数量组内确定尺度，当前冻结容差为 `1e-10 + 1e-8 × groupScale`；绝对项容纳近零 quantity 的正常求解消减残差，相对项不跨方向或物理单位放宽校验，超出边界的缺失 flow 与实质数值差异仍然阻塞；
+- 基础容差为 `1e-10 + 1e-8 × groupScale`，尺度只取相同 direction/unit 组。超出基础容差时，仅当两侧均存在相同 flow UUID/version、方向、单位和位置，且差值不超过两侧该流绝对量较大者的 `1e-5` 时记为告警。其余超限项阻断，非有限数值和结构错误阻断。 有告警的 manifest 标记 `passed_with_warnings`，逐流证据在模型描述和物化报告中；后台任务的完整阻断明细保存在任务目录的 `result.json`，命令行显示数量和首个阻断项。
 - 相同输入和 recipe 重放得到相同内容；
 - 同一 dataset identity/version 不对应冲突内容；
 - 版本集合能够收敛。

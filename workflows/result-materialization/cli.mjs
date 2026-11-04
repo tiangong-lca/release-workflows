@@ -15,6 +15,8 @@ import {
   shellQuote,
 } from "./runtime/cli-command.mjs";
 
+import { summarizeReconstructionError } from "./lib/reconstruction.mjs";
+
 const HELP = `release-result-materialization <command> [options]
 
 Commands:
@@ -452,7 +454,7 @@ main().catch((error) => {
     error: {
       code: error.code ?? "unexpected_error",
       message: error.message,
-      details: error.details ?? {},
+      details: summarizeReconstructionError(error),
     },
     nextActions: [
       {
