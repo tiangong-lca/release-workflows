@@ -71,7 +71,10 @@ export function buildMaterializationIdentity({
       previousManifestSha256: previousManifestSha256 ?? null,
     },
     metadataPolicySha256: hashJson(METADATA_POLICY),
-    recipeContractVersion: RECIPE_CONTRACT_VERSION,
+    recipeContractVersion:
+      outputType === "lifecycle-model"
+        ? "result-materialization.v3"
+        : RECIPE_CONTRACT_VERSION,
     ...(resultVersionPlanSha256 ? { resultVersionPlanSha256 } : {}),
   };
   return { key, sha256: sha256Bytes(Buffer.from(canonicalJson(key))) };

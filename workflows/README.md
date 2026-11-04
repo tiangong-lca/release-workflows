@@ -12,9 +12,9 @@ whenToUpdate:
   - 当顶层 Workflow 新增、删除、重命名或重新划分时
 checkPaths:
   - workflows/**
-lastReviewedAt: 2026-11-03
-lastReviewedCommit: "1a1ca5860f08acaba578030a5a8428a71396a8f6"
-lastReviewedNote: "Release #106: reviewed scoped historical Process read compatibility; workflow ownership, frozen source immutability and independent calculation/publication boundaries remain unchanged."
+lastReviewedAt: 2026-11-04
+lastReviewedCommit: "62d2f9e749deb0dd4f0b69ae4ab6207788c04cd7"
+lastReviewedNote: "Release #109: reviewed graded reconstruction evidence and model recipe v3 within Result Materialization."
 related:
   - ../README.md
   - AGENTS.md

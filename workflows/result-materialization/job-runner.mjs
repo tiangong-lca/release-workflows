@@ -6,6 +6,8 @@ import { canonicalJson } from "./lib/common.mjs";
 import { writeJobStatus } from "./lib/background-job.mjs";
 import { materialize } from "./lib/materialize.mjs";
 
+import { summarizeReconstructionError } from "./lib/reconstruction.mjs";
+
 const jobDir = path.resolve(process.argv[2] ?? "");
 let job;
 let resourceTimer;
@@ -197,11 +199,15 @@ try {
     },
     failedAt,
   };
+  const summary = {
+    ...payload.error,
+    details: summarizeReconstructionError(error),
+  };
   emit({
     event: "job_failed",
     jobId: job?.jobId ?? null,
     time: failedAt,
-    ...payload.error,
+    ...summary,
   });
   try {
     await writeFile(path.join(jobDir, "result.json"), canonicalJson(payload), {
@@ -214,7 +220,7 @@ try {
       createdAt: job?.createdAt ?? failedAt,
       updatedAt: failedAt,
       failedAt,
-      error: payload.error,
+      error: summary,
     });
   } catch {}
   process.exitCode = 1;

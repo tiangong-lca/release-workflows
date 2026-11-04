@@ -16,9 +16,9 @@ whenToUpdate:
 checkPaths:
   - workflows/calculation/**
   - workflows/result-materialization/**
-lastReviewedAt: 2026-11-03
-lastReviewedCommit: 1a1ca5860f08acaba578030a5a8428a71396a8f6
-lastReviewedNote: "Release #106: reviewed copy-only historical metadata compatibility and comment preservation; recipe v2 and metadata policy v2 isolate regenerated artifacts without changing identity or numerical reconstruction."
+lastReviewedAt: 2026-11-04
+lastReviewedCommit: "62d2f9e749deb0dd4f0b69ae4ab6207788c04cd7"
+lastReviewedNote: "Release #109: reviewed graded reconstruction evidence and model recipe v3 within Result Materialization."
 related:
   - ../README.md
   - ../AGENTS.md
@@ -126,7 +126,7 @@ canonical 路径使用完整 UUID 和完整 SHA-256，不使用短 hash。CLI �
 - 显式使用 `--result-version-plan` 时，key 增加可选 `resultVersionPlanSha256`，绑定完整权威查询提案；未使用时保持原 key 字节与路径。提案文件随输出保存，request/manifest 绑定同一 hash，复用时重新核验三者；
 - 版本方案改变时生成新目录，Result 文档、URI、catalog 和 Model 引用重新生成，不能把旧内容目录改名当作新版本；
 - metadata completion policy 会改变最终 dataset 内容，因此必须进入 key；
-- recipe/renderer 的语义契约发生变化时必须改变 `recipeContractVersion`；
+- recipe/renderer 的语义契约发生变化时必须改变 `recipeContractVersion`。LifecycleModel 使用 v3 标识分级重构校验，Result-only 继续使用 v2；
 - 时间、用户显示名称、命令参数顺序和绝对文件路径不得进入 key。
 
 这使路径表达“同一来源下的同一冻结生成意图”，同时避免把路径误当成 Result Process 或 LifecycleModel 的业务 UUID。

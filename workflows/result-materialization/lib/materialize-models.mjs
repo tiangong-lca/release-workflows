@@ -68,21 +68,38 @@ export async function materializeModels({
     total: axes.length,
   });
   const drafts = [];
+  const reconstructionFindings = [];
   for (const [index, axis] of axes.entries()) {
-    const provisional = renderLifecycleModel(
-      context,
-      axis,
-      catalog,
-      "01.00.000",
-    );
-    drafts.push({
-      axis,
-      provisional: {
-        uuid: provisional.uuid,
-        sourceProcess: provisional.sourceProcess,
-      },
-      hashes: modelHashes(provisional),
-    });
+    try {
+      const provisional = renderLifecycleModel(
+        context,
+        axis,
+        catalog,
+        "01.00.000",
+      );
+      if (provisional.reconstruction.warnings.length) {
+        reconstructionFindings.push({
+          processIndex: axis.processIndex,
+          sourceProcess: axis.rootProcess,
+          warnings: provisional.reconstruction.warnings,
+          blockers: [],
+        });
+      }
+      drafts.push({
+        axis,
+        provisional: {
+          uuid: provisional.uuid,
+          sourceProcess: provisional.sourceProcess,
+        },
+        hashes: modelHashes(provisional),
+      });
+    } catch (error) {
+      if (error.code !== "one_hop_reconstruction_mismatch") throw error;
+      reconstructionFindings.push({
+        sourceProcess: axis.rootProcess,
+        ...error.details,
+      });
+    }
     await onProgress?.({
       phase: "planning_model_versions",
       completed: index + 1,
@@ -90,6 +107,28 @@ export async function materializeModels({
       currentProcess: `${axis.rootProcess.id}@${axis.rootProcess.version}`,
     });
   }
+  const blockerCount = reconstructionFindings.reduce(
+    (sum, item) => sum + item.blockers.length,
+    0,
+  );
+  const warningCount = reconstructionFindings.reduce(
+    (sum, item) => sum + item.warnings.length,
+    0,
+  );
+  if (blockerCount) {
+    fail(
+      "one_hop_reconstruction_mismatch",
+      "One-hop inventory reconstruction failed",
+      {
+        blockerCount,
+        warningCount,
+        findings: reconstructionFindings,
+      },
+    );
+  }
+  const reconstructionOutcome = warningCount
+    ? "passed_with_warnings"
+    : "passed";
   const resolutions = resolveExactSourceVariantVersions(drafts, previous, {
     datasetType: "lifecyclemodel",
     duplicateCode: "model_source_variant_duplicate",
@@ -217,7 +256,7 @@ export async function materializeModels({
         sourceDocuments: "verified",
         resultReferences: "verified",
         modelSchemas: "passed",
-        oneHopReconstruction: "passed",
+        oneHopReconstruction: reconstructionOutcome,
       },
     };
     await writeFile(
@@ -236,6 +275,11 @@ export async function materializeModels({
           (total, item) => total + item.providerCount,
           0,
         ),
+        oneHopReconstruction: {
+          outcome: reconstructionOutcome,
+          warningCount,
+          findings: reconstructionFindings,
+        },
         versionChanges: countChanges(descriptors),
       }),
       appendToExisting ? undefined : { flag: "wx" },

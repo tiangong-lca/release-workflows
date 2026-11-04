@@ -15,9 +15,9 @@ whenToUpdate:
   - 当范围、Result Process 内容层或模型连接原则变化时
 checkPaths:
   - workflows/result-materialization/**
-lastReviewedAt: 2026-11-03
-lastReviewedCommit: 1a1ca5860f08acaba578030a5a8428a71396a8f6
-lastReviewedNote: "Release #106: reviewed copy-only historical metadata compatibility and comment preservation; recipe v2 and metadata policy v2 isolate regenerated artifacts without changing identity or numerical reconstruction."
+lastReviewedAt: 2026-11-04
+lastReviewedCommit: "62d2f9e749deb0dd4f0b69ae4ab6207788c04cd7"
+lastReviewedNote: "Release #109: reviewed graded reconstruction evidence and model recipe v3 within Result Materialization."
 related:
   - ../README.md
   - ../AGENTS.md
@@ -162,7 +162,7 @@ R(P)
 
 这里的用量、正负号、分配、provider 权重和单位换算都来自 Calculation Bundle。Materialization 只忠实表达已经求解并验证过的关系，不在本地重新计算供应链，也不自行修正数值。
 
-比较时允许使用预先规定的数值容差，但不能用容差掩盖缺失连接、错误方向或错误引用。
+基础容差为 `1e-10 + 1e-8 × groupScale`，尺度只取相同 direction/unit 组。超出基础容差时，仅当两侧均存在相同 flow UUID/version、方向、单位和位置，且差值不超过两侧该流绝对量较大者的 `1e-5` 时记为告警。其余超限项阻断，非有限数值和结构错误阻断。 核对模型连接和引用独立于数值比较。
 
 ## Quantitative reference 的原则
 

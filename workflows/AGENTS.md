@@ -12,9 +12,9 @@ whenToUpdate:
   - 当所有 Workflow 共享的证据、权限、恢复或文档规则变化时
 checkPaths:
   - workflows/**
-lastReviewedAt: 2026-11-03
-lastReviewedCommit: 1a1ca5860f08acaba578030a5a8428a71396a8f6
-lastReviewedNote: "Release #106: copy-only historical Process compatibility preserves empty text and source comments; recipe v2 prevents stale materialization reuse without changing calculation or publication authority."
+lastReviewedAt: 2026-11-04
+lastReviewedCommit: 62d2f9e749deb0dd4f0b69ae4ab6207788c04cd7
+lastReviewedNote: "Release #109: reviewed workflow boundaries and recovery. Model reconstruction findings are materialization evidence. Publication owns release authorization."
 related:
   - ../AGENTS.md
   - ../README.md
