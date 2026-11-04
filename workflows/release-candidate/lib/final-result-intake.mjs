@@ -39,6 +39,7 @@ const execFileAsync = promisify(execFile);
 import {
   MAX_RECORD_BYTES as MAX_RECORD,
   MAX_METADATA_BYTES as MAX_METADATA,
+  MAX_INPUT_PLAN_BYTES,
   documentBudget,
   checkBudget,
   budgetDetails,
@@ -393,10 +394,11 @@ export async function prepareFinalResultIntake({
       results: upstream.results,
       materializationEvidence: upstream.evidence,
     });
-    requireValue(
-      Buffer.byteLength(canonicalJson({ plan, evidence: upstream.evidence })) <=
-        MAX_METADATA,
-      "final_intake_metadata_budget",
+    checkBudget(
+      "input_plan",
+      Buffer.byteLength(canonicalJson(plan)),
+      MAX_INPUT_PLAN_BYTES,
+      { path: "input-inspection.json" },
     );
     await verifyTidasRuntime({
       tidasBin,
@@ -525,7 +527,10 @@ export async function loadFinalResultIntake(intakeDir) {
     hashJson(plan) === manifest.inspectionHash &&
       plan.inputHash === manifest.inputHash,
   );
-  same(await readLocalJson(root, "input-inspection.json"), plan);
+  same(
+    await readLocalJson(root, "input-inspection.json", MAX_INPUT_PLAN_BYTES),
+    plan,
+  );
   same(Object.keys(manifest.validation ?? {}).sort(), [
     "validate-closure",
     "validate-tidas",

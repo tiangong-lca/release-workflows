@@ -113,7 +113,7 @@ Release Candidate 只有在以下条件同时成立时完成：
 - `lib/final-result-projection.mjs` 从冻结 Result 和精确 Flow/Flow Property/Unit Group/LCIA Method 提取查询视图。参考 exchange 按内部 ID 单独表达，其余只接受 Elementary Flow；复合键必须保留方向、位置、function type 和精确单位身份。
 - 当前投影 profile 要求每条 exchange 的有效 `resultingAmount`（包括零），不提供 `meanAmount` 回退；LCIA 读取最终 `meanAmount`。不归一化、不换算、不重新特征化；缺失层/方法与合法零值分开。
 - `lib/final-result-artifacts.mjs` 按层/方法集分组，逐结果 spool；CSR LCI、dense LCIA 与索引均由 Candidate 拥有的 `native/` 工具生成/回读。索引和单行/总文件预算不可绕过，零行及负值保留，失败不能产生合格 Candidate。
-- 普通文档/投影保持 8 MiB，LCIA Method 文档统一为 64 MiB，索引与保留元数据保持 128 MiB。完整闭包逐份验证，只有 Result exchange 引用的 Flow 进入投影缓存；Method 缓存只保留必要元数据与完整内容 hash；ZIP 仍保留全文，不能按 Result 重复复制大型 factors。资源错误必须区分文档与元数据，保留实际字节、上限、路径/身份和恢复指导。
+- 普通文档/投影保持 8 MiB，LCIA Method 文档统一为 64 MiB，索引与保留投影元数据保持 128 MiB；完整身份登记计划单独 512 MiB，所有计划读取入口一致，单个登记请求仍为 8 MiB。完整闭包逐份验证，只有 Result exchange 引用的 Flow 进入投影缓存；Method 缓存只保留必要元数据与完整内容 hash；ZIP 仍保留全文，不能按 Result 重复复制大型 factors。资源错误必须区分文档与元数据，保留实际字节、上限、路径/身份和恢复指导。
 - encoding receipt 必须显式 `candidateQualified=false` 和 `publicationAuthorized=false`；只有后续独立 ZIP 一致性、身份权威登记及配对 Candidate 门禁成立才能取得相应资格。不能通过 v1 Calculation 绑定把新 Result 轴伪装成 source Unit 轴。
 - 独立预期值测试分别验证领域投影与真实 HDF5 文件；不能仅以 writer 自己生成的相同错误值互比证明正确。
 

@@ -1,6 +1,8 @@
 import { fail } from "./common.mjs";
 
 export const MAX_METADATA_BYTES = 128 * 1024 * 1024;
+// Identity plans repeat per-Result semantic dependency claims; query indexes do not.
+export const MAX_INPUT_PLAN_BYTES = 512 * 1024 * 1024;
 export const MAX_RECORD_BYTES = 8 * 1024 * 1024;
 export const MAX_METHOD_BYTES = 64 * 1024 * 1024;
 
@@ -35,11 +37,13 @@ export function checkBudget(kind, actualBytes, limitBytes, entry = {}, count) {
 export function budgetDetails(error) {
   const value = error.details?.budget;
   if (
-    !["canonical_document_budget", "canonical_metadata_budget"].includes(
-      error.code,
-    ) ||
+    ![
+      "canonical_document_budget",
+      "canonical_metadata_budget",
+      "canonical_input_plan_budget",
+    ].includes(error.code) ||
     !value ||
-    !["document", "metadata"].includes(value.kind) ||
+    !["document", "metadata", "input_plan"].includes(value.kind) ||
     !Number.isSafeInteger(value.actualBytes) ||
     !Number.isSafeInteger(value.limitBytes)
   )

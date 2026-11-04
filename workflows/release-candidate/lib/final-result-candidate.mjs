@@ -1,3 +1,4 @@
+import { MAX_INPUT_PLAN_BYTES } from "./resource-budget.mjs";
 import { mkdir, lstat, mkdtemp, writeFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { canonicalJson, hashJson, fail } from "./common.mjs";
@@ -294,14 +295,14 @@ export async function loadFinalResultCandidate(candidateDir) {
       candidate.validation.finalResultParity === "passed" &&
       candidate.validation.identityRegistration === "verified",
   );
-  const bound = async (ref) => {
+  const bound = async (ref, limit = MAX_METADATA) => {
     requireValue(ref && typeof ref.path === "string");
-    const value = await readLocalJson(root, ref.path);
+    const value = await readLocalJson(root, ref.path, limit);
     requireValue(hashJson(value) === ref.sha256);
     return value;
   };
   const input = await bound(candidate.finalInput);
-  const plan = await bound(candidate.inputPlan);
+  const plan = await bound(candidate.inputPlan, MAX_INPUT_PLAN_BYTES);
   const lineage = await bound(candidate.sourceLineage);
   const index = await readLocalJson(root, "canonical-dataset-index.json");
   requireValue(

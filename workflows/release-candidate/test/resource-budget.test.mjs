@@ -1,3 +1,4 @@
+import { readLocalJson } from "../lib/final-result-files.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -8,6 +9,7 @@ import {
   rm,
   stat,
   truncate,
+  appendFile,
 } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -19,6 +21,8 @@ import {
   documentBudget,
   MAX_METHOD_BYTES,
   MAX_METADATA_BYTES,
+  MAX_INPUT_PLAN_BYTES,
+  checkBudget,
 } from "../lib/resource-budget.mjs";
 
 async function setup(t, datasetType) {
@@ -123,6 +127,45 @@ test("Method cap still rejects oversized frozen files before parsing", async (t)
     (error) => {
       assert.equal(error.code, "canonical_document_budget");
       assert.equal(error.details.budget.limitBytes, MAX_METHOD_BYTES);
+      return true;
+    },
+  );
+});
+
+test("identity-plan capacity is independent of query metadata and enforced before large reads", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "identity-plan-budget-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const file = path.join(root, "input-plan.json");
+  await writeFile(file, "{}");
+  // Valid JSON larger than the query-index budget without a giant fixture or
+  // millions of opaque identity claims. All plan consumers use this read limit.
+  const whitespace = Buffer.alloc(1024 * 1024, 32);
+  for (let i = 0; i < 128; i++) await appendFile(file, whitespace);
+  await assert.rejects(readLocalJson(root, "input-plan.json"), {
+    code: "final_metadata_size",
+  });
+  assert.deepEqual(
+    await readLocalJson(root, "input-plan.json", MAX_INPUT_PLAN_BYTES),
+    {},
+  );
+  await truncate(file, MAX_INPUT_PLAN_BYTES + 1);
+  await assert.rejects(
+    readLocalJson(root, "input-plan.json", MAX_INPUT_PLAN_BYTES),
+    { code: "final_metadata_size" },
+  );
+  assert.throws(
+    () =>
+      checkBudget(
+        "input_plan",
+        MAX_INPUT_PLAN_BYTES + 1,
+        MAX_INPUT_PLAN_BYTES,
+        { path: "input-plan.json" },
+      ),
+    (error) => {
+      const failure = finalResultFailure(error);
+      assert.equal(failure.code, "canonical_input_plan_budget");
+      assert.equal(failure.details.budget.limitBytes, 512 * 1024 * 1024);
+      assert.equal(failure.details.budget.path, "input-plan.json");
       return true;
     },
   );

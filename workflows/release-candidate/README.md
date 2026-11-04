@@ -308,11 +308,11 @@ Candidate v2 在 canonical bytes 仍可验证时生成 `publication-catalog.json
 
 原生内部协议为 `TGQNUM02` + little-endian uint64 的行数/清单列数/指标数；每行写入 uint64 非零数、递增唯一的 uint64 列号/float64 数值，再跟完整 LCIA float64 行。编码器拒绝非有限值、重复/越界列、截断或尾随 bytes；重新打开实际 HDF5 与该精确流逐行对照。JS 测试另用手写期望数值验证文件，避免只证明同一提取器自洽。
 
-预算：普通文档/投影 8 MiB，LCIA Method 文档 64 MiB，累计元数据 128 MiB，最多 200 万结果/清单列及 4096 指标，spool/数值流/总文件各受 32 GiB 上限约束；数值按单行处理，索引留在受限内存。输出路径不可覆盖，receipt 最后提交；仅有部分文件不构成完成。
+预算：普通文档/投影 8 MiB，LCIA Method 文档 64 MiB，查询索引/投影缓存元数据 128 MiB，完整身份登记计划单独 512 MiB，最多 200 万结果/清单列及 4096 指标，spool/数值流/总文件各受 32 GiB 上限约束；数值按单行处理，索引留在受限内存。输出路径不可覆盖，receipt 最后提交；仅有部分文件不构成完成。
 
-Method 上限按完整 canonical 文档计量，并在 direct/Derived Intake、冻结读取、HDF5 编码和 ZIP 回读中一致使用；其他文档仍受 8 MiB 限制。完整闭包仍逐份验证；LCIA Method factors 引用的所有 Flow 保留在 ZIP 中，只有最终 Result exchange 引用的 Flow 进入数值投影缓存。数值投影逐份验证完整文档及 hash 后只保留 Method 名称、定量参考等必要元数据，不把 characterisation factors 全文重复复制给每条 Result。完整 Method 仍进入 ZIP，完整内容 hash 仍参与 Result 身份绑定；精简查询元数据不改变数值、依赖语义或发布内容。128 MiB 限制用于索引和保留的投影元数据，不是所有 Method 文件大小之和。
+Method 上限按完整 canonical 文档计量，并在 direct/Derived Intake、冻结读取、HDF5 编码和 ZIP 回读中一致使用；其他文档仍受 8 MiB 限制。完整闭包仍逐份验证；LCIA Method factors 引用的所有 Flow 保留在 ZIP 中，只有最终 Result exchange 引用的 Flow 进入数值投影缓存。数值投影逐份验证完整文档及 hash 后只保留 Method 名称、定量参考等必要元数据，不把 characterisation factors 全文重复复制给每条 Result。完整 Method 仍进入 ZIP，完整内容 hash 仍参与 Result 身份绑定；精简查询元数据不改变数值、依赖语义或发布内容。128 MiB 限制用于索引和保留的投影元数据，不是所有 Method 文件大小之和。完整身份登记计划会为每条 Result 重复记录精确语义依赖，单独受 512 MiB 限制；Intake inspection、final input 与 Candidate readback 的计划文件读取使用同一上限。每次远程登记请求仍受 8 MiB 限制，查询索引上限不变。
 
-超限分别返回 `canonical_document_budget` 或 `canonical_metadata_budget`，携带 `budget.kind/path/datasetType/uuid/version/actualBytes/limitBytes`（字段按上下文提供）；Intake 的 `failed-intake.json` 保留相同诊断。应检查具体输入与资源策略，解决容量后重试新输出目录，不通过删减结果或改写冻结文件绕过限制。
+超限分别返回 `canonical_document_budget` 、`canonical_metadata_budget` 或 `canonical_input_plan_budget`，携带 `budget.kind/path/datasetType/uuid/version/actualBytes/limitBytes`（字段按上下文提供）；Intake 的 `failed-intake.json` 保留相同诊断。应检查具体输入与资源策略，解决容量后重试新输出目录，不通过删减结果或改写冻结文件绕过限制。
 
 此内核产生 `final-result-encoding.v1` 本地证据，明确 `candidateQualified=false`、`publicationAuthorized=false`。现有 `package build` 仍保持四包资格流程；配对 ZIP 校验、身份登记和 v2 发布接入完成前，不把内核输出作为可发布 Candidate，也不授予普通用户读取资格。
 

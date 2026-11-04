@@ -24,6 +24,7 @@ import { readLocalJson, commitFrozenDirectory } from "./final-result-files.mjs";
 import {
   MAX_METADATA_BYTES as MAX_METADATA,
   checkBudget,
+  MAX_INPUT_PLAN_BYTES,
 } from "./resource-budget.mjs";
 function requireValue(value, code = "final_input_invalid") {
   if (!value)
@@ -76,6 +77,7 @@ export async function inspectFinalResultInput({
   const resolveDependency = dependencies.resolve;
   const selection = [];
   const registrations = [];
+  let registrationBytes = 0;
   const seen = new Set();
   for (const selected of results) {
     const k = key(selected);
@@ -108,11 +110,11 @@ export async function inspectFinalResultInput({
       resolveDependency,
     });
     const request = identityRegistrationRequest(projection);
-    charged += Buffer.byteLength(canonicalJson(request));
+    registrationBytes += Buffer.byteLength(canonicalJson(request));
     checkBudget(
-      "metadata",
-      charged,
-      MAX_METADATA,
+      "input_plan",
+      registrationBytes,
+      MAX_INPUT_PLAN_BYTES,
       entry,
       registrations.length + 1,
     );
@@ -130,7 +132,7 @@ export async function inspectFinalResultInput({
     index,
     results: selection,
   });
-  return {
+  const plan = {
     schemaVersion: "tiangong.release.final-result-input-plan.v1",
     inputHash,
     indexHash: hashJson(index),
@@ -141,6 +143,12 @@ export async function inspectFinalResultInput({
     candidateQualified: false,
     publicationAuthorized: false,
   };
+  checkBudget(
+    "input_plan",
+    Buffer.byteLength(canonicalJson(plan)),
+    MAX_INPUT_PLAN_BYTES,
+  );
+  return plan;
 }
 
 // Registration claims are irreversible identity occupancy, not publication.
@@ -379,7 +387,11 @@ export async function loadFinalResultInput(inputDir) {
   const root = path.resolve(inputDir);
   const input = await readLocalJson(root, "final-result-input.json");
   const index = await readLocalJson(root, "canonical-dataset-index.json");
-  const plan = await readLocalJson(root, "input-plan.json");
+  const plan = await readLocalJson(
+    root,
+    "input-plan.json",
+    MAX_INPUT_PLAN_BYTES,
+  );
   const lineage = await readLocalJson(root, "source-lineage.json");
   verifyFrozenFinalInput({ input, index, plan, lineage });
   const canonicalRoot = path.join(root, "canonical");
@@ -387,9 +399,7 @@ export async function loadFinalResultInput(inputDir) {
     frozenDocument(canonicalRoot, entry),
   );
   const dependencies = createFrozenDependencyStore();
-  let charged = Buffer.byteLength(
-    canonicalJson({ input, index, plan, lineage }),
-  );
+  let charged = Buffer.byteLength(canonicalJson({ input, index, lineage }));
   checkBudget("metadata", charged, MAX_METADATA);
   const entries = new Map();
   for (const entry of index.datasets) {
