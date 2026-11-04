@@ -12,9 +12,9 @@ whenToUpdate:
   - 当顶层 Workflow 新增、删除、重命名或重新划分时
 checkPaths:
   - workflows/**
-lastReviewedAt: 2026-11-03
-lastReviewedCommit: "1a1ca5860f08acaba578030a5a8428a71396a8f6"
-lastReviewedNote: "Release #106: reviewed scoped historical Process read compatibility; workflow ownership, frozen source immutability and independent calculation/publication boundaries remain unchanged."
+lastReviewedAt: 2026-11-04
+lastReviewedCommit: c73631deedc7a47cdad5feac7eff02dd46f0e032
+lastReviewedNote: "Release #115: reviewed explicit deliverable routing, bounded large Method reads and compact verified projection metadata; calculation/publication authority and frozen artifacts remain unchanged."
 related:
   - ../README.md
   - AGENTS.md

@@ -196,3 +196,37 @@ test("changed canonical bytes fail before encoder and leave no output", async (t
   });
   await assert.rejects(readdir(input.outDir), { code: "ENOENT" });
 });
+
+test("unused Method-closure Flows are verified but not interpreted as numerical dependencies", async (t) => {
+  const input = await setup(t);
+  const original = fixture().dependencies.find((r) => r.datasetType === "flow");
+  const document = structuredClone(original.document);
+  document.flowDataSet.flowInformation.dataSetInformation["common:UUID"] =
+    id(99);
+  // This Flow is present for distribution closure, never referenced by a Result.
+  document.flowDataSet.flowProperties.flowProperty[0].meanValue = "2";
+  const bytes = Buffer.from(canonicalJson(document));
+  const entry = {
+    datasetType: "flow",
+    role: "support",
+    uuid: id(99),
+    version,
+    path: `${id(99)}.json`,
+    byteSize: bytes.length,
+    sha256: sha256Bytes(bytes),
+    canonicalContentHash: hashJson(document),
+  };
+  input.index.datasets.push(entry);
+  await writeFile(path.join(input.canonicalRoot, entry.path), bytes);
+  await buildFinalResultArtifacts(input);
+  const changed = Buffer.from(bytes);
+  changed[changed.indexOf(Buffer.from('"2"')) + 1] = "3".charCodeAt(0);
+  await writeFile(path.join(input.canonicalRoot, entry.path), changed);
+  await assert.rejects(
+    buildFinalResultArtifacts({
+      ...input,
+      outDir: path.join(input.root, "drift"),
+    }),
+    { code: "final_result_file_hash" },
+  );
+});

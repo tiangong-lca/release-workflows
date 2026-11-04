@@ -36,8 +36,13 @@ import { readNdjson } from "./records.mjs";
 import { loadCandidate } from "../../dataset-transformation/lib/candidate.mjs";
 import { verifyDerivedResultHandoff } from "../../dataset-transformation/lib/handoff.mjs";
 const execFileAsync = promisify(execFile);
-const MAX_RECORD = 8 * 1024 * 1024;
-const MAX_METADATA = 128 * 1024 * 1024;
+import {
+  MAX_RECORD_BYTES as MAX_RECORD,
+  MAX_METADATA_BYTES as MAX_METADATA,
+  documentBudget,
+  checkBudget,
+  budgetDetails,
+} from "./resource-budget.mjs";
 const key = (e) => `${e.datasetType}:${e.uuid}@${e.version}`;
 function requireValue(value, code = "final_intake_evidence_invalid") {
   if (!value)
@@ -263,10 +268,10 @@ async function addParentDependencies(parent, destination, entries) {
     requireValue(
       /^[a-z]+\/[0-9a-f-]+(?:_[0-9.]+)?\.json$/u.test(entry.path) &&
         Number.isSafeInteger(entry.byteSize) &&
-        entry.byteSize > 0 &&
-        entry.byteSize <= MAX_RECORD,
+        entry.byteSize > 0,
       "final_intake_parent_member_invalid",
     );
+    checkBudget("document", entry.byteSize, documentBudget(entry), entry);
     total += entry.byteSize;
     requireValue(
       total <= 32 * 1024 * 1024 * 1024,
@@ -275,7 +280,7 @@ async function addParentDependencies(parent, destination, entries) {
     const { stdout: bytes } = await execFileAsync(
       "unzip",
       ["-p", parent.packagesByRole.result_process.archive, entry.path],
-      { encoding: "buffer", maxBuffer: MAX_RECORD, timeout: 60000 },
+      { encoding: "buffer", maxBuffer: documentBudget(entry), timeout: 60000 },
     );
     requireValue(
       bytes.length === entry.byteSize &&
@@ -357,7 +362,7 @@ export async function prepareFinalResultIntake({
         dependencyArtifacts: [upstream.intake.dependencyArtifact],
         canonicalRoot,
         metadataBudgetBytes: MAX_METADATA,
-        recordBudgetBytes: MAX_RECORD,
+        recordBudgetBytes: documentBudget,
       });
     else {
       entries = await copyMaterialized(
@@ -474,6 +479,7 @@ export async function prepareFinalResultIntake({
         candidateCreated: false,
         publicationAuthorized: false,
         code: error.code ?? "final_intake_failed",
+        ...budgetDetails(error),
       }),
       { flag: "wx" },
     );

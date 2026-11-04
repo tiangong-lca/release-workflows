@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { hashJson } from "../lib/common.mjs";
 import {
   createFrozenDependencyResolver,
+  createFrozenDependencyStore,
   projectFinalResult,
   inventoryKey,
 } from "../lib/final-result-projection.mjs";
@@ -197,5 +198,75 @@ test("resolver rejects spoofed identities/hashes and isolates callers from later
     resolve("flow", ref(2)).document.flowDataSet.modellingAndValidation
       .LCIMethod.typeOfDataSet,
     "Product flow",
+  );
+});
+
+test("large Method factors retain full identity binding without repeated document copies", () => {
+  const f = fixture();
+  const method = f.dependencies.find((d) => d.datasetType === "lciamethod");
+  method.document.LCIAMethodDataSet.characterisationFactors = {
+    payload: "x".repeat(9 * 1024 * 1024),
+  };
+  const records = f.dependencies.map((r) => ({
+    ...r,
+    canonicalContentHash: hashJson(r.document),
+  }));
+  const store = createFrozenDependencyStore();
+  const retained = records.reduce((n, r) => n + store.add(r), 0);
+  assert.ok(retained < 16 * 1024);
+  const mref = { "@refObjectId": method.uuid, "@version": method.version };
+  const entry = store.resolve("lciamethod", mref);
+  assert.strictEqual(store.resolve("lciamethod", mref), entry);
+  assert.equal(entry.contentHash, hashJson(method.document));
+  assert.equal(
+    entry.document.LCIAMethodDataSet.characterisationFactors,
+    undefined,
+  );
+  assert.throws(() => {
+    entry.document.LCIAMethodDataSet.LCIAMethodInformation.quantitativeReference.referenceQuantity =
+      {};
+  }, TypeError);
+  const input = {
+    ...f,
+    identity: {
+      uuid: id(1),
+      version,
+      canonicalContentHash: hashJson(f.document),
+    },
+  };
+  const compact = projectFinalResult({
+    ...input,
+    resolveDependency: store.resolve,
+  });
+  const full = projectFinalResult({
+    ...input,
+    resolveDependency: (kind, reference) => {
+      const record = records.find(
+        (r) =>
+          r.datasetType === kind &&
+          r.uuid === reference["@refObjectId"] &&
+          r.version === reference["@version"],
+      );
+      return {
+        key: `${kind}:${record.uuid}@${record.version}`,
+        contentHash: record.canonicalContentHash,
+        document: record.document,
+      };
+    },
+  });
+  assert.deepEqual(compact, full);
+  assert.throws(
+    () =>
+      projectFinalResult({
+        ...input,
+        resolveDependency: (kind, ref) =>
+          structuredClone(store.resolve(kind, ref)),
+      }),
+    { code: "final_result_dependency_binding_mismatch" },
+  );
+  method.document.LCIAMethodDataSet.characterisationFactors.payload = "changed";
+  assert.notDeepEqual(
+    project(f).semanticDependencies,
+    compact.semanticDependencies,
   );
 });

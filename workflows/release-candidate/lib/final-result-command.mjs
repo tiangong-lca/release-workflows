@@ -1,3 +1,4 @@
+import { budgetDetails } from "./resource-budget.mjs";
 import path from "node:path";
 import { writeFile } from "node:fs/promises";
 import { canonicalJson, hashJson } from "./common.mjs";
@@ -399,7 +400,7 @@ export function finalResultFailure(error) {
   const code = /^[a-z][a-z0-9_]{1,100}$/u.test(error.code ?? "")
     ? error.code
     : "final_result_command_failed";
-  const details = {};
+  const details = budgetDetails(error);
   for (const k of [
     "retainedInput",
     "retainedIntake",
@@ -412,8 +413,9 @@ export function finalResultFailure(error) {
       path.isAbsolute(error.details[k])
     )
       details[k] = error.details[k];
-  const message =
-    code === "final_identity_outcome_unknown"
+  const message = details.budget
+    ? `Canonical ${details.budget.kind} budget exceeded: ${details.budget.actualBytes} bytes > ${details.budget.limitBytes} bytes${details.budget.path ? ` (${details.budget.path})` : ""}. ${details.budget.recovery ?? "Inspect retained evidence and retry in a new output directory."}`
+    : code === "final_identity_outcome_unknown"
       ? "Identity registration outcome is unknown. Reconcile retained requests or retry identical content; do not change versions."
       : [
             "final_identity_content_conflict",

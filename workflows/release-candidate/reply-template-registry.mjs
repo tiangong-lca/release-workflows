@@ -21,6 +21,8 @@ const templates = Object.freeze({
       "elementaryFlowCacheRecordCount",
       "artifacts",
       "nextActions",
+      "nextDecision",
+      "deliveryFormat",
     ],
   ],
   "failure analyze": [

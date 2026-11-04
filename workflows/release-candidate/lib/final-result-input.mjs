@@ -10,7 +10,8 @@ import path from "node:path";
 import { canonicalJson, hashJson, sha256Bytes, fail } from "./common.mjs";
 import { frozenDocument } from "./final-result-artifacts.mjs";
 import {
-  createFrozenDependencyResolver,
+  createFrozenDependencyStore,
+  collectProjectionFlowKeys,
   projectFinalResult,
   FINAL_RESULT_PROJECTION,
 } from "./final-result-projection.mjs";
@@ -20,7 +21,10 @@ import {
   verifyIdentityReceipt,
 } from "./final-result-identity.mjs";
 import { readLocalJson, commitFrozenDirectory } from "./final-result-files.mjs";
-const MAX_METADATA = 128 * 1024 * 1024;
+import {
+  MAX_METADATA_BYTES as MAX_METADATA,
+  checkBudget,
+} from "./resource-budget.mjs";
 function requireValue(value, code = "final_input_invalid") {
   if (!value)
     fail(
@@ -47,9 +51,12 @@ export async function inspectFinalResultInput({
   );
   const sources = new Map(lineage.results.map((r) => [key(r), r]));
   const entries = new Map();
-  const dependencies = [];
+  const requiredFlows = await collectProjectionFlowKeys(index, (entry) =>
+    frozenDocument(canonicalRoot, entry),
+  );
+  const dependencies = createFrozenDependencyStore();
   let charged = Buffer.byteLength(canonicalJson({ index, results, lineage }));
-  requireValue(charged <= MAX_METADATA, "final_input_metadata_budget");
+  checkBudget("metadata", charged, MAX_METADATA);
   for (const entry of index.datasets) {
     const k = `${entry.datasetType}:${key(entry)}`;
     requireValue(!entries.has(k));
@@ -58,14 +65,15 @@ export async function inspectFinalResultInput({
     if (
       ["flow", "flowproperty", "unitgroup", "lciamethod"].includes(
         entry.datasetType,
-      )
+      ) &&
+      (entry.datasetType !== "flow" ||
+        requiredFlows.has(`flow:${entry.uuid}@${entry.version}`))
     ) {
-      charged += Buffer.byteLength(canonicalJson(document));
-      requireValue(charged <= MAX_METADATA, "final_input_metadata_budget");
-      dependencies.push({ ...entry, document });
+      charged += dependencies.add({ ...entry, document });
+      checkBudget("metadata", charged, MAX_METADATA, entry);
     }
   }
-  const resolveDependency = createFrozenDependencyResolver(dependencies);
+  const resolveDependency = dependencies.resolve;
   const selection = [];
   const registrations = [];
   const seen = new Set();
@@ -101,7 +109,13 @@ export async function inspectFinalResultInput({
     });
     const request = identityRegistrationRequest(projection);
     charged += Buffer.byteLength(canonicalJson(request));
-    requireValue(charged <= MAX_METADATA, "final_input_metadata_budget");
+    checkBudget(
+      "metadata",
+      charged,
+      MAX_METADATA,
+      entry,
+      registrations.length + 1,
+    );
     selection.push(row);
     registrations.push(request);
   }
@@ -369,11 +383,14 @@ export async function loadFinalResultInput(inputDir) {
   const lineage = await readLocalJson(root, "source-lineage.json");
   verifyFrozenFinalInput({ input, index, plan, lineage });
   const canonicalRoot = path.join(root, "canonical");
-  const dependencies = [];
+  const requiredFlows = await collectProjectionFlowKeys(index, (entry) =>
+    frozenDocument(canonicalRoot, entry),
+  );
+  const dependencies = createFrozenDependencyStore();
   let charged = Buffer.byteLength(
     canonicalJson({ input, index, plan, lineage }),
   );
-  requireValue(charged <= MAX_METADATA, "final_input_metadata_budget");
+  checkBudget("metadata", charged, MAX_METADATA);
   const entries = new Map();
   for (const entry of index.datasets) {
     const document = await frozenDocument(canonicalRoot, entry);
@@ -383,14 +400,15 @@ export async function loadFinalResultInput(inputDir) {
     if (
       ["flow", "flowproperty", "unitgroup", "lciamethod"].includes(
         entry.datasetType,
-      )
+      ) &&
+      (entry.datasetType !== "flow" ||
+        requiredFlows.has(`flow:${entry.uuid}@${entry.version}`))
     ) {
-      charged += Buffer.byteLength(canonicalJson(document));
-      requireValue(charged <= MAX_METADATA, "final_input_metadata_budget");
-      dependencies.push({ ...entry, document });
+      charged += dependencies.add({ ...entry, document });
+      checkBudget("metadata", charged, MAX_METADATA, entry);
     }
   }
-  const resolveDependency = createFrozenDependencyResolver(dependencies);
+  const resolveDependency = dependencies.resolve;
   for (const [ordinal, row] of input.selection.entries()) {
     const entry = entries.get(`process:${key(row)}`);
     const request = identityRegistrationRequest(

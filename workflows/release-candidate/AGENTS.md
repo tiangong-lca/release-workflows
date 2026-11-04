@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 intake、package、candidate qualification、scope refinement 或 Candidate 后继路径变化时
 checkPaths:
   - workflows/release-candidate/**
-lastReviewedAt: 2026-11-01
-lastReviewedCommit: 35824a25085dedf071930a89a8e9af542ad2a0b2
-lastReviewedNote: "Release #99: reviewed authority version planning, upstream regeneration and v2 publication continuation; runtime and dependency versions unchanged."
+lastReviewedAt: 2026-11-04
+lastReviewedCommit: c73631deedc7a47cdad5feac7eff02dd46f0e032
+lastReviewedNote: "Release #115: reviewed explicit deliverable routing, bounded large Method reads and compact verified projection metadata; calculation/publication authority and frozen artifacts remain unchanged."
 related:
   - README.md
   - ../AGENTS.md
@@ -48,6 +48,7 @@ related:
 
 ## 当前本地 Package 契约
 
+- `intake prepare` 通过 `--delivery-format result-zip-hdf5|legacy-four-zips` 承接用户已明确的产物目标；省略时返回两种选择，不默认跳到旧四包。旧四包完成不能表示 HDF5 已生成。
 - `intake prepare` 从不可变的 Materialization Intake 和完整 LifecycleModel materialization 生成独立 Release Intake；不得原地修改任一上游 manifest。
 - Release Intake 按精确 UUID/version 补齐 LCIA Method characterisation factor 引用但 source closure 缺失的 Flow。常规 Intake 只消费项目级 Elementary Flow 缓存；以 published count 和 `MAX(modified_at)` 判断缓存 freshness，缺失或过期时 fail closed，并只提示显式刷新命令。缓存刷新必须使用有界、只读 snapshot，不得由 Intake 隐式触发。显式 `cache refresh` 默认把导出放到受管 Worker EC2 上执行：Release 通过 SSH stdin 传递本次进程内数据面配置，远端不落凭据文件；远端向同一 Supabase project 的 Storage 写入一小时有效的临时 gzip artifact，本地下载并逐条校验后先删除临时对象，再原子替换共享缓存。数据库与 Storage project binding 无法一致验证时必须 fail closed。
 - 慢速本机数据库流式刷新只可通过显式 `--execution local` 使用；远端路径失败时不得静默降级。
@@ -112,6 +113,7 @@ Release Candidate 只有在以下条件同时成立时完成：
 - `lib/final-result-projection.mjs` 从冻结 Result 和精确 Flow/Flow Property/Unit Group/LCIA Method 提取查询视图。参考 exchange 按内部 ID 单独表达，其余只接受 Elementary Flow；复合键必须保留方向、位置、function type 和精确单位身份。
 - 当前投影 profile 要求每条 exchange 的有效 `resultingAmount`（包括零），不提供 `meanAmount` 回退；LCIA 读取最终 `meanAmount`。不归一化、不换算、不重新特征化；缺失层/方法与合法零值分开。
 - `lib/final-result-artifacts.mjs` 按层/方法集分组，逐结果 spool；CSR LCI、dense LCIA 与索引均由 Candidate 拥有的 `native/` 工具生成/回读。索引和单行/总文件预算不可绕过，零行及负值保留，失败不能产生合格 Candidate。
+- 普通文档/投影保持 8 MiB，LCIA Method 文档统一为 64 MiB，索引与保留元数据保持 128 MiB。完整闭包逐份验证，只有 Result exchange 引用的 Flow 进入投影缓存；Method 缓存只保留必要元数据与完整内容 hash；ZIP 仍保留全文，不能按 Result 重复复制大型 factors。资源错误必须区分文档与元数据，保留实际字节、上限、路径/身份和恢复指导。
 - encoding receipt 必须显式 `candidateQualified=false` 和 `publicationAuthorized=false`；只有后续独立 ZIP 一致性、身份权威登记及配对 Candidate 门禁成立才能取得相应资格。不能通过 v1 Calculation 绑定把新 Result 轴伪装成 source Unit 轴。
 - 独立预期值测试分别验证领域投影与真实 HDF5 文件；不能仅以 writer 自己生成的相同错误值互比证明正确。
 

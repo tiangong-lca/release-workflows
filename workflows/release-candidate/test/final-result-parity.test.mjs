@@ -15,12 +15,18 @@ const encoder = fileURLToPath(
     import.meta.url,
   ),
 );
-async function setup(t) {
+async function setup(t, largeMethod = false) {
   const root = await mkdtemp(path.join(os.tmpdir(), "result-pair-parity-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const canonicalRoot = path.join(root, "canonical");
   await mkdir(canonicalRoot);
   const f = fixture();
+  if (largeMethod)
+    f.dependencies.find(
+      (r) => r.datasetType === "lciamethod",
+    ).document.LCIAMethodDataSet.characterisationFactors = {
+      payload: "x".repeat(9 * 1024 * 1024),
+    };
   const index = { datasets: [] };
   for (const r of [
     ...f.dependencies,
@@ -150,5 +156,21 @@ test("corrupt HDF5 bytes are rejected before numeric readback", async (t) => {
   await writeFile(file, bytes);
   await assert.rejects(verifyFinalResultParity(input), {
     code: "final_pair_file_hash",
+  });
+});
+
+test("large Method survives frozen reads, HDF5 encoding and full archive parity", async (t) => {
+  const input = await setup(t, true);
+  await verifyFinalResultParity(input);
+  const method = input.index.datasets.find(
+    (e) => e.datasetType === "lciamethod",
+  );
+  assert.ok(method.byteSize > 8 * 1024 * 1024);
+  const file = path.join(input.archiveRoot, method.path);
+  const doc = JSON.parse(await readFile(file));
+  doc.LCIAMethodDataSet.characterisationFactors.payload += "drift";
+  await writeFile(file, canonicalJson(doc));
+  await assert.rejects(verifyFinalResultParity(input), {
+    code: "final_pair_archive_content",
   });
 });

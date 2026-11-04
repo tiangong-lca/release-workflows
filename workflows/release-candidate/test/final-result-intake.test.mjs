@@ -30,7 +30,7 @@ import { analyzeTransformation } from "../../dataset-transformation/lib/analysis
 import { freezeTransformation } from "../../dataset-transformation/lib/freeze.mjs";
 import { executeTransformation } from "../../dataset-transformation/lib/execute.mjs";
 import { materializeDerivedResult } from "../../result-materialization/lib/derived-result.mjs";
-async function setup(t) {
+async function setup(t, oversizedFlow = false) {
   const root = await mkdtemp(path.join(os.tmpdir(), "final-intake-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const fixture = JSON.parse(
@@ -38,6 +38,14 @@ async function setup(t) {
       new URL("./fixtures/paired-final-results.json", import.meta.url),
     ),
   );
+  if (oversizedFlow) {
+    const row = fixture.records.find((r) => r.document.flowDataSet);
+    row.document.flowDataSet.flowInformation.dataSetInformation[
+      "common:generalComment"
+    ] = { "@xml:lang": "en", "#text": "x".repeat(9 * 1024 * 1024) };
+    const entry = fixture.index.datasets.find((e) => e.path === row.path);
+    entry.canonicalContentHash = hashJson(row.document);
+  }
   const materializationDir = path.join(root, "materialized");
   const sourceIntakeDir = path.join(root, "source");
   const docs = new Map(fixture.records.map((r) => [r.path, r.document]));
@@ -583,4 +591,83 @@ test("missing frozen method axis fails before Toolkit and before a final intake 
     { code: "final_pair_file_hash" },
   );
   await assert.rejects(access(outDir), { code: "ENOENT" });
+});
+
+test("failed intake retains actionable document-budget evidence without creating a candidate", async (t) => {
+  const f = await setup(t, true);
+  const outDir = path.join(f.root, "oversized-intake");
+  let retained;
+  await assert.rejects(
+    prepareFinalResultIntake({
+      releaseIntakeDir: f.releaseIntakeDir,
+      outDir,
+      tidasBin: "not-invoked",
+    }),
+    (error) => {
+      assert.equal(error.code, "canonical_document_budget");
+      retained = error.details.retainedIntake;
+      return true;
+    },
+  );
+  const report = JSON.parse(
+    await readFile(path.join(retained, "failed-intake.json")),
+  );
+  assert.equal(report.code, "canonical_document_budget");
+  assert.equal(report.budget.datasetType, "flow");
+  assert.ok(report.budget.actualBytes > report.budget.limitBytes);
+  assert.equal(report.budget.limitBytes, 8 * 1024 * 1024);
+  assert.equal(report.candidateCreated, false);
+  assert.equal(report.publicationAuthorized, false);
+  await assert.rejects(access(outDir), { code: "ENOENT" });
+});
+
+test("intake prepare CLI carries selected deliverables in JSON and shows both choices in human output", async (t) => {
+  const f = await setup(t);
+  const cli = fileURLToPath(new URL("../cli.mjs", import.meta.url));
+  for (const deliveryFormat of [
+    undefined,
+    "result-zip-hdf5",
+    "legacy-four-zips",
+  ]) {
+    const args = [
+      cli,
+      "intake",
+      "prepare",
+      "--materialization",
+      f.materializationDir,
+      "--source-intake",
+      f.sourceIntakeDir,
+      "--out-dir",
+      path.join(f.root, deliveryFormat ?? "choose"),
+    ];
+    if (deliveryFormat) args.push("--delivery-format", deliveryFormat);
+    const { stdout } = await execFileAsync(
+      process.execPath,
+      [...args, "--json"],
+      { cwd: os.tmpdir() },
+    );
+    const result = JSON.parse(stdout);
+    assert.equal(result.deliveryFormat, deliveryFormat ?? null);
+    assert.equal(result.nextDecision.required, deliveryFormat === undefined);
+    assert.equal(result.nextActions.length, deliveryFormat ? 1 : 0);
+    if (deliveryFormat) assert.equal(result.nextActions[0].id, deliveryFormat);
+    assert.equal(result.publicationAuthorized, false);
+  }
+  const { stdout } = await execFileAsync(
+    process.execPath,
+    [
+      cli,
+      "intake",
+      "prepare",
+      "--materialization",
+      f.materializationDir,
+      "--source-intake",
+      f.sourceIntakeDir,
+      "--out-dir",
+      path.join(f.root, "human"),
+    ],
+    { cwd: os.tmpdir() },
+  );
+  assert.match(stdout, /Result ZIP \+ HDF5/);
+  assert.match(stdout, /Legacy four ZIPs \(no HDF5\)/);
 });

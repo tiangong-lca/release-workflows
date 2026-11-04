@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 intake、包的语义、候选构建、scope refinement 或 Candidate 后继路径变化时
 checkPaths:
   - workflows/release-candidate/**
-lastReviewedAt: 2026-11-01
-lastReviewedCommit: 35824a25085dedf071930a89a8e9af542ad2a0b2
-lastReviewedNote: "Release #99: reviewed authority version planning, upstream regeneration and v2 publication continuation; runtime and dependency versions unchanged."
+lastReviewedAt: 2026-11-04
+lastReviewedCommit: c73631deedc7a47cdad5feac7eff02dd46f0e032
+lastReviewedNote: "Release #115: reviewed explicit deliverable routing, bounded large Method reads and compact verified projection metadata; calculation/publication authority and frozen artifacts remain unchanged."
 related:
   - AGENTS.md
   - ../../README.md
@@ -37,7 +37,7 @@ related:
 
 ## 输入契约
 
-Release Candidate Workflow 先从冻结的 Materialization Intake 和 materialization 输出准备独立的 Release Intake，再由 Package build 只消费这个 Release Intake。两个 Intake 语义不同：前者证明结果生成时使用的输入，后者补齐独立分发所需的依赖；任何阶段都不得原地修改已冻结 manifest。
+Release Candidate Workflow 先从冻结的 Materialization Intake 和 materialization 输出准备独立的 Release Intake，再按目标产物选择 Result ZIP + HDF5 配对路线或显式 legacy 四包路线。两个 Intake 语义不同：前者证明结果生成时使用的输入，后者补齐独立分发所需的依赖；任何阶段都不得原地修改已冻结 manifest。
 
 输入至少包括：
 
@@ -126,6 +126,15 @@ node cli.mjs intake prepare \
   --out-dir /path/to/release-intake \
   --json
 
+# 需要 Result ZIP + HDF5：使用 intake prepare 返回的配对路线
+node cli.mjs result intake \
+  --release-intake /path/to/release-intake \
+  --out-dir /path/to/result-intake \
+  --tidas-bin /path/to/tidas \
+  --json
+# 之后按返回命令 inspect → versions → 授权 register → build；不重新计算。
+
+# 仅当用户明确需要旧四包（不含 HDF5）时：
 node cli.mjs package build \
   --release-intake /path/to/release-intake \
   --profile standalone-lifecyclemodel-result-full-closure.v1 \
@@ -194,6 +203,8 @@ Agent 使用 CLI 返回的模板路径和 `requiredFacts` 填写回复。模板�
 本地通过 presigned GET 下载压缩包，先核对压缩字节数与 SHA-256，再逐条解压并验证 NDJSON identity、Elementary Flow 类型、记录数和未压缩 SHA-256。全部通过后，CLI 必须先用 presigned DELETE 删除临时对象，才写入 cache manifest 并替换原缓存；失败保持旧缓存不变，且不会静默切到本地数据库路径。远端运行时必须提供 `python3`、`psql`、`boto3` 和 `botocore`。只有远端 SSH、依赖或 Storage 路径暂时无法恢复时，操作员才显式使用 `--execution local`；该 fallback 保留原有的 Node/Postgres 单 cursor 只读下载语义。
 
 两条执行路径生成相同的 `tiangong.release.elementary-flow-cache.v1`：manifest 记录内容 SHA-256、记录数以及数据库 watermark（已发布 Flow 数量与 `MAX(modified_at)`）。`cache status` 用一次轻量查询比较 watermark，并验证本地 artifact；因此能够区分 `fresh`、`missing`、`stale` 与 `invalid`。S3 `Expires` header 和 presigned URL expiry 只限制临时对象的可用期，不等同于自动删除；正常路径通过显式 DELETE 立即清理，异常终止遗留对象仍应由 Storage prefix lifecycle 兜底。
+
+`intake prepare --delivery-format result-zip-hdf5` 将后续命令指向 `result intake`；`--delivery-format legacy-four-zips` 指向 `package build`。未提供时返回 `nextDecision` 的两种明确选择，`nextActions` 为空，避免静默选择旧四包。Agent 应复用用户已经明确的目标，无需反复确认。已有 Release Intake 可直接进入相应路线；已有 legacy Candidate 不会原地补成 v3，配对路线从同一冻结 Release Intake 新建 Result-only 产物。若旧 Candidate 曾做排除或 Transformation，应先使用对应的新输入，不能把原始全量 Intake 当作同一 scope。
 
 `intake prepare` 不再隐式执行长时数据库下载。它只接受 fresh 缓存，扫描 source closure 中 LCIA Method 的 `characterisationFactors`，提取带精确 UUID/version 的 `referenceToFlowDataSet`，并从缓存匹配缺失的精确版本后冻结 dependency supplement。缓存缺失或过期会 fail closed，同时输出显式刷新命令。该过程不修改 Materialization Intake，也不把新增 Flow 误记为参与了原始计算。Release Intake manifest 只记录内容 hash；本地绝对路径单独保存在权限受限的 runtime locator 中，不进入可移植计划语义。
 
@@ -297,7 +308,11 @@ Candidate v2 在 canonical bytes 仍可验证时生成 `publication-catalog.json
 
 原生内部协议为 `TGQNUM02` + little-endian uint64 的行数/清单列数/指标数；每行写入 uint64 非零数、递增唯一的 uint64 列号/float64 数值，再跟完整 LCIA float64 行。编码器拒绝非有限值、重复/越界列、截断或尾随 bytes；重新打开实际 HDF5 与该精确流逐行对照。JS 测试另用手写期望数值验证文件，避免只证明同一提取器自洽。
 
-预算：单文档/投影 8 MiB，累计元数据 128 MiB，最多 200 万结果/清单列及 4096 指标，spool/数值流/总文件各受 32 GiB 上限约束；数值按单行处理，索引留在受限内存。输出路径不可覆盖，receipt 最后提交；仅有部分文件不构成完成。
+预算：普通文档/投影 8 MiB，LCIA Method 文档 64 MiB，累计元数据 128 MiB，最多 200 万结果/清单列及 4096 指标，spool/数值流/总文件各受 32 GiB 上限约束；数值按单行处理，索引留在受限内存。输出路径不可覆盖，receipt 最后提交；仅有部分文件不构成完成。
+
+Method 上限按完整 canonical 文档计量，并在 direct/Derived Intake、冻结读取、HDF5 编码和 ZIP 回读中一致使用；其他文档仍受 8 MiB 限制。完整闭包仍逐份验证；LCIA Method factors 引用的所有 Flow 保留在 ZIP 中，只有最终 Result exchange 引用的 Flow 进入数值投影缓存。数值投影逐份验证完整文档及 hash 后只保留 Method 名称、定量参考等必要元数据，不把 characterisation factors 全文重复复制给每条 Result。完整 Method 仍进入 ZIP，完整内容 hash 仍参与 Result 身份绑定；精简查询元数据不改变数值、依赖语义或发布内容。128 MiB 限制用于索引和保留的投影元数据，不是所有 Method 文件大小之和。
+
+超限分别返回 `canonical_document_budget` 或 `canonical_metadata_budget`，携带 `budget.kind/path/datasetType/uuid/version/actualBytes/limitBytes`（字段按上下文提供）；Intake 的 `failed-intake.json` 保留相同诊断。应检查具体输入与资源策略，解决容量后重试新输出目录，不通过删减结果或改写冻结文件绕过限制。
 
 此内核产生 `final-result-encoding.v1` 本地证据，明确 `candidateQualified=false`、`publicationAuthorized=false`。现有 `package build` 仍保持四包资格流程；配对 ZIP 校验、身份登记和 v2 发布接入完成前，不把内核输出作为可发布 Candidate，也不授予普通用户读取资格。
 
@@ -364,6 +379,8 @@ hash、direct/derived、已观察最高版本及建议新版本。未占用或�
 Transformation 已能读取合格 v3 的 Result 包并核对实际 Process bytes；它的权重、共同 Calculation lineage、字段决定和授权约束不变。此能力通过 `result` CLI 命令族进入；后继使用 Publication 已实现的 `result-storage`、`result-readiness` 与 `result-publication` v2 命令族，不能把 v3 交给旧四包发布入口。
 
 ### Result-only 命令路线
+
+Result-only Materialization 的 Catalog 使用 JCS 内容 hash；既有 `resolved-one-hop-aggregated-background.v1` Model producer 使用 canonical 文件字节 hash（含末尾换行）。消费者按明确 producer profile 校验对应域，不改写已冻结 Manifest，也不接受任意 hash 回退。
 
 直接结果先复用 `intake prepare` 补齐冻结的 LCIA Method Flow 依赖；它接受 Result-only Materialization，不要求虚构 Model。随后使用新路线：
 

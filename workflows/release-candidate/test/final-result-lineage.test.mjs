@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hashJson } from "../lib/common.mjs";
+import { canonicalJson, hashJson, sha256Bytes } from "../lib/common.mjs";
 import { resolveFinalResultLineage } from "../lib/final-result-lineage.mjs";
 import { id, version } from "./fixtures/final-result.mjs";
 const h = (n) => String(n).repeat(64);
@@ -235,6 +235,58 @@ test("a v3 parent must bind its structured final input; sources never become a d
   ]);
   input.parent.finalInput.results[0].sources = [{ uuid: id(90), version }];
   assert.throws(() => resolveFinalResultLineage(input), {
+    code: "final_result_lineage_evidence_invalid",
+  });
+});
+
+test("one-hop Model producer binds catalog file bytes while Result-only binds content", () => {
+  const input = direct();
+  const model = {
+    datasetType: "lifecyclemodel",
+    role: "lifecycle_model",
+    uuid: id(90),
+    version,
+    canonicalContentHash: h(7),
+  };
+  input.manifest.datasets = [...input.manifest.datasets, model];
+  input.index.datasets.push(model);
+  input.manifest.inputs.canonicalDatasetIndexSha256 = hashJson(input.index);
+  input.manifest.profiles = {
+    model: "resolved-one-hop-aggregated-background.v1",
+  };
+  Object.assign(input.manifest.validation, {
+    modelSchemas: "passed",
+    oneHopReconstruction: "passed",
+  });
+  input.manifest.inputs.resultCatalogSha256 = sha256Bytes(
+    Buffer.from(canonicalJson(input.catalog)),
+  );
+  assert.equal(resolveFinalResultLineage(input).results.length, 2);
+  for (const mutate of [
+    (f) => {
+      f.catalog.requiredResults.pop();
+    },
+    (f) => {
+      f.manifest.profiles.model = "unknown";
+    },
+    (f) => {
+      f.manifest.inputs.resultCatalogSha256 = hashJson(f.catalog);
+    },
+    (f) => {
+      f.manifest.validation.oneHopReconstruction = "failed";
+    },
+  ]) {
+    const changed = structuredClone(input);
+    mutate(changed);
+    assert.throws(() => resolveFinalResultLineage(changed), {
+      code: "final_result_lineage_evidence_invalid",
+    });
+  }
+  const resultOnly = direct();
+  resultOnly.manifest.inputs.resultCatalogSha256 = sha256Bytes(
+    Buffer.from(canonicalJson(resultOnly.catalog)),
+  );
+  assert.throws(() => resolveFinalResultLineage(resultOnly), {
     code: "final_result_lineage_evidence_invalid",
   });
 });
