@@ -9,7 +9,8 @@ import {
   FINAL_QUERY_FORMAT,
 } from "./final-result-artifacts.mjs";
 import {
-  createFrozenDependencyResolver,
+  createFrozenDependencyStore,
+  collectProjectionFlowKeys,
   projectFinalResult,
   inventoryKey,
   FINAL_RESULT_PROJECTION,
@@ -17,7 +18,7 @@ import {
 
 const MAX_INDEX = 128 * 1024 * 1024;
 const MAX_NUMERIC = 32 * 1024 * 1024 * 1024;
-const MAX_RECORD = 8 * 1024 * 1024;
+import { documentBudget, checkBudget } from "./resource-budget.mjs";
 import {
   safeFile,
   verifiedBytes,
@@ -57,13 +58,25 @@ export async function verifyFinalResultParity({
       "Encoding receipt does not bind frozen input",
     );
   const entries = new Map();
-  const dependencies = [];
+  const requiredFlows = await collectProjectionFlowKeys(
+    index,
+    async (entry) => {
+      const file = await safeFile(archiveRoot, entry.path);
+      checkBudget(
+        "document",
+        (await stat(file)).size,
+        documentBudget(entry),
+        entry,
+      );
+      return JSON.parse(await readFile(file));
+    },
+  );
+  const dependencies = createFrozenDependencyStore();
   let metadataBytes = 0;
   for (const entry of index.datasets ?? []) {
     const file = await safeFile(archiveRoot, entry.path);
     const size = (await stat(file)).size;
-    if (size > MAX_RECORD)
-      fail("final_pair_record_budget", "Archive document exceeds budget");
+    checkBudget("document", size, documentBudget(entry), entry);
     const bytes = await readFile(file);
     const document = JSON.parse(bytes);
     if (hashJson(document) !== entry.canonicalContentHash)
@@ -78,15 +91,15 @@ export async function verifyFinalResultParity({
     if (
       ["flow", "flowproperty", "unitgroup", "lciamethod"].includes(
         entry.datasetType,
-      )
+      ) &&
+      (entry.datasetType !== "flow" ||
+        requiredFlows.has(`flow:${entry.uuid}@${entry.version}`))
     ) {
-      metadataBytes += bytes.length;
-      if (metadataBytes > MAX_INDEX)
-        fail("final_pair_metadata_budget", "Pairing metadata exceeds budget");
-      dependencies.push({ ...entry, document });
+      metadataBytes += dependencies.add({ ...entry, document });
+      checkBudget("metadata", metadataBytes, MAX_INDEX, entry);
     }
   }
-  const resolveDependency = createFrozenDependencyResolver(dependencies);
+  const resolveDependency = dependencies.resolve;
   const selected = new Map(results.map((r) => [`${r.uuid}@${r.version}`, r]));
   if (selected.size !== results.length || !selected.size)
     fail("final_pair_selection_invalid", "Invalid Result selection");

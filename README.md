@@ -19,9 +19,9 @@ checkPaths:
   - docs/architecture.md
   - workflows/**
   - .docpact/config.yaml
-lastReviewedAt: 2026-11-03
-lastReviewedCommit: "1a1ca5860f08acaba578030a5a8428a71396a8f6"
-lastReviewedNote: "Release #106: reviewed scoped historical Process read compatibility; workflow ownership, frozen source immutability and independent calculation/publication boundaries remain unchanged."
+lastReviewedAt: 2026-11-04
+lastReviewedCommit: c73631deedc7a47cdad5feac7eff02dd46f0e032
+lastReviewedNote: "Release #115: reviewed explicit deliverable routing, bounded large Method reads and compact verified projection metadata; calculation/publication authority and frozen artifacts remain unchanged."
 related:
   - AGENTS.md
   - docs/architecture.md
@@ -38,7 +38,7 @@ related:
 | -------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | [Calculation](workflows/calculation/README.md)                       | ResultSet、Closure、计算任务、Calculation Bundle 下载与完整性验证              |
 | [Result Materialization](workflows/result-materialization/README.md) | 从已验证 Bundle 生成 Result/Model，或验证并冻结加工后的 Derived Result         |
-| [Release Candidate](workflows/release-candidate/README.md)           | 闭合输入、四包验证、失败影响分析与不可变 Candidate                             |
+| [Release Candidate](workflows/release-candidate/README.md)           | 闭合输入、Result ZIP/HDF5 配对或旧四包、失败影响分析与不可变 Candidate         |
 | [Dataset Transformation](workflows/dataset-transformation/README.md) | Candidate 中精确 Unit/Result Process 的语义决策、确定性加权、验证与 handoff    |
 | [Publication](workflows/publication/README.md)                       | Candidate 精确范围、审批、可恢复发布与独立回读；另有 opt-in Portal LCIA recipe |
 

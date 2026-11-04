@@ -1,4 +1,4 @@
-import { hashJson, fail } from "./common.mjs";
+import { canonicalJson, hashJson, sha256Bytes, fail } from "./common.mjs";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const VERSION = /^\d{2}\.\d{2}\.\d{3}$/u;
 const HASH = /^[0-9a-f]{64}$/u;
@@ -38,12 +38,30 @@ function checkedMaterialization({ manifest, catalog, index }) {
       manifest?.schemaVersion ===
         "tiangong.release.materialization-manifest.v2",
   );
+  // The established one-hop Model producer binds canonical file bytes (including
+  // the trailing newline). Result-only and Derived producers bind JCS content.
+  // Select the known producer contract; never accept an arbitrary hash fallback.
+  const modelFileBinding =
+    direct &&
+    manifest.profiles?.model === "resolved-one-hop-aggregated-background.v1";
+  if (modelFileBinding)
+    requireValue(
+      manifest.validation?.modelSchemas === "passed" &&
+        manifest.validation?.oneHopReconstruction === "passed" &&
+        manifest.datasets?.some(
+          (d) =>
+            d.role === "lifecycle_model" && d.datasetType === "lifecyclemodel",
+        ),
+    );
+  const catalogHash = modelFileBinding
+    ? sha256Bytes(Buffer.from(canonicalJson(catalog)))
+    : hashJson(catalog);
   requireValue(
     catalog?.schemaVersion ===
       (direct
         ? "tiangong.release.result-catalog.v1"
         : "tiangong.release.result-catalog.v2") &&
-      manifest.inputs?.resultCatalogSha256 === hashJson(catalog),
+      manifest.inputs?.resultCatalogSha256 === catalogHash,
   );
   requireValue(
     (direct

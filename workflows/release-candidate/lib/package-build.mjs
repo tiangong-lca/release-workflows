@@ -14,6 +14,7 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 import { canonicalJson, fail, hashJson, sha256Bytes } from "./common.mjs";
+import { checkBudget } from "./resource-budget.mjs";
 import { loadScopeDecision } from "./exclusion-impact.mjs";
 import { readNdjson } from "./records.mjs";
 import {
@@ -680,16 +681,27 @@ export async function assembleCanonicalCollection({
   const identities = new Map();
   const paths = new Set();
   let metadataBytes = 0;
+  const check = (entry) => {
+    checkBudget(
+      "document",
+      entry.byteSize,
+      typeof recordBudgetBytes === "function"
+        ? recordBudgetBytes(entry)
+        : recordBudgetBytes,
+      entry,
+      entries.length + 1,
+    );
+    checkBudget(
+      "metadata",
+      metadataBytes + Buffer.byteLength(canonicalJson(entry)),
+      metadataBudgetBytes,
+      entry,
+      entries.length + 1,
+    );
+  };
   const add = (entry) => {
+    check(entry);
     metadataBytes += Buffer.byteLength(canonicalJson(entry));
-    if (
-      metadataBytes > metadataBudgetBytes ||
-      entry.byteSize > recordBudgetBytes
-    )
-      fail(
-        "canonical_collection_budget",
-        "Canonical collection exceeds its metadata or document budget",
-      );
     addEntry(entries, identities, paths, entry);
   };
   for (const dataset of materializedIndex.datasets) {
@@ -698,6 +710,11 @@ export async function assembleCanonicalCollection({
     if (excludedPaths.has(relativePath)) continue;
     const destination = resolveContained(canonicalRoot, relativePath);
     await mkdir(path.dirname(destination), { recursive: true });
+    check({
+      ...dataset,
+      path: relativePath,
+      byteSize: (await stat(sourcePath)).size,
+    });
     const bytes = await readFile(sourcePath);
     if (sha256Bytes(bytes) !== dataset.sha256)
       fail("materialized_dataset_hash_mismatch", `Hash drift: ${dataset.path}`);
@@ -762,6 +779,7 @@ export async function assembleCanonicalCollection({
           );
         continue;
       }
+      check(entry);
       const destination = resolveContained(canonicalRoot, relativePath);
       await mkdir(path.dirname(destination), { recursive: true });
       await writeFile(destination, content, { flag: "wx" });
@@ -804,6 +822,7 @@ export async function assembleCanonicalCollection({
           );
         continue;
       }
+      check(entry);
       const destination = resolveContained(canonicalRoot, relativePath);
       await mkdir(path.dirname(destination), { recursive: true });
       await writeFile(destination, content, { flag: "wx" });

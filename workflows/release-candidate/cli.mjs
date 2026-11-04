@@ -21,7 +21,10 @@ import {
 } from "./lib/flow-cache.mjs";
 import { prepareReleaseIntake } from "./lib/release-intake.mjs";
 import { replyTemplateFor } from "./reply-template-registry.mjs";
-import { candidateNextDecision } from "./lib/next-decision.mjs";
+import {
+  candidateNextDecision,
+  intakeContinuation,
+} from "./lib/next-decision.mjs";
 
 import {
   runFinalResultCommand,
@@ -39,6 +42,7 @@ const REPOSITORY_ENV = fileURLToPath(new URL("../../.env", import.meta.url));
 const REPOSITORY_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const DEFAULT_FLOW_CACHE_DIR = path.join(REPOSITORY_ROOT, DEFAULT_FLOW_CACHE);
 const VALUE_OPTIONS = new Set([
+  "delivery-format",
   "result-intake",
   "out-file",
   "final-input",
@@ -109,6 +113,7 @@ intake prepare options:
   --materialization <path>  Completed Result Materialization directory
   --source-intake <path>    Frozen Materialization Intake containing source_closure
   --out-dir <path>          New immutable Release Intake directory
+  --delivery-format <id>    result-zip-hdf5 or legacy-four-zips; omission returns an explicit deliverable choice
   --flow-cache <path>       Shared Elementary Flow cache; defaults to ${DEFAULT_FLOW_CACHE}
 
 cache options:
@@ -204,6 +209,13 @@ async function main() {
     process.stdout.write(HELP);
     return;
   }
+  if (options["delivery-format"] !== undefined && command !== "intake")
+    throw Object.assign(
+      new Error(
+        "--delivery-format is only supported by intake prepare; use result commands for ZIP + HDF5.",
+      ),
+      { code: "invalid_arguments" },
+    );
   if (command === "result") {
     const result = await runFinalResultCommand(action, options);
     respondGeneric(options, result, "Final Result workflow");
@@ -226,6 +238,11 @@ async function main() {
   }
   if (command === "intake") {
     requireOptions(options, ["materialization", "source-intake", "out-dir"]);
+    intakeContinuation({
+      releaseIntake: options["out-dir"],
+      outputRoot: REPOSITORY_ROOT,
+      deliveryFormat: options["delivery-format"],
+    });
     const result = await prepareReleaseIntake({
       materializationDir: path.resolve(options.materialization),
       sourceIntakeDir: path.resolve(options["source-intake"]),
@@ -319,6 +336,8 @@ async function main() {
         DEFAULT_TIDAS_MEMORY_BUDGET_MIB,
     ),
     publicationAuthorized: false,
+    queryArtifactsGenerated: false,
+    deliveryFormat: "legacy-four-zips",
     artifacts: {
       releaseCandidate: candidateManifest,
       packagePlan: path.join(result.path, "package-plan.json"),
@@ -459,12 +478,11 @@ function respondVersionConfirmation(options) {
 
 function respondIntake(options, result) {
   const manifest = path.join(result.path, "release-intake-manifest.json");
-  const candidateDir = path.join(
-    REPOSITORY_ROOT,
-    ".release",
-    "candidates",
-    path.basename(result.path),
-  );
+  const continuation = intakeContinuation({
+    releaseIntake: result.path,
+    outputRoot: path.join(REPOSITORY_ROOT, ".release"),
+    deliveryFormat: options["delivery-format"],
+  });
   const payload = {
     ok: true,
     command: "intake prepare",
@@ -482,20 +500,14 @@ function respondIntake(options, result) {
         "dependency-expansion-report.json",
       ),
     },
-    nextActions: [
-      {
-        kind: "build_candidate",
-        description:
-          "Use this frozen Release Intake to confirm a version and build the candidate.",
-        command: `${RELEASE_COMMAND} package build --release-intake ${shellQuote(result.path)} --profile ${PACKAGE_PROFILE} --out-dir ${shellQuote(candidateDir)} --json`,
-      },
-    ],
+    publicationAuthorized: false,
+    ...continuation,
     replyTemplate: replyTemplateFor("intake prepare", { ok: true }),
   };
   if (options.json) process.stdout.write(`${JSON.stringify(payload)}\n`);
   else
     process.stdout.write(
-      `Release Intake prepared\n\nSummary:\n- Path: ${result.path}\n- Added exact Flows: ${result.report.addedExactFlowCount}\n\nNext:\n- ${payload.nextActions[0].command}\n\nReply using template:\n- ${payload.replyTemplate.path}\n`,
+      `Release Intake prepared\n\nSummary:\n- Path: ${result.path}\n- Added exact Flows: ${result.report.addedExactFlowCount}\n\nNext:\n- ${(payload.nextActions.length ? payload.nextActions : payload.nextDecision.choices).map((choice) => `${choice.label}: ${choice.command}`).join("\n- ")}\n\nReply using template:\n- ${payload.replyTemplate.path}\n`,
     );
 }
 

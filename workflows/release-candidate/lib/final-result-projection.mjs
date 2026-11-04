@@ -1,4 +1,4 @@
-import { fail, hashJson } from "./common.mjs";
+import { canonicalJson, fail, hashJson } from "./common.mjs";
 
 export const FINAL_RESULT_PROJECTION = "tiangong.final-result-projection.v1";
 export const FINAL_RESULT_HASH_DOMAIN = "tiangong.final-result-content.jcs.v1";
@@ -13,9 +13,20 @@ const ROOTS = {
 
 // No transport or mutable-data lookup is allowed here. Callers supply documents
 // whose bytes have already been checked against the frozen canonical index.
-export function createFrozenDependencyResolver(records) {
+const verifiedDependencies = new WeakSet();
+function freezeOwned(value) {
+  if (value && typeof value === "object") {
+    for (const child of Object.values(value)) freezeOwned(child);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+// Verify complete documents once, retaining only Method metadata consumed by
+// projection. The full canonical hash still binds all characterisation factors.
+export function createFrozenDependencyStore() {
   const entries = new Map();
-  for (const record of records) {
+  const add = (record) => {
     const key = identityKey(record.datasetType, record.uuid, record.version);
     requireValue(!entries.has(key), "duplicate_dependency", key);
     requireValue(ROOTS[record.datasetType], "unsupported_dependency", key);
@@ -37,14 +48,30 @@ export function createFrozenDependencyResolver(records) {
       "dependency_hash_mismatch",
       key,
     );
-    // Freeze by ownership: do not retain a mutable caller-owned document.
-    entries.set(key, {
-      document: structuredClone(record.document),
+    const document =
+      record.datasetType === "lciamethod"
+        ? {
+            LCIAMethodDataSet: {
+              LCIAMethodInformation: {
+                dataSetInformation: {
+                  "common:UUID": info.dataSetInformation["common:UUID"],
+                  "common:name": info.dataSetInformation["common:name"],
+                },
+                quantitativeReference: info.quantitativeReference,
+              },
+            },
+          }
+        : record.document;
+    const entry = freezeOwned({
+      document: structuredClone(document),
       key,
       contentHash,
     });
-  }
-  return (kind, reference) => {
+    verifiedDependencies.add(entry);
+    entries.set(key, entry);
+    return Buffer.byteLength(canonicalJson(entry));
+  };
+  const resolve = (kind, reference) => {
     const key = identityKey(
       kind,
       reference?.["@refObjectId"],
@@ -52,8 +79,32 @@ export function createFrozenDependencyResolver(records) {
     );
     const entry = entries.get(key);
     requireValue(entry, "dependency_missing", key);
-    return structuredClone(entry);
+    return entry;
   };
+  return { add, resolve };
+}
+
+export function createFrozenDependencyResolver(records) {
+  const store = createFrozenDependencyStore();
+  for (const record of records) store.add(record);
+  return store.resolve;
+}
+
+// Method factor closure can contain many Flows absent from every final Result.
+// Validate that closure in callers, but retain only the projection's Flow set.
+export async function collectProjectionFlowKeys(index, readDocument) {
+  const keys = new Set();
+  for (const entry of index.datasets ?? []) {
+    if (entry.role !== "result_process") continue;
+    const document = await readDocument(entry);
+    for (const exchange of array(
+      document?.processDataSet?.exchanges?.exchange,
+    )) {
+      const ref = exchange.referenceToFlowDataSet;
+      keys.add(identityKey("flow", ref?.["@refObjectId"], ref?.["@version"]));
+    }
+  }
+  return keys;
 }
 
 /** Numeric export of a single final Result; never normalizes or solves values. */
@@ -100,7 +151,8 @@ export function projectFinalResult({
     );
     requireValue(
       entry?.key === expectedKey &&
-        hashJson(entry.document) === entry.contentHash,
+        (verifiedDependencies.has(entry) ||
+          hashJson(entry.document) === entry.contentHash),
       "dependency_binding_mismatch",
       expectedKey,
     );

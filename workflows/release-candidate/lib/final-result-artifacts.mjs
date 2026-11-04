@@ -16,15 +16,20 @@ import path from "node:path";
 import { gzipSync } from "node:zlib";
 import { canonicalJson, fail, hashJson, sha256Bytes } from "./common.mjs";
 import {
-  createFrozenDependencyResolver,
+  createFrozenDependencyStore,
+  collectProjectionFlowKeys,
   projectFinalResult,
   inventoryKey,
   FINAL_RESULT_PROJECTION,
 } from "./final-result-projection.mjs";
 
 export const FINAL_QUERY_FORMAT = "tiangong.query-artifact.v2";
-const MAX_RECORD_BYTES = 8 * 1024 * 1024;
-const MAX_METADATA_BYTES = 128 * 1024 * 1024;
+import {
+  MAX_RECORD_BYTES,
+  MAX_METADATA_BYTES,
+  documentBudget,
+  checkBudget,
+} from "./resource-budget.mjs";
 const MAX_ROWS = 2_000_000;
 const MAX_IMPACTS = 4096;
 const MAX_OUTPUT_BYTES = 32 * 1024 * 1024 * 1024;
@@ -63,16 +68,15 @@ export async function buildFinalResultArtifacts({
   const staging = await mkdtemp(`${target}.work-`);
   try {
     const entries = new Map();
-    const dependencies = [];
+    const requiredFlows = await collectProjectionFlowKeys(index, (entry) =>
+      frozenDocument(canonicalRoot, entry),
+    );
+    const dependencies = createFrozenDependencyStore();
     let metadataBytes = 0;
     let spoolBytes = 0;
     const charge = (value) => {
       metadataBytes += Buffer.byteLength(canonicalJson(value));
-      if (metadataBytes > MAX_METADATA_BYTES)
-        fail(
-          "final_result_metadata_budget",
-          "Final Result metadata exceeds budget",
-        );
+      checkBudget("metadata", metadataBytes, MAX_METADATA_BYTES);
     };
     for (const entry of index.datasets ?? []) {
       const key = `${entry.datasetType}:${entry.uuid}@${entry.version}`;
@@ -80,17 +84,19 @@ export async function buildFinalResultArtifacts({
         fail("final_result_duplicate_identity", "Duplicate canonical identity");
       charge(entry);
       entries.set(key, entry);
+      const document = await frozenDocument(canonicalRoot, entry);
       if (
         ["flow", "flowproperty", "unitgroup", "lciamethod"].includes(
           entry.datasetType,
-        )
+        ) &&
+        (entry.datasetType !== "flow" ||
+          requiredFlows.has(`flow:${entry.uuid}@${entry.version}`))
       ) {
-        const document = await frozenDocument(canonicalRoot, entry);
-        charge(document);
-        dependencies.push({ ...entry, document });
+        metadataBytes += dependencies.add({ ...entry, document });
+        checkBudget("metadata", metadataBytes, MAX_METADATA_BYTES, entry);
       }
     }
-    const resolveDependency = createFrozenDependencyResolver(dependencies);
+    const resolveDependency = dependencies.resolve;
     const groups = new Map();
     const seen = new Set();
     for (const [ordinal, selection] of results.entries()) {
@@ -344,7 +350,8 @@ export async function frozenDocument(root, entry) {
   if (!file.startsWith(`${realRoot}${path.sep}`))
     fail("final_result_path_escape", "Canonical path escapes input root");
   const size = (await stat(file)).size;
-  if (size > MAX_RECORD_BYTES || size !== entry.byteSize)
+  checkBudget("document", size, documentBudget(entry), entry);
+  if (size !== entry.byteSize)
     fail(
       "final_result_file_size",
       "Canonical dataset size mismatch or limit exceeded",

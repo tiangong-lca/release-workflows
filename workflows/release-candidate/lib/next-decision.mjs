@@ -1,3 +1,4 @@
+import { basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export function candidateNextDecision() {
@@ -40,3 +41,73 @@ function helpCommand(workflow, action) {
   const quotedEntry = `'${entry.replaceAll("'", `'\\''`)}'`;
   return { command: `node ${quotedEntry} ${action.join(" ")} --help`, argv };
 }
+
+export function intakeContinuation({
+  releaseIntake,
+  outputRoot,
+  deliveryFormat,
+}) {
+  const cli = fileURLToPath(new URL("../cli.mjs", import.meta.url));
+  const choices = [
+    {
+      id: "result-zip-hdf5",
+      label: "Result ZIP + HDF5",
+      description:
+        "Result-only two ZIPs and paired LCI/LCIA HDF5. Continue through intake, inspect, versions, authorized register, then build; no new calculation.",
+      args: [
+        "result",
+        "intake",
+        "--release-intake",
+        releaseIntake,
+        "--out-dir",
+        `${outputRoot}/result-intakes/${basename(releaseIntake)}`,
+        "--json",
+      ],
+    },
+    {
+      id: "legacy-four-zips",
+      label: "Legacy four ZIPs (no HDF5)",
+      description:
+        "Unit Process, Result and LifecycleModel distribution profile. This route does not generate HDF5.",
+      args: [
+        "package",
+        "build",
+        "--release-intake",
+        releaseIntake,
+        "--profile",
+        "standalone-lifecyclemodel-result-full-closure.v1",
+        "--out-dir",
+        `${outputRoot}/candidates/${basename(releaseIntake)}`,
+        "--json",
+      ],
+    },
+  ].map(({ args, ...choice }) => {
+    const argv = ["node", cli, ...args];
+    return { ...choice, argv, command: argv.map(quote).join(" ") };
+  });
+  if (
+    deliveryFormat !== undefined &&
+    !choices.some((c) => c.id === deliveryFormat)
+  )
+    throw Object.assign(
+      new Error(
+        "--delivery-format must be result-zip-hdf5 or legacy-four-zips",
+      ),
+      { code: "invalid_arguments" },
+    );
+  return {
+    deliveryFormat: deliveryFormat ?? null,
+    nextDecision: {
+      required: deliveryFormat === undefined,
+      prompt:
+        "Select the required deliverables; reuse an already stated user choice.",
+      choices,
+    },
+    nextActions:
+      deliveryFormat === undefined
+        ? []
+        : [choices.find((c) => c.id === deliveryFormat)],
+  };
+}
+
+const quote = (value) => `'${String(value).replaceAll("'", `'"'"'`)}'`;
