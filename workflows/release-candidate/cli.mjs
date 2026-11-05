@@ -712,6 +712,12 @@ function respondGeneric(options, payload, title) {
     if (payload.fileNames)
       for (const file of payload.fileNames)
         process.stdout.write(`- File: ${file}\n`);
+    if (payload.warnings?.length) {
+      process.stdout.write("\nWarnings:\n");
+      for (const warning of payload.warnings)
+        process.stdout.write(`- Warning: ${warning.message}\n`);
+      process.stdout.write("\n");
+    }
     process.stdout.write("- Publication authorized: no\n\nNext:\n");
     for (const action of payload.nextActions) {
       if (action.description) process.stdout.write(`- ${action.description}\n`);

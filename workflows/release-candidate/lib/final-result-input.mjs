@@ -13,6 +13,7 @@ import {
   createFrozenDependencyStore,
   collectProjectionFlowKeys,
   projectFinalResult,
+  normalizeWarnings,
   FINAL_RESULT_PROJECTION,
 } from "./final-result-projection.mjs";
 import { resolveFinalResultLineage } from "./final-result-lineage.mjs";
@@ -42,6 +43,7 @@ export async function inspectFinalResultInput({
   index,
   results,
   materializationEvidence,
+  warningSink = null,
 }) {
   const lineage = resolveFinalResultLineage(materializationEvidence);
   requireValue(
@@ -108,6 +110,7 @@ export async function inspectFinalResultInput({
       layer: row.layer,
       expectedMethods: row.expectedMethods,
       resolveDependency,
+      warningSink,
     });
     const request = identityRegistrationRequest(projection);
     registrationBytes += Buffer.byteLength(canonicalJson(request));
@@ -164,11 +167,13 @@ export async function prepareFinalResultInput({
   createAuthority,
 }) {
   requireValue(typeof createAuthority === "function");
+  const warnings = [];
   const inspected = await inspectFinalResultInput({
     canonicalRoot,
     index,
     results,
     materializationEvidence,
+    warningSink: (record) => warnings.push(record),
   });
   requireValue(
     confirmInputHash === inspected.inputHash,
@@ -280,7 +285,11 @@ export async function prepareFinalResultInput({
       { flag: "wx" },
     );
     await commitFrozenDirectory(staging, target, "final-result-input.json");
-    return { path: target, input: finalInput };
+    return {
+      path: target,
+      input: finalInput,
+      warnings: normalizeWarnings(warnings),
+    };
   } catch (error) {
     await writeFile(
       path.join(staging, "failed-input.json"),
@@ -419,6 +428,7 @@ export async function loadFinalResultInput(inputDir) {
     }
   }
   const resolveDependency = dependencies.resolve;
+  const warnings = [];
   for (const [ordinal, row] of input.selection.entries()) {
     const entry = entries.get(`process:${key(row)}`);
     const request = identityRegistrationRequest(
@@ -428,6 +438,7 @@ export async function loadFinalResultInput(inputDir) {
         layer: row.layer,
         expectedMethods: row.expectedMethods,
         resolveDependency,
+        warningSink: (record) => warnings.push(record),
       }),
     );
     requireValue(
@@ -435,5 +446,13 @@ export async function loadFinalResultInput(inputDir) {
       "final_input_registration_drift",
     );
   }
-  return { root, canonicalRoot, input, index, plan, lineage };
+  return {
+    root,
+    canonicalRoot,
+    input,
+    index,
+    plan,
+    lineage,
+    warnings: normalizeWarnings(warnings),
+  };
 }

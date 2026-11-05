@@ -83,6 +83,7 @@ const templates = Object.freeze({
             "completeness",
             "artifacts",
             "publicationAuthorized",
+            "warnings",
             "nextActions",
           ],
         ],
