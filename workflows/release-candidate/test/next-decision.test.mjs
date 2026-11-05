@@ -34,7 +34,7 @@ test("Candidate next choices reach real read-only help from another cwd", async 
   assert.match(transformation.description, /handoff, not a new Candidate/);
   assert.match(
     transformation.description,
-    /result intake\/inspect\/register\/build.*v2 publication adapter remains required/,
+    /result intake\/inspect\/freeze\/build.*v2 publication adapter remains required/,
   );
 });
 

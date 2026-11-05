@@ -10,15 +10,15 @@ import {
 // authority. No retries after unknown outcomes, no edits to frozen artifacts.
 export async function planFinalResultVersions({ inputPlan, createAuthority }) {
   if (
-    !inputPlan.registrations?.length ||
-    inputPlan.registrations.length > VERSION_PLAN_LIMIT
+    !inputPlan.content?.length ||
+    inputPlan.content.length > VERSION_PLAN_LIMIT
   )
     fail(
       "result_version_plan_budget",
       "Plan at most 10000 exact Results per intake",
     );
   const groups = new Map();
-  for (const request of inputPlan.registrations) {
+  for (const request of inputPlan.content) {
     const group = groups.get(request.result.uuid) ?? [];
     group.push(request);
     groups.set(request.result.uuid, group);

@@ -13,9 +13,9 @@ whenToUpdate:
   - 当 Publication 的范围、状态、授权、写入、恢复或回读规则变化时
 checkPaths:
   - workflows/publication/**
-lastReviewedAt: 2026-11-02
-lastReviewedCommit: 7ce184ead831629cbca50a83fa4f22abb2ebb4b2
-lastReviewedNote: "Release #101: reviewed Supabase S3 base-path preservation, paired target hashing and pinned SDK upload/readback; publication authority is unchanged."
+lastReviewedAt: 2026-11-05
+lastReviewedCommit: e8c95247860a8d09a34bc7d485448de31f8baa4c
+lastReviewedNote: "Release #120: reviewed offline Result freeze, paired HDF5/ZIP and artifact-scoped publication handoff."
 related:
   - README.md
   - ../AGENTS.md
@@ -138,7 +138,7 @@ Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认
 - `lib/final-result-storage.mjs` 只消费重新验证的配对 Candidate v3。inspect 在本地绑定 Candidate/目标/完整文件集/行映射；execute 必须确认完全相同的 storage plan hash。`result-storage inspect/execute` 是独立 opt-in CLI；它不替代后继发布选择、reader readiness、actor approval 或 activation。inspect 不打开远程客户端，不要求 S3 写凭据；execute 在确认及新输出目录检查之后才构造受控 adapter。
 - `adapters/final-result-object-store.mjs` 使用显式数据面 S3/IAM 凭据；`adapters/final-result-registry.mjs` 使用受保护 CONN、单客户端参数化事务与服务角色，仅调用五个 Database-owned v2 query/Candidate 存储 RPC 与四个 readiness begin/artifacts/seal/describe RPC。不读取 actor token，不接受任意 SQL，不写 canonical/state 120，不调用批准/激活接口。
 - 对象键只从 artifact UUID/manifest hash、Candidate byte hash 和固定文件名派生。PUT 和 multipart complete 使用 `If-None-Match: *`，不覆盖已有文件；只可中止本次已知 multipart upload，不能 DeleteObject。每次执行与重试都完整 GET 校验 bytes/hash，不把 ETag 或原数据库 seal 当成当前文件可用性的证明。
-- 本地已验证的索引/ZIP 与远端 GET 字节摘要相同后才登记实际 Result 轴和完整包范围。行按 500 条且 JSONB logical size 不超过 1 MiB 分批，映射摘要必须与 Database 的 ASCII 500-row block contract 一致。
+- 本地已验证的索引/ZIP 与远端 GET 字节摘要相同后才按产物登记实际 Result 轴和完整包范围，行使用内容指纹与 Candidate 根关联。行按 500 条且 JSONB logical size 不超过 1 MiB 分批，映射摘要必须与 Database 的 ASCII 500-row block contract 一致。
 - 超时、响应丢失与并发同键写入必须先精确回读。query/Candidate seal 响应不明时用 service-only describe 恢复原回执；不能换 artifact、Candidate、Result 版本或覆盖原回执。中止分片无法确认或创建分片响应丢失时明确 `multipartCleanupRequired`，不得声称清理完成。
 - 目标 fingerprint 绑定数据库连接身份（不含密码）、规范化存储 endpoint/region/bucket/prefix。根 endpoint 的身份不变；Supabase 精确 `/storage/v1/s3` base path 必须同时保留在哈希与 SDK 请求中，不能退化为 origin。配置必须指向已经治理的非公开存储；adapter 不改变 bucket policy，也不能以文件核验代替非公开环境准入。原 actor recipes 与 Portal projection 的 secret/locator 禁止仍保持。
 - CLI 只读取显式进程环境中的 `CONN` 与既有 `S3_*` 白名单，不隐式载入 `.env` 或 AWS credential provider chain，不接受凭据参数。证据输出必须位于冻结 Candidate 外部，含符号链接解析。每次 execute 使用新的输出目录：先写 attempt、成功后写 receipt；失败保留 attempt/failure，精确重试用新目录，不能删除记录伪造完成。stdout/stderr 只返回有界摘要与安全错误码；原始 provider/连接异常不外泄。

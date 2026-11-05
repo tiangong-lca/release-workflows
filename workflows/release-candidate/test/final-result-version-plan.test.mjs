@@ -40,7 +40,7 @@ function authority(rows, failure) {
 }
 test("read-only version planning preserves free/same-content identities and allocates above authority", async (t) => {
   const p = await input(t);
-  const [a, b, c] = p.registrations;
+  const [a, b, c] = p.content;
   const store = authority({
     [a.result.uuid]: [
       {
@@ -92,7 +92,7 @@ test("read-only version planning preserves free/same-content identities and allo
 });
 test("old occupied versions beyond the first page are not classified as free", async (t) => {
   const p = await input(t);
-  const r = p.registrations[0];
+  const r = p.content[0];
   const rows = Array.from({ length: 257 }, (_, i) => ({
     version: `02.00.${String(i).padStart(3, "0")}`,
     status: "legacy_requires_equivalence",
@@ -116,8 +116,8 @@ test("old occupied versions beyond the first page are not classified as free", a
 });
 test("same-lineage conflicts reserve distinct new major versions; unknown outcomes and overflow stop", async (t) => {
   const p = await input(t);
-  const first = p.registrations[0];
-  p.registrations = [
+  const first = p.content[0];
+  p.content = [
     first,
     { ...first, result: { ...first.result, version: "02.00.000" } },
   ];

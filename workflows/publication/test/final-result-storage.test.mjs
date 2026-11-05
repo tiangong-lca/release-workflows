@@ -13,7 +13,6 @@ import {
   inspectFinalResultInput,
   prepareFinalResultInput,
 } from "../../release-candidate/lib/final-result-input.mjs";
-import { createFinalResultIdentityStore } from "../../release-candidate/lib/final-result-identity.mjs";
 import { buildFinalResultCandidate } from "../../release-candidate/lib/final-result-candidate.mjs";
 import { fixture } from "./fixtures/final-storage.mjs";
 import {
@@ -60,9 +59,6 @@ test("501-row root agrees with independent Python block-boundary golden", () => 
       uuid:
         golden.rows[0].uuid.slice(0, 24) +
         String(golden.multiBlock.resultStart + ordinal).padStart(12, "0"),
-      registrationId:
-        golden.rows[0].registrationId.slice(0, 24) +
-        String(golden.multiBlock.registrationStart + ordinal).padStart(12, "0"),
     }),
   );
   assert.equal(
@@ -191,7 +187,7 @@ test(
     const connectionString = process.env.RELEASE_STORAGE_TEST_CONN;
     const url = new URL(connectionString);
     assert.equal(url.hostname, "127.0.0.1");
-    assert.equal(url.port, "61432");
+    assert.equal(url.port, "65422");
     assert.equal(url.pathname, "/postgres");
     assert.equal(url.username, "postgres");
     assert.equal(url.search, "");
@@ -208,8 +204,6 @@ test(
     await prepareFinalResultInput({
       ...input,
       confirmInputHash: inputPlan.inputHash,
-      createAuthority: () =>
-        createFinalResultIdentityStore({ connectionString }),
     });
     const candidate = await buildFinalResultCandidate({
       finalInputDir: input.outDir,

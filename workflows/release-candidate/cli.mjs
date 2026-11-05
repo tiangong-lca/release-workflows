@@ -90,8 +90,8 @@ Commands:
   result intake       Prepare Result-only closure from direct Materialization or verified Derived handoff
   result inspect      Read-only inspection of exact final input and expected identity claims
   result versions     Read-only authority occupancy and explicit upstream regeneration plan
-  result register     Explicitly claim immutable Result identities using protected CONN; no publication
-  result build        Build a paired Candidate v3 from registered input; no database access
+  result freeze       Verify and freeze final Result input locally
+  result build        Build a paired Candidate v3 from frozen input without a database
   result verify       Verify actual ZIP/HDF5 files and all Candidate v3 bindings
 
 result command options:
@@ -100,11 +100,11 @@ result command options:
           [--spec <path>] [--parent-materialization <path>] (Derived route; legacy parents require the witness)
   inspect: --result-intake <path>
   versions: --result-intake <path> --out-file <new-plan.json> (read-only authority)
-  register: --result-intake <path> --confirm-input-sha256 <hash> --out-dir <path>
+  freeze: --result-intake <path> --confirm-input-sha256 <hash> --out-dir <path>
   build: --final-input <path> --confirm-input-sha256 <hash> --release-version <YYYY.MM.N> --out-dir <path>
   verify: --candidate <path>
   intake/build accept --tidas-bin and --tidas-memory-budget-mib; build also accepts --hdf5-bin.
-  Inspect precedes authorized registration. CONN is used only by result versions (read-only) and result register and never included in output.
+  Inspect, freeze and build run offline. Only the optional result versions command reads CONN.
   Missing build version returns a confirmation request without generating files. v3 cannot use legacy Publication.
   Versions: result versions --result-intake <path> --out-file <new-plan.json> --json
   Example: release-package result inspect --result-intake .release/final/intake --json
@@ -191,7 +191,7 @@ async function main() {
       ["analyze", "review", "decide"].includes(action)) ||
     (command === "package" && action === "build") ||
     (command === "result" &&
-      ["intake", "inspect", "versions", "register", "build", "verify"].includes(
+      ["intake", "inspect", "versions", "freeze", "build", "verify"].includes(
         action,
       ))
   )) {
@@ -814,14 +814,14 @@ function failureNextActions(error) {
         kind: "inspect_usage",
         description:
           "Inspect the exact Result command and its recovery boundaries",
-        command: `${RELEASE_COMMAND} result ${["intake", "inspect", "versions", "register", "build", "verify"].includes(process.argv[3]) ? process.argv[3] : "inspect"} --help`,
+        command: `${RELEASE_COMMAND} result ${["intake", "inspect", "versions", "freeze", "build", "verify"].includes(process.argv[3]) ? process.argv[3] : "inspect"} --help`,
       },
     ];
     if (error.details?.retainedInput)
       actions.unshift({
-        kind: "reconcile_identity_claims",
+        kind: "inspect_retained_input",
         description:
-          "Compare exact requests with received receipts before an identical-input retry; do not allocate new versions after an unknown outcome",
+          "Inspect the retained input plan before retrying in a new directory",
         command: `jq . ${shellQuote(path.join(error.details.retainedInput, "input-plan.json"))}`,
       });
     return actions;

@@ -49,7 +49,7 @@ const OPTIONS = {
   ],
   inspect: ["result-intake"],
   versions: ["result-intake", "out-file"],
-  register: ["result-intake", "confirm-input-sha256", "out-dir"],
+  freeze: ["result-intake", "confirm-input-sha256", "out-dir"],
   build: [
     "final-input",
     "confirm-input-sha256",
@@ -139,7 +139,7 @@ export async function runFinalResultCommand(
         nextActions: [
           next(
             "inspect_final_input",
-            "Review exact contents before separately authorizing identity registration",
+            "Review the exact contents before freezing local input",
             ["result", "inspect", "--result-intake", built.path, "--json"],
           ),
         ],
@@ -181,7 +181,7 @@ export async function runFinalResultCommand(
               {
                 kind: "regenerate_upstream",
                 description:
-                  "Direct: rerun the same Materialization request with --result-version-plan and this file. Derived: explicitly adopt toVersion and its matching URI in a new Transformation Draft, then inspect/freeze/execute and materialize derived. Rebuild Result Intake, inspect, register and build; never edit frozen artifacts or relabel existing HDF5/ZIP.",
+                  "Direct: rerun the same Materialization request with --result-version-plan and this file. Derived: explicitly adopt toVersion and its matching URI in a new Transformation Draft, then inspect/freeze/execute and materialize derived. Rebuild Result Intake, inspect, freeze and build; never edit frozen artifacts or relabel existing HDF5/ZIP.",
                 versionPlan: output,
                 argv: conflicts.some((e) => e.relationKind === "derived")
                   ? ["node", TRANSFORM, "dsl", "inspect", "--help"]
@@ -196,7 +196,7 @@ export async function runFinalResultCommand(
           : [
               next(
                 "inspect_final_input",
-                "Occupancy is advisory; atomic registration still rechecks exact content",
+                "Review the exact local Result input",
                 ["result", "inspect", "--result-intake", intake.root, "--json"],
               ),
             ],
@@ -204,10 +204,10 @@ export async function runFinalResultCommand(
       intake.warnings,
     );
   }
-  if (action === "inspect" || action === "register") {
+  if (action === "inspect" || action === "freeze") {
     required(options, [
       "result-intake",
-      ...(action === "register" ? ["confirm-input-sha256", "out-dir"] : []),
+      ...(action === "freeze" ? ["confirm-input-sha256", "out-dir"] : []),
     ]);
     const intake = await loadFinalResultIntake(options["result-intake"]);
     const counts = {
@@ -232,17 +232,17 @@ export async function runFinalResultCommand(
           },
           nextActions: [
             next(
-              "register_final_identity",
-              "Requires explicit authorization: claims immutable identities in the database configured by CONN",
+              "freeze_final_input",
+              "Freeze the verified local input for offline build",
               [
                 "result",
-                "register",
+                "freeze",
                 "--result-intake",
                 intake.root,
                 "--confirm-input-sha256",
                 intake.plan.inputHash,
                 "--out-dir",
-                `${intake.root}.registered`,
+                `${intake.root}.frozen`,
                 "--json",
               ],
             ),
@@ -254,20 +254,18 @@ export async function runFinalResultCommand(
       ...intake,
       confirmInputHash: options["confirm-input-sha256"],
       outDir: options["out-dir"],
-      createAuthority: createIdentityAuthority,
     });
     return withWarnings(
       {
         ...base,
-        outcome: "final_result_identities_registered",
-        completeness: "all-identities-registered-input-frozen",
+        outcome: "final_result_input_frozen",
+        completeness: "exact-local-input-frozen",
         ...counts,
         finalInput: frozen.path,
         inputHash: frozen.input.inputHash,
-        identityRegistered: true,
+        identityRegistered: false,
         artifacts: {
           finalInput: path.join(frozen.path, "final-result-input.json"),
-          receipts: path.join(frozen.path, "registration-receipts.ndjson"),
         },
         nextActions: [
           next(
@@ -342,7 +340,7 @@ export async function runFinalResultCommand(
       {
         ...base,
         outcome: "paired_result_candidate_built",
-        completeness: "registered-content-and-paired-files-qualified",
+        completeness: "verified-content-and-paired-files-qualified",
         candidate: built.path,
         inputHash: built.candidate.inputHash,
         releaseVersion: built.candidate.releaseVersion,

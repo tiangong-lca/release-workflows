@@ -6,10 +6,7 @@ import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
-import {
-  setup,
-  registry,
-} from "../../../release-candidate/test/fixtures/final-input.mjs";
+import { setup } from "../../../release-candidate/test/fixtures/final-input.mjs";
 import {
   inspectFinalResultInput,
   prepareFinalResultInput,
@@ -31,7 +28,7 @@ const encoder = fileURLToPath(
 );
 async function candidate(
   t,
-  { createAuthority = registry().createAuthority } = {},
+  { amount = "4.25", releaseVersion = "2026.11.0" } = {},
 ) {
   const input = await setup(t);
   // Author a second signed inventory exchange BEFORE freezing. This synthetic
@@ -44,8 +41,8 @@ async function candidate(
   const extra = structuredClone(document.processDataSet.exchanges.exchange[1]);
   extra["@dataSetInternalID"] = "3";
   extra.exchangeDirection = "Input";
-  extra.meanAmount = "4.25";
-  extra.resultingAmount = "4.25";
+  extra.meanAmount = amount;
+  extra.resultingAmount = amount;
   document.processDataSet.exchanges.exchange.push(extra);
   const bytes = Buffer.from(canonicalJson(document));
   await writeFile(file, bytes);
@@ -66,13 +63,12 @@ async function candidate(
   await prepareFinalResultInput({
     ...input,
     confirmInputHash: inspected.inputHash,
-    createAuthority,
   });
   const built = await buildFinalResultCandidate({
     finalInputDir: input.outDir,
     confirmInputHash: inspected.inputHash,
     outDir: path.join(input.root, "candidate"),
-    releaseVersion: "2026.11.0",
+    releaseVersion,
     encoder,
     tidasBin: process.env.RELEASE_PAIR_TIDAS_BIN,
   });

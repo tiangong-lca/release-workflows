@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 intake、包的语义、候选构建、scope refinement 或 Candidate 后继路径变化时
 checkPaths:
   - workflows/release-candidate/**
-lastReviewedAt: 2026-11-04
-lastReviewedCommit: c73631deedc7a47cdad5feac7eff02dd46f0e032
-lastReviewedNote: "Release #115: reviewed explicit deliverable routing, bounded large Method reads and compact verified projection metadata; calculation/publication authority and frozen artifacts remain unchanged."
+lastReviewedAt: 2026-11-05
+lastReviewedCommit: e8c95247860a8d09a34bc7d485448de31f8baa4c
+lastReviewedNote: "Release #120: reviewed offline Result freeze, paired HDF5/ZIP and artifact-scoped publication handoff."
 related:
   - AGENTS.md
   - ../../README.md
@@ -132,7 +132,7 @@ node cli.mjs result intake \
   --out-dir /path/to/result-intake \
   --tidas-bin /path/to/tidas \
   --json
-# 之后按返回命令 inspect → versions → 授权 register → build；不重新计算。
+# 之后按返回命令 inspect → freeze → build；不重新计算。
 
 # 仅当用户明确需要旧四包（不含 HDF5）时：
 node cli.mjs package build \
@@ -310,13 +310,13 @@ reference Flow Property 或参考 Unit 的 `meanValue ≠ 1` 不再阻断：投�
 
 原生内部协议为 `TGQNUM02` + little-endian uint64 的行数/清单列数/指标数；每行写入 uint64 非零数、递增唯一的 uint64 列号/float64 数值，再跟完整 LCIA float64 行。编码器拒绝非有限值、重复/越界列、截断或尾随 bytes；重新打开实际 HDF5 与该精确流逐行对照。JS 测试另用手写期望数值验证文件，避免只证明同一提取器自洽。
 
-预算：普通文档/投影 8 MiB，LCIA Method 文档 64 MiB，查询索引/投影缓存元数据 128 MiB，完整身份登记计划单独 512 MiB，最多 200 万结果/清单列及 4096 指标，spool/数值流/总文件各受 32 GiB 上限约束；数值按单行处理，索引留在受限内存。输出路径不可覆盖，receipt 最后提交；仅有部分文件不构成完成。
+预算：普通文档/投影 8 MiB，LCIA Method 文档 64 MiB，查询索引/投影缓存元数据 128 MiB，本地输入计划单独 512 MiB，最多 200 万结果/清单列及 4096 指标，spool/数值流/总文件各受 32 GiB 上限约束；数值按单行处理，索引留在受限内存。输出路径不可覆盖，receipt 最后提交；仅有部分文件不构成完成。
 
-Method 上限按完整 canonical 文档计量，并在 direct/Derived Intake、冻结读取、HDF5 编码和 ZIP 回读中一致使用；其他文档仍受 8 MiB 限制。完整闭包仍逐份验证；LCIA Method factors 引用的所有 Flow 保留在 ZIP 中，只有最终 Result exchange 引用的 Flow 进入数值投影缓存。数值投影逐份验证完整文档及 hash 后只保留 Method 名称、定量参考等必要元数据，不把 characterisation factors 全文重复复制给每条 Result。完整 Method 仍进入 ZIP，完整内容 hash 仍参与 Result 身份绑定；精简查询元数据不改变数值、依赖语义或发布内容。128 MiB 限制用于索引和保留的投影元数据，不是所有 Method 文件大小之和。完整身份登记计划会为每条 Result 重复记录精确语义依赖，单独受 512 MiB 限制；Intake inspection、final input 与 Candidate readback 的计划文件读取使用同一上限。每次远程登记请求仍受 8 MiB 限制，查询索引上限不变。
+Method 上限按完整 canonical 文档计量，并在 direct/Derived Intake、冻结读取、HDF5 编码和 ZIP 回读中一致使用；其他文档仍受 8 MiB 限制。完整闭包仍逐份验证；LCIA Method factors 引用的所有 Flow 保留在 ZIP 中，只有最终 Result exchange 引用的 Flow 进入数值投影缓存。数值投影逐份验证完整文档及 hash 后只保留 Method 名称、定量参考等必要元数据，不把 characterisation factors 全文重复复制给每条 Result。完整 Method 仍进入 ZIP，完整内容 hash 仍绑定 Result 投影；精简查询元数据不改变数值、依赖语义或发布内容。128 MiB 限制用于索引和保留的投影元数据，不是所有 Method 文件大小之和。本地输入计划仅保存精确身份与内容指纹；Intake inspection、final input 与 Candidate readback 使用同一 512 MiB 计划文件上限。
 
 超限分别返回 `canonical_document_budget` 、`canonical_metadata_budget` 或 `canonical_input_plan_budget`，携带 `budget.kind/path/datasetType/uuid/version/actualBytes/limitBytes`（字段按上下文提供）；Intake 的 `failed-intake.json` 保留相同诊断。应检查具体输入与资源策略，解决容量后重试新输出目录，不通过删减结果或改写冻结文件绕过限制。
 
-此内核产生 `final-result-encoding.v1` 本地证据，明确 `candidateQualified=false`、`publicationAuthorized=false`。现有 `package build` 仍保持四包资格流程；配对 ZIP 校验、身份登记和 v2 发布接入完成前，不把内核输出作为可发布 Candidate，也不授予普通用户读取资格。
+此内核产生 `final-result-encoding.v1` 本地证据，明确 `candidateQualified=false`、`publicationAuthorized=false`。现有 `package build` 仍保持四包资格流程；配对 ZIP 校验和 v2 发布接入完成前，不把内核输出作为可发布 Candidate，也不授予普通用户读取资格。
 
 ### 最终 Result 双产物配对
 
@@ -324,7 +324,7 @@ Method 上限按完整 canonical 文档计量，并在 direct/Derived Intake、�
 
 包实际解压后再次通过各格式验证，并在两个 ZIP 的实际内容之间执行 semantic round-trip。`final-result-parity.mjs` 从解压后的 TIDAS 文档及语义依赖重新形成期望值，核对完整 Result/Flow/Method 轴、单位、参考量、直接/派生元数据、所有 LCI 非零及 LCIA 数值，再调用原生工具逐行比较真实 HDF5。冻结 index 的每个成员都必须出现在所选 Result 完整闭包中；多余输入不能静默遗漏。LCI-only 与不同指标集合分别生成 artifact，零 LCIA 不表示缺少能力。
 
-返回 `tiangong.release.final-result-pair.v1`，明确 `pairQualified=true`、`candidateQualified=false`、`publicationAuthorized=false`，并绑定实际包、query manifests、回读和 parity 证据。失败时保留唯一工作目录、成功产物及结构化诊断；不出现成功的配对输出，不覆盖已有目录。当前该模块是内部构建能力；原 `package build` CLI 和 legacy Candidate v2 四包语义不变。最终身份登记、可信来源关联以及配对 Candidate 冻结仍由后续 Candidate 集成完成，不能把这个 receipt 直接交给旧发布入口。
+返回 `tiangong.release.final-result-pair.v1`，明确 `pairQualified=true`、`candidateQualified=false`、`publicationAuthorized=false`，并绑定实际包、query manifests、回读和 parity 证据。失败时保留唯一工作目录、成功产物及结构化诊断；不出现成功的配对输出，不覆盖已有目录。当前该模块是内部构建能力；原 `package build` CLI 和 legacy Candidate v2 四包语义不变。可信来源关联以及配对 Candidate 冻结仍由后续 Candidate 集成完成，不能把这个 receipt 直接交给旧发布入口。
 
 使用支持新 profile 的真实 Toolkit 运行可重复的跨项目资格测试：
 
@@ -334,49 +334,17 @@ RELEASE_PAIR_TIDAS_BIN=/absolute/path/to/tidas node --test workflows/release-can
 
 测试输入完全合成，包含同 UUID 两版本、LCI-only、LCIA 42/0、LCI 2.5/0/-3 和参考量 -2；另以手写二进制期望值验证实际 HDF5。未配置测试专用 `RELEASE_PAIR_TIDAS_BIN` 时只有真实 Toolkit 集成项明确 skipped，其余能力拒绝、输出保留及篡改反例照常执行；不能把 skipped 描述为双产物资格通过。`fixtures/paired-final-results.json` 保留全部输入与 provenance，不需要其他仓库私有模块。
 
-### 最终输入准备与全局身份
+### 冻结最终输入
 
-`final-result-input.mjs` 提供只读 inspection 和显式准备两个内部动作：先验证冻结文件及完整依赖、解析结构化来源、形成 input hash；确认这个 hash 后，在单独副本上重验，再对每个最终 Result 查询权威占用并原子登记。`final-result-identity.mjs` 复用项目已有 pg 依赖，只提供两个封闭、参数化的服务 RPC。登记凭证逐项检查 UUID/version、hash domain、canonical/content hash、registration ID 与 content reference；数据库或连接的原始错误不会进入返回诊断。
+`result inspect` 复核 canonical 文件、完整依赖和结构化来源，返回精确 input hash。确认该 hash 后，`result freeze` 在独立本地目录逐份复核副本，生成 `final-result-input.json`、输入计划和来源清单。每个 Result 绑定规范内容与语义依赖的指纹，不需要数据库连接或登记回执。输入格式为 v2。此前生成的 v1 Result Intake 可从原冻结 Release Intake 或已验证的 Derived Materialization 重新准备。
 
-全部登记成功后才写不可变 `final-result-input.json`，绑定精确 selection、内容/登记凭证与 lineage hash。供配对构建使用的是 `selection`，不能把包含登记凭证的 `results` catalog 直接当作数值选择，否则 input hash 会改变。输出仍标记 `candidateQualified=false`、`publicationAuthorized=false`。
+显式使用 `result versions` 可只读查看历史全局登记占用并生成上游版本建议。该命令不参与离线出包和批次发布。若需要变更 ZIP 中的 Result 版本，先通过上游 Materialization 或 Transformation 生成新冻结内容，再重新准备、冻结与出包。
 
-失败工作目录保留 `input-plan.json`、原请求和已收到的 `registration-receipts.ndjson`。可能已经提交但丢失响应的登记不能按失败释放身份；重试原输入会复用原凭证。版本占用查询是有界观察，不保证尚未显示的版本可用，最终以原子登记为准。冲突须重新生成版本相关文档；不能在打包时改版本并沿用旧 hash。
+### 配对 Candidate v3
 
-来源解析消费 manifest/index/catalog 的 hash 链。Derived Result 另绑定 Transformation 的精确输入/输出与父 Candidate。legacy 父 Candidate 需提供原 Package Plan 所绑定的 Materialization manifest/index/catalog；缺少 witness 则拒绝关联，不从 comments 猜测。v3 父格式读取其绑定的结构化 final input，并由 Candidate loader 重新验证真实文件与配对证据。
+内部 `buildFinalResultCandidate({finalInputDir, confirmInputHash, outDir, releaseVersion, tidasBin, encoder})` 重新加载 final input，并对实际 canonical bytes 重算每个内容指纹；确认后生成并核验两类文件。最终 `release-candidate.json` 使用 v3，绑定 `final-result-input.json`、`input-plan.json`、`source-lineage.json`、canonical index、`publication-catalog.json`、`query-results.json` 与 `pair/` 中的两包和查询文件。`query-results.json` 逐个保存精确 Result、内容指纹、层能力、直接/派生关联和 artifact/ordinal；不是对用户公开的 DTO。
 
-普通测试覆盖确认前零远程调用、冲突拒绝、丢失第二次登记响应后的相同输入恢复，以及直接/派生来源的错误绑定。`final-result-identity.test.mjs` 的数据库联调仅接受测试变量 `RELEASE_IDENTITY_TEST_CONN` 指向 `127.0.0.1:61432/postgres` 的任务专用合成实例；缺少变量明确 skipped。不可把业务连接放进该变量，也不能把本地联调解释为生产部署或登记授权。
-
-### 权威版本冲突的上游恢复
-
-`result versions --result-intake <verified-intake> --out-file <new-version-plan.json> --json`
-使用受保护 `CONN` 只读查询 `svc_result_identity_versions`，不会登记身份。计划写在
-intake 外，拒绝覆盖已有文件；stdout 只返回 input/plan hash、数量、路径与后继动作。
-每次最多 10000 个结果、512 个权威分页（每页最多 256 版本）；超预算整体失败，应缩小
-intake 范围。必须读取到所需最旧版本，不能把首页未显示的旧版本当作空闲。
-
-`tiangong.release.result-version-plan.v1` 绑定每个旧 UUID/version、完整 canonical/content
-hash、direct/derived、已观察最高版本及建议新版本。未占用或同内容保持版本；确切冲突
-使用 `conflict-next-major.v1`，为同 UUID 的冲突逐个分配高于已观察最高版本和本批次版本的
-新 major。登记摘要不提供语义差异，不能据此擅自断言只需 minor；原 Materialization 有
-可靠 previous manifest 时仍先执行既有 semantic/minor 规则。legacy 占用不能冒充同内容
-复用。major 用尽必须重新审视身份，不自动换 UUID。
-
-- Direct：按原物化请求增加 `--result-version-plan <file>`，重新生成完整 Result 文档、
-  URI、catalog/index/hash；若原请求生成 Model，随后重建其精确 Result 引用与版本。
-  该选项先重渲染原拟用版本核对 canonical hash；旧内容、范围不符或版本碰撞立即失败。
-  计划 hash 进入物化缓存 key、request 和 manifest，并随输出保留，不能命中旧缓存。
-- Derived：由用户显式采纳新 output version 和匹配 URI，创建新的 Transformation Draft，
-  重新 inspect/freeze/execute，然后 `materialize derived`。保留原权重/业务决定；不能把
-  Direct 的 plan 参数用于改写已冻结 Derived handoff。
-- 两条路线都重新准备 Release/Result Intake、inspect、原子 register，再 build HDF5 和两包。
-  计划是观察和提案，不是预留或登记凭证；并发再冲突时重复该上游流程，不能复用旧摘要。
-  登记响应丢失先核对/重试同一输入；同内容已登记时规划保持原版本，不自动升级。
-
-### 已登记输入的配对 Candidate v3
-
-内部 `buildFinalResultCandidate({finalInputDir, confirmInputHash, outDir, releaseVersion, tidasBin, encoder})` 重新加载 final input，并对实际 canonical bytes 重算每个登记请求；确认后生成并核验两类文件。最终 `release-candidate.json` 使用 v3，绑定 `final-result-input.json`、`input-plan.json`、`source-lineage.json`、canonical index、`publication-catalog.json`、`query-results.json` 与 `pair/` 中的两包和查询文件。`query-results.json` 逐个保存精确 Result、登记凭证、层能力、直接/派生关联和 artifact/ordinal；不是对用户公开的 DTO。
-
-`loadFinalResultCandidate` 验证 v3 manifest/hash 链、真实包和 HDF5 bytes、结果轴完整覆盖，再允许本地消费者读取。Candidate 移动目录不会改变语义绑定。身份登记是上游独立节点，Candidate 构建不连数据库。失败时不会把部分目录标为合格，也不撤销已经登记的内容；重新构建使用同一输入和新的输出目录。
+`loadFinalResultCandidate` 验证 v3 manifest/hash 链、真实包和 HDF5 bytes、结果轴完整覆盖，再允许本地消费者读取。Candidate 移动目录不会改变语义绑定。候选清单的 `validation.finalInputBinding` 记录输入校验。失败后使用同一输入和新的输出目录重试。
 
 Transformation 已能读取合格 v3 的 Result 包并核对实际 Process bytes；它的权重、共同 Calculation lineage、字段决定和授权约束不变。此能力通过 `result` CLI 命令族进入；后继使用 Publication 已实现的 `result-storage`、`result-readiness` 与 `result-publication` v2 命令族，不能把 v3 交给旧四包发布入口。
 
@@ -407,22 +375,21 @@ node workflows/release-candidate/cli.mjs result intake \
 
 legacy 父 Candidate 还必须提供 `--parent-materialization <original-materialization-dir>`；旧 Transformation output 若未带 frozen spec，显式提供 `--spec <spec-dir>`。Intake 重新执行 producer replay，核对加工后的实际 bytes 和父关联；不从文字说明建立原过程映射。真实 ZIP 成员逐项按 index 校验，原有 publication reference catalog 用于选择 Result component，Toolkit 负责完整标准闭包与 TIDAS qualification。未被 Result 引用的 Unit、Model 或其他支持内容不进入新输入；缺失依赖直接失败，不猜 latest。
 
-直接路线的层来自 producer catalog，预期方法来自同一 hash-bound source intake 的 process axis/LCIA records；不会通过读取不完整最终文档缩小期望集合。派生路线使用 producer replay 后的层/方法契约。Intake、inspect、build、verify 都不连接身份数据库；inspect 会重新核对原始 producer 证据及必要的 replay。运行时路径保存在权限受限 `runtime-locators.json`，不进入语义 input hash。
+直接路线的层来自 producer catalog，预期方法来自同一 hash-bound source intake 的 process axis/LCIA records；不会通过读取不完整最终文档缩小期望集合。派生路线使用 producer replay 后的层/方法契约。Intake、inspect、freeze、build、verify 都不连接身份数据库；inspect 会重新核对原始 producer 证据及必要的 replay。运行时路径保存在权限受限 `runtime-locators.json`，不进入语义 input hash。
 
-inspection 返回精确 hash 后，只有在身份登记获得明确授权时执行：
+使用 inspection 返回的精确 hash 冻结并构建：
 
 ```bash
-# CONN 通过受保护环境或项目 ignored .env 提供；不要放入命令参数。
-node workflows/release-candidate/cli.mjs result register \
+node workflows/release-candidate/cli.mjs result freeze \
   --result-intake <final-intake-dir> --confirm-input-sha256 <inspected-hash> \
-  --out-dir <registered-input-dir> --json
+  --out-dir <frozen-input-dir> --json
 node workflows/release-candidate/cli.mjs result build \
-  --final-input <registered-input-dir> --confirm-input-sha256 <inspected-hash> \
+  --final-input <frozen-input-dir> --confirm-input-sha256 <inspected-hash> \
   --release-version <confirmed-YYYY.MM.N> --out-dir <candidate-dir> \
   --tidas-bin <capability-complete-tidas> --hdf5-bin <release-result-hdf5> --json
 node workflows/release-candidate/cli.mjs result verify --candidate <candidate-dir> --json
 ```
 
-省略 build 的 release version 会返回两包文件名和版本确认，且不启动构建；推荐值不是确认。CONN 所指数据库必须已具备身份登记 RPC，源码开发通过不表示这些迁移已部署。版本冲突回到上游重新生成全部相关内容，不能在 Candidate 打包时改版本；响应不明只核对/重试原输入。失败保留请求凭证、成功文件和不完整目标，资格标记最后提交；不通过删除部分输出掩盖登记事实。
+省略 build 的 release version 会返回两包文件名和版本确认，且不启动构建。失败保留成功文件和不完整目标，资格标记最后提交。
 
 CLI 返回有界状态、产物路径、input hash 和下一步命令，不输出 provider 错误正文、连接串或服务 secret。`result verify` 证明本地资格；上传、readiness、审批与原子生效由后继版本化 Publication 流程负责。

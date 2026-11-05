@@ -245,7 +245,7 @@ export async function buildFinalResultCandidate({
         delegatedTo: "tidas-tools",
         outcome: "passed",
         finalResultParity: "passed",
-        identityRegistration: "verified",
+        finalInputBinding: "verified",
         reportPath: "pair/tidas-release-report.json",
         archiveReadbackReportPath: "pair/package-verification-report.json",
       },
@@ -280,7 +280,7 @@ export async function buildFinalResultCandidate({
 }
 
 // This reads immutable local qualification evidence. It grants no publication or
-// actor access; Database must validate registration/membership at publication.
+// actor access; Database must validate artifact membership at publication.
 export async function loadFinalResultCandidate(candidateDir) {
   const root = path.resolve(candidateDir);
   const candidate = await readLocalJson(root, "release-candidate.json");
@@ -293,7 +293,7 @@ export async function loadFinalResultCandidate(candidateDir) {
       candidate.validation?.delegatedTo === "tidas-tools" &&
       candidate.validation.outcome === "passed" &&
       candidate.validation.finalResultParity === "passed" &&
-      candidate.validation.identityRegistration === "verified",
+      candidate.validation.finalInputBinding === "verified",
   );
   const bound = async (ref, limit = MAX_METADATA) => {
     requireValue(ref && typeof ref.path === "string");

@@ -13,15 +13,15 @@ import {
 import { replyTemplateFor } from "../reply-template-registry.mjs";
 const exec = promisify(execFile);
 const cli = fileURLToPath(new URL("../cli.mjs", import.meta.url));
-test("Result command help identifies the sole remote mutation and remains cwd-independent", async () => {
-  for (const action of ["intake", "inspect", "register", "build", "verify"]) {
+test("Result command help describes the offline build path and remains cwd-independent", async () => {
+  for (const action of ["intake", "inspect", "freeze", "build", "verify"]) {
     const result = await exec(
       process.execPath,
       [cli, "result", action, "--help"],
       { cwd: os.tmpdir() },
     );
-    assert.match(result.stdout, /protected CONN/);
-    assert.match(result.stdout, /no publication/);
+    assert.match(result.stdout, /Inspect, freeze and build run offline/);
+    assert.match(result.stdout, /does not publish/);
     assert.match(result.stdout, /--confirm-input-sha256/);
     const template = replyTemplateFor(`result ${action}`, { ok: true });
     const body = await readFile(

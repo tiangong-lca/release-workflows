@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile, writeFile, access, cp, symlink } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { setup, registry } from "./fixtures/final-input.mjs";
+import { setup } from "./fixtures/final-input.mjs";
 import { canonicalJson } from "../lib/common.mjs";
 import {
   inspectFinalResultInput,
@@ -27,7 +27,6 @@ async function frozenInput(t) {
   await prepareFinalResultInput({
     ...input,
     confirmInputHash: plan.inputHash,
-    createAuthority: registry().createAuthority,
   });
   return {
     input,
@@ -48,10 +47,10 @@ test("frozen input reload verifies registration, selection, lineage and actual c
   assert.equal(frozen.input.results.length, 3);
   const f = path.join(input.outDir, "final-result-input.json");
   const bad = structuredClone(frozen.input);
-  bad.results[0].identityReceipt.contentHash = "0".repeat(64);
+  bad.results[0].contentHash = "0".repeat(64);
   await writeFile(f, canonicalJson(bad));
   await assert.rejects(loadFinalResultInput(input.outDir), {
-    code: "final_identity_receipt_mismatch",
+    code: "final_input_binding_invalid",
   });
   await writeFile(f, canonicalJson(frozen.input));
   const entry = frozen.index.datasets.find((e) => e.role === "result_process");
@@ -87,7 +86,7 @@ test("bounded final metadata cannot escape through a symlink", async (t) => {
   });
 });
 test(
-  "actual paired Candidate binds registered results, both ZIPs and complete query coverage",
+  "actual paired Candidate binds verified results, both ZIPs and complete query coverage",
   { skip: !process.env.RELEASE_PAIR_TIDAS_BIN },
   async (t) => {
     const { args } = await frozenInput(t);

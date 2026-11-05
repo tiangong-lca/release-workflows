@@ -12,9 +12,9 @@ whenToUpdate:
   - 当所有 Workflow 共享的证据、权限、恢复或文档规则变化时
 checkPaths:
   - workflows/**
-lastReviewedAt: 2026-11-04
-lastReviewedCommit: c73631deedc7a47cdad5feac7eff02dd46f0e032
-lastReviewedNote: "Release #115: reviewed explicit deliverable routing, bounded large Method reads and compact verified projection metadata; calculation/publication authority and frozen artifacts remain unchanged."
+lastReviewedAt: 2026-11-05
+lastReviewedCommit: e8c95247860a8d09a34bc7d485448de31f8baa4c
+lastReviewedNote: "Release #120: reviewed offline Result freeze, paired HDF5/ZIP and artifact-scoped publication handoff."
 related:
   - ../AGENTS.md
   - ../README.md
@@ -56,7 +56,7 @@ Candidate 成功冻结后不可原地修改。Publication 可规划引用完整�
 
 ## 最终结果查询编码
 
-Candidate 内的最终 Result 投影和原生 HDF5 编码器拥有生成逻辑，Worker 查询服务继续拥有读取。编码只消费冻结标准内容及精确依赖，不从父 Bundle 替换加工后数值；本地 encoding receipt 不等于配对 Candidate、身份登记或发布批准。既有 Calculation v1 bridge 在消费者迁移前保留其原契约。
+Candidate 内的最终 Result 投影和原生 HDF5 编码器拥有生成逻辑，Worker 查询服务继续拥有读取。编码只消费冻结标准内容及精确依赖，不从父 Bundle 替换加工后数值；本地 encoding receipt 不等于配对 Candidate 或发布批准。既有 Calculation v1 bridge 在消费者迁移前保留其原契约。
 
 最终 Result v3 的非公开对象上传、完整 GET 回读及 Database v2 存储登记属于
 Publication 的独立数据面 adapter；它只消费冻结 Candidate，不移动生成器、不
