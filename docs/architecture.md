@@ -18,7 +18,7 @@ checkPaths:
   - .docpact/config.yaml
   - workflows/**
 lastReviewedAt: 2026-11-05
-lastReviewedCommit: e8c95247860a8d09a34bc7d485448de31f8baa4c
+lastReviewedCommit: aa89f18f91ea58953150a61d9c587691479ca467
 lastReviewedNote: "Release #120: reviewed offline Result freeze, paired HDF5/ZIP and artifact-scoped publication handoff."
 related:
   - ../AGENTS.md

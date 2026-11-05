@@ -490,10 +490,18 @@ export async function runFinalResultPublicationCommand(
       nextActions: [],
     };
   } catch (error) {
+    const versionConflict =
+      error.code === "final_actor_request_denied" &&
+      error.details?.semanticCode === "final_result_dataset_version_conflict";
+    const reportedCode = versionConflict
+      ? "final_result_dataset_version_conflict"
+      : error.code;
     const code =
-      typeof error.code === "string" &&
-      /^(?:final_[a-z0-9_]+|output_exists|invalid_arguments)$/u.test(error.code)
-        ? error.code
+      typeof reportedCode === "string" &&
+      /^(?:final_[a-z0-9_]+|output_exists|invalid_arguments)$/u.test(
+        reportedCode,
+      )
+        ? reportedCode
         : "final_publication_command_failed";
     if (created)
       await write("failure.json", {
@@ -504,7 +512,9 @@ export async function runFinalResultPublicationCommand(
         publicationAuthorized: false,
       }).catch(() => {});
     const safe = new Error(
-      "Final Result publication command did not complete; preserve evidence and inspect the exact run before another attempt",
+      versionConflict
+        ? "A published Result already uses this dataset version for different content. Version the Result upstream and rebuild the paired Candidate."
+        : "Final Result publication command did not complete; preserve evidence and inspect the exact run before another attempt",
     );
     safe.code = code;
     safe.details = {

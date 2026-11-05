@@ -338,7 +338,7 @@ RELEASE_PAIR_TIDAS_BIN=/absolute/path/to/tidas node --test workflows/release-can
 
 `result inspect` 复核 canonical 文件、完整依赖和结构化来源，返回精确 input hash。确认该 hash 后，`result freeze` 在独立本地目录逐份复核副本，生成 `final-result-input.json`、输入计划和来源清单。每个 Result 绑定规范内容与语义依赖的指纹，不需要数据库连接或登记回执。输入格式为 v2。此前生成的 v1 Result Intake 可从原冻结 Release Intake 或已验证的 Derived Materialization 重新准备。
 
-显式使用 `result versions` 可只读查看历史全局登记占用并生成上游版本建议。该命令不参与离线出包和批次发布。若需要变更 ZIP 中的 Result 版本，先通过上游 Materialization 或 Transformation 生成新冻结内容，再重新准备、冻结与出包。
+显式使用 `result versions` 可只读查看历史全局登记占用并生成上游版本建议。该命令不参与离线出包和批次发布。对已发布的 direct Result，使用上游 Materialization 的 `--previous-manifest` 依据原版本规则分配版本。派生 Result 的版本由 Transformation 在冻结时确定。两条路线都先生成新版本的标准数据集，再重新准备、冻结并生成 HDF5 与 ZIP。
 
 ### 配对 Candidate v3
 

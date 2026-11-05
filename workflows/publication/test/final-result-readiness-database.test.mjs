@@ -849,20 +849,29 @@ test(
         activated.publicationId,
         inspected.plan.candidateHash,
       );
+      async function storeCandidate(sample) {
+        const inspected = await inspectFinalResultStorage({
+          candidateDir: sample.candidateDir,
+          targetHash: storage.store.targetHash,
+        });
+        await executeFinalResultStorage({
+          candidateDir: sample.candidateDir,
+          confirmPlanHash: inspected.planHash,
+          objectStore: storage.store,
+          registry,
+        });
+        return inspected;
+      }
       const replacement = await candidate(t, {
         amount: "5.25",
         releaseVersion: "2026.11.3",
+        previousResult: f.result,
       });
-      const replacementStorage = await inspectFinalResultStorage({
-        candidateDir: replacement.candidateDir,
-        targetHash: storage.store.targetHash,
-      });
-      await executeFinalResultStorage({
-        candidateDir: replacement.candidateDir,
-        confirmPlanHash: replacementStorage.planHash,
-        objectStore: storage.store,
-        registry,
-      });
+      assert.equal(replacement.result.uuid, f.result.uuid);
+      assert.equal(replacement.result.change, "major");
+      assert.equal(f.result.version, "01.00.000");
+      assert.equal(replacement.result.version, "02.00.000");
+      const replacementStorage = await storeCandidate(replacement);
       async function publishSample(
         sample,
         n,
@@ -920,21 +929,50 @@ test(
         (await publication.head()).publicationId,
         second.publicationId,
       );
-      const changedRow = rows.find((row) => row.uuid.endsWith("000000000098"));
-      const readAmounts = async (publicationId) => {
+      const readAmounts = async (publicationId, row) => {
         const [reply] = await runEdge([
-          { ...query(changedRow, "lci", { limit: 100 }), publicationId },
+          { ...query(row, "lci", { limit: 100 }), publicationId },
         ]);
         assert.equal(reply.status, 200);
         return reply.body.data.data.items
           .map((item) => item.amount)
           .sort((a, b) => a - b);
       };
-      assert.deepEqual(await readAmounts(second.publicationId), [-3, 5.25]);
+      assert.deepEqual(
+        await readAmounts(second.publicationId, replacement.result),
+        [-3, 5.25],
+      );
+      const [oldIdentity] = await runEdge([
+        {
+          ...query(f.result, "lci", { limit: 100 }),
+          publicationId: second.publicationId,
+        },
+      ]);
+      assert.equal(oldIdentity.status, 404);
       await verifyDownloads(
         second.publicationId,
         replacementStorage.plan.candidateHash,
       );
+      // A first-generation rebuild can be made offline, but must not replace
+      // any published version with different content, even if it is historical.
+      const conflicting = await candidate(t, {
+        amount: "6.25",
+        releaseVersion: "2026.11.6",
+      });
+      assert.equal(conflicting.result.version, f.result.version);
+      await storeCandidate(conflicting);
+      await assert.rejects(
+        publishSample(conflicting, 440, "2026.11.6"),
+        (error) =>
+          error.code === "final_actor_request_denied" &&
+          error.details?.semanticCode ===
+            "final_result_dataset_version_conflict",
+      );
+      assert.equal(
+        (await publication.head()).publicationId,
+        second.publicationId,
+      );
+      assert.equal((await publication.run(id(440))).publication, null);
       const restored = await publishSample(
         f,
         430,
@@ -950,7 +988,10 @@ test(
         (await publication.run(id(430))).publication.rollbackOfPublicationId,
         activated.publicationId,
       );
-      assert.deepEqual(await readAmounts(restored.publicationId), [-3, 4.25]);
+      assert.deepEqual(
+        await readAmounts(restored.publicationId, f.result),
+        [-3, 4.25],
+      );
       await verifyDownloads(
         restored.publicationId,
         inspected.plan.candidateHash,
@@ -964,7 +1005,7 @@ test(
         0,
       );
       t.diagnostic(
-        "Two contents for the same Result UUID and version published in separate batches and exact prior HDF5/ZIP restored by rollback; zero registry rows.",
+        "Materialization bumped the changed Result from 01.00.000 to 02.00.000 before paired build. Publication rejected historical version reuse with different content and rollback restored exact prior HDF5/ZIP. Zero registry rows.",
       );
       t.diagnostic(
         "Actual Edge v2: three Result overviews, complete paged LCI [-3,2.5,4.25], LCIA [0,42], absent LCIA, reader pin and actor RLS denials passed",

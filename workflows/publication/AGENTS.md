@@ -14,7 +14,7 @@ whenToUpdate:
 checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-05
-lastReviewedCommit: e8c95247860a8d09a34bc7d485448de31f8baa4c
+lastReviewedCommit: aa89f18f91ea58953150a61d9c587691479ca467
 lastReviewedNote: "Release #120: reviewed offline Result freeze, paired HDF5/ZIP and artifact-scoped publication handoff."
 related:
   - README.md
@@ -222,6 +222,7 @@ Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认
 - 写响应不明必须独立读取原 identity，无精确观察则停止；不自动重试批准或激活。
   历史 consumed/expired/revoked approval 和非 current publication 只恢复观察，
   不复活授权。记录失败时保留意图和已有证据，新尝试仍用原操作身份查询恢复。
+- 激活在全局发布锁内核对所有历史已发布成员。同一 Result UUID/version 的标准文档内容冲突时，回到上游分配版本并重新构建配对 Candidate。
 - 数据库激活观察不是公开读取完成；回执必须保持 `publicReadbackVerified=false`，
   不能在未通过真实 Edge/Platform/下载链路检查时宣称发布验证完成。
 

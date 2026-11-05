@@ -96,7 +96,7 @@ related:
 
 ## 身份与版本
 
-- Bundle 路线 Identity 由稳定语义输入和 recipe profile 派生，不使用随机 UUID。Derived 路线保留用户已冻结的 Transformation identity/version，不能在接收时另分配身份；跨发布冲突由后续身份登记 fail closed。
+- Bundle 路线 Identity 由稳定语义输入和 recipe profile 派生，不使用随机 UUID。Derived 路线保留用户已冻结的 Transformation identity/version，不能在接收时另分配身份；已有派生谱系内容变化时，由 Transformation 冻结新版本。Publication 激活时对照历史已发布成员校验同版本内容。
 - Generated `R(P)` UUIDv5 name 只包含 `U(P)` UUID 和 reference flow UUID，不包含 schema/version 字段，也不依赖 `M(P)` UUID、Result profile、方法集或结果内容；算法与 namespace 只保存在外层 identity evidence。
 - 版本规划必须考虑 semantic hash、version-significant hash 和引用版本。
 - 权威版本冲突可显式消费 Candidate `result versions` 的 `--result-version-plan`：先重渲染核对原版本完整内容 hash，再应用 direct 新 major，重新生成 Result 与 Model 引用。计划 hash 进入缓存 key/request/manifest，原文件不可修改；它不是登记凭证。Derived 只接受生产者重新冻结的版本，不能在物化阶段套用版本方案。

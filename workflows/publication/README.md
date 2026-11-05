@@ -712,6 +712,8 @@ approve/activate 都不盲目重试写入：先查询原审批或执行身份；
 意图。原审批已使用/撤回/过期，或发布已被替换/撤回时，只返回历史状态，不恢复它。
 原执行已提交后，更新会话仍可恢复读取原记录；不伪称更新后的会话执行了旧操作。
 
+激活在切换 current 前核对所有历史已发布批次。相同 Result UUID/version 若已有不同标准文档内容，返回 `final_result_dataset_version_conflict`。先按上游版本规则重新生成数据集和配对 Candidate，再创建发布计划。同内容可复用版本，回滚继续绑定原 Candidate 和选择。
+
 激活后的回执 `publicReadbackVerified=false`，只证明独立查询确认了数据库发布状态。
 它不能替代下面独立的公开回读，浏览器交互验收另行执行。
 

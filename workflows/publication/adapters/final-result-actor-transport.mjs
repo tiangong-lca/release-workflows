@@ -21,6 +21,7 @@ const DENIALS = new Set([
   "approval_invalid",
   "approval_context_changed",
   "rollback_scope_mismatch",
+  "final_result_dataset_version_conflict",
   "publication_conflict",
   "final_result_readback_conflict",
   "final_result_readback_changed",
