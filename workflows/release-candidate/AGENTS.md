@@ -92,7 +92,7 @@ related:
 - 不从 mutable `latest` 补齐 graph、exchange、provider、method 或 version。
 - 不在 Package build 中生成或修改 Result Process、LifecycleModel、identity 或 dataset version。
 - 不把 partial closure 或未通过必要验证的 package 冻结为 Candidate。
-- 不把 validation error 降级为 warning，不提供忽略错误继续打包的开关，也不把 mutable `latest` 作为替换候选自动应用。
+- 不把 validation error 降级为 warning，不提供忽略错误继续打包的开关，也不把 mutable `latest` 作为替换候选自动应用。例外：最终 Result 投影中 reference Flow Property 或参考 Unit 的 `meanValue ≠ 1` 属于非致命数据质量告警，只在 CLI 输出后继续；告警不得写入冻结产物或改变 schema/hash，其余 validation error 仍必须失败。
 - 不直接从失败 Candidate 删除文件；排除只能生成新的 immutable scope decision、Package Plan 和 Candidate。
 - 不执行 prepare、upload、approve、publish、supersede、unpublish 或撤回等远程发布动作；这些动作属于 Publication Workflow。
 - 不在 Dataset Transformation 或 Publication 中原地修改本 Workflow 冻结的 Candidate。
@@ -112,6 +112,7 @@ Release Candidate 只有在以下条件同时成立时完成：
 
 - `lib/final-result-projection.mjs` 从冻结 Result 和精确 Flow/Flow Property/Unit Group/LCIA Method 提取查询视图。参考 exchange 按内部 ID 单独表达，其余只接受 Elementary Flow；复合键必须保留方向、位置、function type 和精确单位身份。
 - 当前投影 profile 要求每条 exchange 的有效 `resultingAmount`（包括零），不提供 `meanAmount` 回退；LCIA 读取最终 `meanAmount`。不归一化、不换算、不重新特征化；缺失层/方法与合法零值分开。
+- reference Flow Property 或参考 Unit 的 `meanValue ≠ 1` 只产生确定性、去重且有上限的 CLI 告警（`nonunit_reference_property`、`nonunit_reference_unit`），绝不换算或归一化数值；告警不进入投影对象、冻结输入、encoding receipt、parity 或 Candidate schema，`result verify` 不重算告警。
 - `lib/final-result-artifacts.mjs` 按层/方法集分组，逐结果 spool；CSR LCI、dense LCIA 与索引均由 Candidate 拥有的 `native/` 工具生成/回读。索引和单行/总文件预算不可绕过，零行及负值保留，失败不能产生合格 Candidate。
 - 普通文档/投影保持 8 MiB，LCIA Method 文档统一为 64 MiB，索引与保留投影元数据保持 128 MiB；完整身份登记计划单独 512 MiB，所有计划读取入口一致，单个登记请求仍为 8 MiB。完整闭包逐份验证，只有 Result exchange 引用的 Flow 进入投影缓存；Method 缓存只保留必要元数据与完整内容 hash；ZIP 仍保留全文，不能按 Result 重复复制大型 factors。资源错误必须区分文档与元数据，保留实际字节、上限、路径/身份和恢复指导。
 - encoding receipt 必须显式 `candidateQualified=false` 和 `publicationAuthorized=false`；只有后续独立 ZIP 一致性、身份权威登记及配对 Candidate 门禁成立才能取得相应资格。不能通过 v1 Calculation 绑定把新 Result 轴伪装成 source Unit 轴。

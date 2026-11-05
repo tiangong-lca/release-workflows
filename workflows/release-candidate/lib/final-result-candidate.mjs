@@ -257,7 +257,7 @@ export async function buildFinalResultCandidate({
     );
     await loadFinalResultCandidate(staging);
     await commitFrozenDirectory(staging, target, "release-candidate.json");
-    return { path: target, candidate };
+    return { path: target, candidate, warnings: frozen.warnings };
   } catch (error) {
     await rm(path.join(staging, "release-candidate.json"), { force: true });
     await writeFile(

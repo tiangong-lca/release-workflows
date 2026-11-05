@@ -78,6 +78,12 @@ function versionSuggestion() {
   const value = Object.fromEntries(parts.map((p) => [p.type, p.value]));
   return `${value.year}.${value.month}.0`;
 }
+// Warnings are observational: keep the existing payload shape byte-for-byte
+// when there is nothing to report.
+export function withWarnings(payload, warnings) {
+  return warnings?.length ? { ...payload, warnings } : payload;
+}
+
 export async function runFinalResultCommand(
   action,
   options,
@@ -118,25 +124,28 @@ export async function runFinalResultCommand(
       outDir: options["out-dir"],
       ...toolOptions,
     });
-    return {
-      ...base,
-      outcome: "final_result_intake_prepared",
-      completeness: "producer-and-standard-closure-verified",
-      resultIntake: built.path,
-      inputHash: built.manifest.inputHash,
-      identityRegistered: false,
-      artifacts: {
-        manifest: path.join(built.path, "final-result-intake.json"),
-        inspection: path.join(built.path, "input-inspection.json"),
+    return withWarnings(
+      {
+        ...base,
+        outcome: "final_result_intake_prepared",
+        completeness: "producer-and-standard-closure-verified",
+        resultIntake: built.path,
+        inputHash: built.manifest.inputHash,
+        identityRegistered: false,
+        artifacts: {
+          manifest: path.join(built.path, "final-result-intake.json"),
+          inspection: path.join(built.path, "input-inspection.json"),
+        },
+        nextActions: [
+          next(
+            "inspect_final_input",
+            "Review exact contents before separately authorizing identity registration",
+            ["result", "inspect", "--result-intake", built.path, "--json"],
+          ),
+        ],
       },
-      nextActions: [
-        next(
-          "inspect_final_input",
-          "Review exact contents before separately authorizing identity registration",
-          ["result", "inspect", "--result-intake", built.path, "--json"],
-        ),
-      ],
-    };
+      built.warnings,
+    );
   }
   if (action === "versions") {
     required(options, ["result-intake", "out-file"]);
@@ -156,41 +165,44 @@ export async function runFinalResultCommand(
     });
     await writeFile(output, canonicalJson(plan), { flag: "wx", mode: 0o600 });
     const conflicts = plan.entries.filter((e) => e.reason === "conflict");
-    return {
-      ...base,
-      outcome: "final_result_versions_planned",
-      completeness: "advisory-occupancy-snapshot",
-      inputHash: plan.inputHash,
-      planHash: hashJson(plan),
-      resultCount: plan.entries.length,
-      conflictCount: conflicts.length,
-      identityRegistered: false,
-      artifacts: { versionPlan: output },
-      nextActions: conflicts.length
-        ? [
-            {
-              kind: "regenerate_upstream",
-              description:
-                "Direct: rerun the same Materialization request with --result-version-plan and this file. Derived: explicitly adopt toVersion and its matching URI in a new Transformation Draft, then inspect/freeze/execute and materialize derived. Rebuild Result Intake, inspect, register and build; never edit frozen artifacts or relabel existing HDF5/ZIP.",
-              versionPlan: output,
-              argv: conflicts.some((e) => e.relationKind === "derived")
-                ? ["node", TRANSFORM, "dsl", "inspect", "--help"]
-                : ["node", MATERIALIZE, "materialize", "--help"],
-              command: command(
-                conflicts.some((e) => e.relationKind === "derived")
+    return withWarnings(
+      {
+        ...base,
+        outcome: "final_result_versions_planned",
+        completeness: "advisory-occupancy-snapshot",
+        inputHash: plan.inputHash,
+        planHash: hashJson(plan),
+        resultCount: plan.entries.length,
+        conflictCount: conflicts.length,
+        identityRegistered: false,
+        artifacts: { versionPlan: output },
+        nextActions: conflicts.length
+          ? [
+              {
+                kind: "regenerate_upstream",
+                description:
+                  "Direct: rerun the same Materialization request with --result-version-plan and this file. Derived: explicitly adopt toVersion and its matching URI in a new Transformation Draft, then inspect/freeze/execute and materialize derived. Rebuild Result Intake, inspect, register and build; never edit frozen artifacts or relabel existing HDF5/ZIP.",
+                versionPlan: output,
+                argv: conflicts.some((e) => e.relationKind === "derived")
                   ? ["node", TRANSFORM, "dsl", "inspect", "--help"]
                   : ["node", MATERIALIZE, "materialize", "--help"],
+                command: command(
+                  conflicts.some((e) => e.relationKind === "derived")
+                    ? ["node", TRANSFORM, "dsl", "inspect", "--help"]
+                    : ["node", MATERIALIZE, "materialize", "--help"],
+                ),
+              },
+            ]
+          : [
+              next(
+                "inspect_final_input",
+                "Occupancy is advisory; atomic registration still rechecks exact content",
+                ["result", "inspect", "--result-intake", intake.root, "--json"],
               ),
-            },
-          ]
-        : [
-            next(
-              "inspect_final_input",
-              "Occupancy is advisory; atomic registration still rechecks exact content",
-              ["result", "inspect", "--result-intake", intake.root, "--json"],
-            ),
-          ],
-    };
+            ],
+      },
+      intake.warnings,
+    );
   }
   if (action === "inspect" || action === "register") {
     required(options, [
@@ -206,71 +218,77 @@ export async function runFinalResultCommand(
       ).length,
     };
     if (action === "inspect")
-      return {
-        ...base,
-        outcome: "final_result_input_inspected",
-        completeness: "exact-input-verified",
-        ...counts,
-        resultIntake: intake.root,
-        inputHash: intake.plan.inputHash,
-        identityRegistered: false,
-        artifacts: {
-          inspection: path.join(intake.root, "input-inspection.json"),
+      return withWarnings(
+        {
+          ...base,
+          outcome: "final_result_input_inspected",
+          completeness: "exact-input-verified",
+          ...counts,
+          resultIntake: intake.root,
+          inputHash: intake.plan.inputHash,
+          identityRegistered: false,
+          artifacts: {
+            inspection: path.join(intake.root, "input-inspection.json"),
+          },
+          nextActions: [
+            next(
+              "register_final_identity",
+              "Requires explicit authorization: claims immutable identities in the database configured by CONN",
+              [
+                "result",
+                "register",
+                "--result-intake",
+                intake.root,
+                "--confirm-input-sha256",
+                intake.plan.inputHash,
+                "--out-dir",
+                `${intake.root}.registered`,
+                "--json",
+              ],
+            ),
+          ],
         },
-        nextActions: [
-          next(
-            "register_final_identity",
-            "Requires explicit authorization: claims immutable identities in the database configured by CONN",
-            [
-              "result",
-              "register",
-              "--result-intake",
-              intake.root,
-              "--confirm-input-sha256",
-              intake.plan.inputHash,
-              "--out-dir",
-              `${intake.root}.registered`,
-              "--json",
-            ],
-          ),
-        ],
-      };
+        intake.warnings,
+      );
     const frozen = await prepareFinalResultInput({
       ...intake,
       confirmInputHash: options["confirm-input-sha256"],
       outDir: options["out-dir"],
       createAuthority: createIdentityAuthority,
     });
-    return {
-      ...base,
-      outcome: "final_result_identities_registered",
-      completeness: "all-identities-registered-input-frozen",
-      ...counts,
-      finalInput: frozen.path,
-      inputHash: frozen.input.inputHash,
-      identityRegistered: true,
-      artifacts: {
-        finalInput: path.join(frozen.path, "final-result-input.json"),
-        receipts: path.join(frozen.path, "registration-receipts.ndjson"),
+    return withWarnings(
+      {
+        ...base,
+        outcome: "final_result_identities_registered",
+        completeness: "all-identities-registered-input-frozen",
+        ...counts,
+        finalInput: frozen.path,
+        inputHash: frozen.input.inputHash,
+        identityRegistered: true,
+        artifacts: {
+          finalInput: path.join(frozen.path, "final-result-input.json"),
+          receipts: path.join(frozen.path, "registration-receipts.ndjson"),
+        },
+        nextActions: [
+          next(
+            "build_paired_candidate",
+            "Review the release filename version before building a local Candidate",
+            [
+              "result",
+              "build",
+              "--final-input",
+              frozen.path,
+              "--confirm-input-sha256",
+              frozen.input.inputHash,
+              "--out-dir",
+              `${frozen.path}.candidate`,
+              "--json",
+            ],
+          ),
+        ],
       },
-      nextActions: [
-        next(
-          "build_paired_candidate",
-          "Review the release filename version before building a local Candidate",
-          [
-            "result",
-            "build",
-            "--final-input",
-            frozen.path,
-            "--confirm-input-sha256",
-            frozen.input.inputHash,
-            "--out-dir",
-            `${frozen.path}.candidate`,
-            "--json",
-          ],
-        ),
-      ],
-    };
+      frozen.warnings,
+    );
   }
   if (action === "build") {
     required(options, ["final-input", "confirm-input-sha256", "out-dir"]);
@@ -320,28 +338,31 @@ export async function runFinalResultCommand(
       encoder: options["hdf5-bin"],
       ...toolOptions,
     });
-    return {
-      ...base,
-      outcome: "paired_result_candidate_built",
-      completeness: "registered-content-and-paired-files-qualified",
-      candidate: built.path,
-      inputHash: built.candidate.inputHash,
-      releaseVersion: built.candidate.releaseVersion,
-      packageCount: built.candidate.packages.length,
-      queryArtifactCount: built.candidate.queryArtifacts.length,
-      candidateQualified: true,
-      artifacts: {
-        candidate: path.join(built.path, "release-candidate.json"),
-        queryResults: path.join(built.path, "query-results.json"),
+    return withWarnings(
+      {
+        ...base,
+        outcome: "paired_result_candidate_built",
+        completeness: "registered-content-and-paired-files-qualified",
+        candidate: built.path,
+        inputHash: built.candidate.inputHash,
+        releaseVersion: built.candidate.releaseVersion,
+        packageCount: built.candidate.packages.length,
+        queryArtifactCount: built.candidate.queryArtifacts.length,
+        candidateQualified: true,
+        artifacts: {
+          candidate: path.join(built.path, "release-candidate.json"),
+          queryResults: path.join(built.path, "query-results.json"),
+        },
+        nextActions: [
+          next(
+            "verify_paired_candidate",
+            "Recheck the immutable files before another workflow consumes them",
+            ["result", "verify", "--candidate", built.path, "--json"],
+          ),
+        ],
       },
-      nextActions: [
-        next(
-          "verify_paired_candidate",
-          "Recheck the immutable files before another workflow consumes them",
-          ["result", "verify", "--candidate", built.path, "--json"],
-        ),
-      ],
-    };
+      built.warnings,
+    );
   }
   required(options, ["candidate"]);
   const checked = await loadFinalResultCandidate(options.candidate);

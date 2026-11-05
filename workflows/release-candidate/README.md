@@ -302,6 +302,8 @@ Candidate v2 在 canonical bytes 仍可验证时生成 `publication-catalog.json
 
 内部 `buildFinalResultArtifacts({canonicalRoot, index, results, outDir, encoder})` 从已冻结 canonical index 的真实 bytes 提取 Result；`results` 显式给出 UUID/version、layer、expectedMethods、direct/derived 及精确 sources。每个文件重新检查大小、SHA-256 和 canonical content hash，单位和指标仅从冻结依赖解析。v1 profile 要求 `resultingAmount`，缺失/无效最终值会失败，不回退旧 `meanAmount`。
 
+reference Flow Property 或参考 Unit 的 `meanValue ≠ 1` 不再阻断：投影记录 `nonunit_reference_property` / `nonunit_reference_unit` 告警，按 Result+Flow 去重、排序并限制 20 条（超出时追加 `warnings_truncated`），仅在 CLI JSON 与人类输出中呈现。告警不进入 `input-plan.json`、冻结输入、encoding receipt、parity 或 Candidate schema，不改变任何 hash，也不换算或归一化数值；非法或非有限的 `meanValue` 仍然失败；`result verify` 不重算告警。
+
 按能力/方法集分别生成 `tiangong.query-artifact.v2`：`results.json.gz` 使用最终 Result 身份，`inventory-items.json.gz` 固定完整清单键，`impacts.json.gz` 保存精确指标；`lci.h5` 为 uint64 CSR 索引及 float64 值，`lcia.h5` 为按行分块 float64 矩阵。LCI-only 不生成 LCIA 文件。每组 manifest 绑定输入及全部文件 hash/size。
 
 执行 `pnpm run native:build` 构建 Release 自有工具；内部调用通过 `RELEASE_HDF5_BIN` 或 `encoder` 显式指定二进制。`native/Cargo.lock` 锁定依赖；使用 [hdf5 0.8.1](https://docs.rs/crate/hdf5/0.8.1) 的静态 HDF5/zlib，构建需要 Rust/CMake。`pnpm run prepush:gate` 验证 Rust 格式/Clippy、构建、领域样本和实际 HDF5 回读；CI 原生样本覆盖 Linux x64、Windows x64、macOS ARM64。
@@ -383,6 +385,8 @@ Transformation 已能读取合格 v3 的 Result 包并核对实际 Process bytes
 Result-only Materialization 的 Catalog 使用 JCS 内容 hash；既有 `resolved-one-hop-aggregated-background.v1` Model producer 使用 canonical 文件字节 hash（含末尾换行）。消费者按明确 producer profile 校验对应域，不改写已冻结 Manifest，也不接受任意 hash 回退。
 
 直接结果先复用 `intake prepare` 补齐冻结的 LCIA Method Flow 依赖；它接受 Result-only Materialization，不要求虚构 Model。随后使用新路线：
+
+`result intake`/`inspect`/`versions`/`register`/`build` 的 JSON 仅在存在数据质量告警时附带 `warnings`，人类输出在 `Warnings:` 下列出；告警不阻断，也不写入冻结产物，`verify` 不重算。
 
 ```bash
 node workflows/release-candidate/cli.mjs result intake \

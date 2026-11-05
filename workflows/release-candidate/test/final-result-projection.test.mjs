@@ -5,11 +5,13 @@ import {
   createFrozenDependencyResolver,
   createFrozenDependencyStore,
   projectFinalResult,
+  normalizeWarnings,
   inventoryKey,
+  MAX_PROJECTION_WARNINGS,
 } from "../lib/final-result-projection.mjs";
 
 import { fixture, id, ref, version } from "./fixtures/final-result.mjs";
-function project(f) {
+function project(f, warningSink = null) {
   return projectFinalResult({
     ...f,
     identity: {
@@ -23,6 +25,7 @@ function project(f) {
         canonicalContentHash: hashJson(record.document),
       })),
     ),
+    warningSink,
   });
 }
 function rejects(mutator, code) {
@@ -135,10 +138,6 @@ test("unknown/product inventory, duplicate keys and unresolved references fail",
 });
 
 test("units are resolved from exact frozen dependencies, ambiguous references rejected", () => {
-  rejects((f) => {
-    f.dependencies[3].document.unitGroupDataSet.units.unit[0].meanValue =
-      "1000";
-  }, "nonunit_reference_unit");
   rejects((f) => {
     const units = f.dependencies[3].document.unitGroupDataSet.units.unit;
     units.push(structuredClone(units[0]));
@@ -269,4 +268,63 @@ test("large Method factors retain full identity binding without repeated documen
     project(f).semanticDependencies,
     compact.semanticDependencies,
   );
+});
+
+test("non-unit reference property and unit are warnings, not projection changes", () => {
+  const f = fixture();
+  f.dependencies[0].document.flowDataSet.flowProperties.flowProperty[0].meanValue =
+    "2";
+  f.dependencies[3].document.unitGroupDataSet.units.unit[0].meanValue = "1000";
+  const warnings = [];
+  const result = project(f, (record) => warnings.push(record));
+  const normalized = normalizeWarnings(warnings);
+  assert.deepEqual([...new Set(normalized.map((w) => w.code))].sort(), [
+    "nonunit_reference_property",
+    "nonunit_reference_unit",
+  ]);
+  assert.ok(
+    normalized.some(
+      (w) =>
+        w.code === "nonunit_reference_property" &&
+        /has meanValue 2/u.test(w.message),
+    ),
+  );
+  assert.ok(
+    normalized.every((w) => /kept as-is without conversion/u.test(w.message)),
+  );
+  assert.equal(Object.hasOwn(result, "warnings"), false);
+  assert.deepEqual(result, project(f));
+});
+
+test("clean fixture emits no warnings", () => {
+  const warnings = [];
+  project(fixture(), (record) => warnings.push(record));
+  assert.deepEqual(normalizeWarnings(warnings), []);
+});
+
+test("warnings are deduplicated, sorted and bounded", () => {
+  const duplicate = { code: "nonunit_reference_property", message: "same" };
+  assert.deepEqual(normalizeWarnings([duplicate, duplicate]), [duplicate]);
+  const records = Array.from(
+    { length: MAX_PROJECTION_WARNINGS + 5 },
+    (_, i) => ({
+      code: "nonunit_reference_property",
+      message: `warning ${String(i).padStart(2, "0")}`,
+    }),
+  );
+  const normalized = normalizeWarnings(records);
+  assert.equal(normalized.length, MAX_PROJECTION_WARNINGS + 1);
+  assert.equal(normalized.at(-1).code, "warnings_truncated");
+  assert.match(normalized.at(-1).message, /5 additional/u);
+  assert.deepEqual(
+    normalized.slice(0, 2).map((w) => w.message),
+    ["warning 00", "warning 01"],
+  );
+});
+
+test("malformed reference meanValue remains fatal", () => {
+  rejects((f) => {
+    f.dependencies[0].document.flowDataSet.flowProperties.flowProperty[0].meanValue =
+      "NaN";
+  }, "invalid_final_amount");
 });

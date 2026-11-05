@@ -114,6 +114,7 @@ export function projectFinalResult({
   layer,
   expectedMethods,
   resolveDependency,
+  warningSink = null,
 }) {
   requireValue(["lci", "lci-lcia"].includes(layer), "invalid_layer");
   requireValue(Array.isArray(expectedMethods), "expected_methods_required");
@@ -122,6 +123,7 @@ export function projectFinalResult({
     "dependency_resolver_required",
   );
   const key = identityKey("process", identity?.uuid, identity?.version);
+  const sink = typeof warningSink === "function" ? warningSink : null;
   const process = document?.processDataSet;
   requireValue(
     process?.processInformation?.dataSetInformation?.[
@@ -191,7 +193,15 @@ export function projectFinalResult({
     const value = finite(exchange.resultingAmount, "resultingAmount");
     const flowRef = exchange.referenceToFlowDataSet;
     const flow = resolve("flow", flowRef).flowDataSet;
-    const unit = flowUnit(flow, resolve);
+    const unit = flowUnit(flow, resolve, {
+      sink,
+      resultKey: key,
+      flowKey: identityKey(
+        "flow",
+        flowRef?.["@refObjectId"],
+        flowRef?.["@version"],
+      ),
+    });
     const row = {
       flowName: localizedText(
         flow.flowInformation?.dataSetInformation?.name?.baseName,
@@ -317,7 +327,52 @@ export function inventoryKey(row) {
   ]);
 }
 
-function flowUnit(flow, resolve) {
+export const MAX_PROJECTION_WARNINGS = 20;
+
+// Non-unit references are reported, never converted: the frozen amounts stay
+// exactly as produced. Warnings are observational and never enter hashed or
+// persisted projection fields.
+export function normalizeWarnings(records) {
+  const seen = new Set();
+  const unique = [];
+  for (const record of records ?? []) {
+    if (
+      !record ||
+      typeof record.code !== "string" ||
+      typeof record.message !== "string"
+    )
+      continue;
+    const key = canonicalJson([record.code, record.message]);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push({ code: record.code, message: record.message });
+  }
+  unique.sort(
+    (a, b) => compare(a.code, b.code) || compare(a.message, b.message),
+  );
+  if (unique.length <= MAX_PROJECTION_WARNINGS) return unique;
+  return [
+    ...unique.slice(0, MAX_PROJECTION_WARNINGS),
+    {
+      code: "warnings_truncated",
+      message: `${unique.length - MAX_PROJECTION_WARNINGS} additional non-unit reference warnings omitted`,
+    },
+  ];
+}
+
+function referenceKey(ref) {
+  return `${String(ref?.["@refObjectId"] ?? "").toLowerCase()}@${ref?.["@version"] ?? ""}`;
+}
+
+function warnNonUnit(context, code, detail) {
+  if (!context?.sink) return;
+  context.sink({
+    code,
+    message: `Result ${context.resultKey}: flow ${context.flowKey} ${detail} (expected 1); final amounts are kept as-is without conversion`,
+  });
+}
+
+function flowUnit(flow, resolve, context) {
   const propertyId = scalarId(
     flow.flowInformation?.quantitativeReference
       ?.referenceToReferenceFlowProperty,
@@ -326,14 +381,21 @@ function flowUnit(flow, resolve) {
     array(flow.flowProperties?.flowProperty),
     propertyId,
   );
-  requireValue(
-    finite(property.meanValue, "reference property meanValue") === 1,
-    "nonunit_reference_property",
+  const meanValue = finite(property.meanValue, "reference property meanValue");
+  if (meanValue !== 1)
+    warnNonUnit(
+      context,
+      "nonunit_reference_property",
+      `reference flow property ${referenceKey(property.referenceToFlowPropertyDataSet)} has meanValue ${meanValue}`,
+    );
+  return propertyUnit(
+    property.referenceToFlowPropertyDataSet,
+    resolve,
+    context,
   );
-  return propertyUnit(property.referenceToFlowPropertyDataSet, resolve);
 }
 
-function propertyUnit(ref, resolve) {
+function propertyUnit(ref, resolve, context) {
   const document = resolve("flowproperty", ref).flowPropertyDataSet;
   const groupRef =
     document.flowPropertiesInformation?.quantitativeReference
@@ -343,10 +405,13 @@ function propertyUnit(ref, resolve) {
     group.unitGroupInformation?.quantitativeReference?.referenceToReferenceUnit,
   );
   const unit = exactlyOne(array(group.units?.unit), unitId);
-  requireValue(
-    finite(unit.meanValue, "reference unit meanValue") === 1,
-    "nonunit_reference_unit",
-  );
+  const meanValue = finite(unit.meanValue, "reference unit meanValue");
+  if (meanValue !== 1)
+    warnNonUnit(
+      context,
+      "nonunit_reference_unit",
+      `unit group ${referenceKey(groupRef)} reference unit ${unitId} has meanValue ${meanValue}`,
+    );
   return {
     flowPropertyId: ref["@refObjectId"].toLowerCase(),
     flowPropertyVersion: ref["@version"],

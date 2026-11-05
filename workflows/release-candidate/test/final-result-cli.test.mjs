@@ -6,7 +6,10 @@ import { fileURLToPath } from "node:url";
 import { mkdtemp, access, rm, readFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { finalResultFailure } from "../lib/final-result-command.mjs";
+import {
+  finalResultFailure,
+  withWarnings,
+} from "../lib/final-result-command.mjs";
 import { replyTemplateFor } from "../reply-template-registry.mjs";
 const exec = promisify(execFile);
 const cli = fileURLToPath(new URL("../cli.mjs", import.meta.url));
@@ -90,4 +93,14 @@ test("Result error DTO strips private provider content and preserves exact local
   assert.equal(r.details.retainedInput, "/tmp/exact-input");
   assert.ok(!JSON.stringify(r).includes("secret-canary"));
   assert.match(r.message, /identical content/);
+});
+test("Result payloads gain warnings only when present", () => {
+  const base = { outcome: "x" };
+  assert.equal(withWarnings(base, []), base);
+  assert.equal(withWarnings(base, undefined), base);
+  assert.equal(Object.hasOwn(withWarnings(base, []), "warnings"), false);
+  assert.deepEqual(withWarnings(base, [{ code: "c", message: "m" }]), {
+    outcome: "x",
+    warnings: [{ code: "c", message: "m" }],
+  });
 });

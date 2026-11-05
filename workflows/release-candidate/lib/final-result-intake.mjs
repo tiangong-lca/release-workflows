@@ -25,6 +25,7 @@ import {
 import { successful } from "./final-result-pair.mjs";
 import { buildPublicationCatalog } from "./publication-catalog.mjs";
 import { inspectFinalResultInput } from "./final-result-input.mjs";
+import { normalizeWarnings } from "./final-result-projection.mjs";
 import { frozenDocument } from "./final-result-artifacts.mjs";
 import {
   readLocalJson,
@@ -388,11 +389,13 @@ export async function prepareFinalResultIntake({
     const index = buildIndex(selected);
     const indexPath = path.join(staging, "canonical-dataset-index.json");
     await writeFile(indexPath, canonicalJson(index), { flag: "wx" });
+    const warnings = [];
     const plan = await inspectFinalResultInput({
       canonicalRoot,
       index,
       results: upstream.results,
       materializationEvidence: upstream.evidence,
+      warningSink: (record) => warnings.push(record),
     });
     checkBudget(
       "input_plan",
@@ -473,7 +476,11 @@ export async function prepareFinalResultIntake({
       { flag: "wx" },
     );
     await commitFrozenDirectory(staging, target, "final-result-intake.json");
-    return { path: target, manifest };
+    return {
+      path: target,
+      manifest,
+      warnings: normalizeWarnings(warnings),
+    };
   } catch (error) {
     await writeFile(
       path.join(staging, "failed-intake.json"),
@@ -517,11 +524,13 @@ export async function loadFinalResultIntake(intakeDir) {
       hashJson(results) === manifest.selectionHash,
   );
   const canonicalRoot = path.join(root, "canonical");
+  const warnings = [];
   const plan = await inspectFinalResultInput({
     canonicalRoot,
     index,
     results,
     materializationEvidence: evidence,
+    warningSink: (record) => warnings.push(record),
   });
   requireValue(
     hashJson(plan) === manifest.inspectionHash &&
@@ -548,5 +557,6 @@ export async function loadFinalResultIntake(intakeDir) {
     results,
     materializationEvidence: evidence,
     plan,
+    warnings: normalizeWarnings(warnings),
   };
 }
