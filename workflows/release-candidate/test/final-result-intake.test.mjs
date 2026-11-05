@@ -259,10 +259,10 @@ test(
       { code: "invalid_arguments" },
     );
 
-    assert.equal(inspected.nextActions[0].kind, "register_final_identity");
+    assert.equal(inspected.nextActions[0].kind, "freeze_final_input");
     await assert.rejects(
       runFinalResultCommand(
-        "register",
+        "freeze",
         {
           "result-intake": built.path,
           "confirm-input-sha256": "0".repeat(64),
@@ -276,26 +276,60 @@ test(
       loaded.index.datasets.some((e) => e.uuid === f.unused.uuid),
       false,
     );
-    assert.equal(loaded.plan.registrations.length, 2);
+    assert.equal(loaded.plan.content.length, 2);
     assert.ok(loaded.results.every((r) => r.expectedMethods.length === 1));
-    const identity = await prepareFinalResultInput({
-      ...loaded,
-      confirmInputHash: loaded.plan.inputHash,
-      outDir: path.join(f.root, "registered"),
-      createAuthority: registry().createAuthority,
-    });
-    const candidate = await buildFinalResultCandidate({
-      finalInputDir: identity.path,
-      confirmInputHash: identity.input.inputHash,
-      outDir: path.join(f.root, "candidate"),
-      releaseVersion: "2026.11.0",
-      tidasBin: process.env.RELEASE_PAIR_TIDAS_BIN,
-      encoder: fileURLToPath(
-        new URL("../native/target/debug/release-result-hdf5", import.meta.url),
-      ),
-    });
-    assert.equal(candidate.candidate.candidateQualified, true);
-    assert.equal(candidate.candidate.publicationAuthorized, false);
+    const identity = await runFinalResultCommand(
+      "freeze",
+      {
+        "result-intake": built.path,
+        "confirm-input-sha256": loaded.plan.inputHash,
+        "out-dir": path.join(f.root, "frozen"),
+      },
+      {
+        env: { CONN: "not-a-database-connection" },
+        createIdentityAuthority: () =>
+          assert.fail("offline freeze must not create an authority"),
+      },
+    );
+    assert.equal(identity.identityRegistered, false);
+    const candidatePath = path.join(f.root, "candidate");
+    const builtCli = JSON.parse(
+      (
+        await execFileAsync(
+          process.execPath,
+          [
+            cli,
+            "result",
+            "build",
+            "--final-input",
+            identity.finalInput,
+            "--confirm-input-sha256",
+            identity.inputHash,
+            "--out-dir",
+            candidatePath,
+            "--release-version",
+            "2026.11.0",
+            "--tidas-bin",
+            process.env.RELEASE_PAIR_TIDAS_BIN,
+            "--hdf5-bin",
+            fileURLToPath(
+              new URL(
+                "../native/target/debug/release-result-hdf5",
+                import.meta.url,
+              ),
+            ),
+            "--json",
+          ],
+          {
+            cwd: os.tmpdir(),
+            env: { ...process.env, CONN: "not-a-database-connection" },
+          },
+        )
+      ).stdout,
+    );
+    assert.equal(builtCli.candidateQualified, true);
+    assert.equal(builtCli.publicationAuthorized, false);
+    const candidate = { path: builtCli.candidate };
     const inputs = loaded.results.map((r) => `process:${r.uuid}@${r.version}`);
     const output = id(220);
     const draft = {
@@ -414,7 +448,6 @@ test(
       ...derived,
       confirmInputHash: derived.plan.inputHash,
       outDir: path.join(f.root, "derived-registered"),
-      createAuthority: derivedRegistry.createAuthority,
     });
     const newCandidate = await buildFinalResultCandidate({
       finalInputDir: registered.path,
@@ -501,15 +534,8 @@ test(
       [inputs[1]]: 0.75,
     };
     const changed = await regenerate(changedDraft, "changed");
-    await assert.rejects(
-      prepareFinalResultInput({
-        ...changed.intake,
-        confirmInputHash: changed.intake.plan.inputHash,
-        outDir: path.join(f.root, "conflicting-input"),
-        createAuthority: derivedRegistry.createAuthority,
-      }),
-      { code: "final_input_version_occupied" },
-    );
+    const historical = derivedRegistry.createAuthority();
+    await historical.register(derived.plan.content[0]);
     const allocation = await planFinalResultVersions({
       inputPlan: changed.intake.plan,
       createAuthority: derivedRegistry.createAuthority,
@@ -528,7 +554,6 @@ test(
       ...regenerated.intake,
       confirmInputHash: regenerated.intake.plan.inputHash,
       outDir: path.join(f.root, "reversioned-input"),
-      createAuthority: derivedRegistry.createAuthority,
     });
     const newPair = await buildFinalResultCandidate({
       finalInputDir: newInput.path,
@@ -560,7 +585,7 @@ test(
         .publicationAndOwnership["common:dataSetVersion"],
       "02.00.000",
     );
-    assert.equal(derivedRegistry.claims.size, 2);
+    assert.equal(derivedRegistry.claims.size, 1);
     // Earlier frozen inputs remain valid and retain their old identity/numbers.
     assert.equal(
       (await loadFinalResultIntake(derivedIntake.path)).results[0].version,

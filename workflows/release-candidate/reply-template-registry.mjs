@@ -71,7 +71,7 @@ const templates = Object.freeze({
     ],
   ],
   ...Object.fromEntries(
-    ["intake", "inspect", "versions", "register", "build", "verify"].map(
+    ["intake", "inspect", "versions", "freeze", "build", "verify"].map(
       (action) => [
         `result ${action}`,
         [

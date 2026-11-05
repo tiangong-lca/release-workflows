@@ -203,7 +203,7 @@ Runner 在 phase/progress 更新以及每 5 秒记录结构化资源采样。`jo
 
 `materialize` 与 `materialize start` 使用同一个确定性 engine，冻结相同的 `materialization-request.json`，并根据 `outputType` 选择内部执行图。Result-only 路线只生成 selected `R(P)`；LifecycleModel 路线自动完成 direct provider Result 扩展、Result Catalog 冻结和 requested-root `M(P)` 生成。用户不需要、也不应该先单独运行一次 Result Process 生成。`R(P)` 的 UUIDv5 name 只包含 `U(P) UUID + reference flow UUID`，其他变化由 profile、semantic hash、dataset version 和 provenance 表达。
 
-生成命令必须二选一提供 `--first-generation` 或 `--previous-manifest <path>`。相同 semantic hash 与 version-significant hash 复用版本；语义变化升 major；仅 metadata 等公开内容变化升 minor；同一 UUID/version 出现不同 canonical content时 fail closed。
+生成命令必须二选一提供 `--first-generation` 或 `--previous-manifest <path>`。相同 semantic hash 与 version-significant hash 复用版本；语义变化升 major；仅 metadata 等公开内容变化升 minor；同一 UUID/version 出现不同 canonical content 时失败。再次制作已分发的 Result 时，使用包含该谱系最高已发布版本的本地 Materialization Manifest，回滚后也保留这份版本依据。用新物化产物重新准备 Candidate 的 HDF5 和 ZIP。
 
 权威登记发现版本冲突时，可按原请求显式增加 `--result-version-plan <file>`，消费 Release Candidate
 `result versions` 产生的内容绑定提案。它在冻结版本集合前按旧版本重渲染并校验 canonical hash，

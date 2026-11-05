@@ -6,10 +6,7 @@ import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
-import {
-  setup,
-  registry,
-} from "../../../release-candidate/test/fixtures/final-input.mjs";
+import { setup } from "../../../release-candidate/test/fixtures/final-input.mjs";
 import {
   inspectFinalResultInput,
   prepareFinalResultInput,
@@ -18,6 +15,8 @@ import {
   buildFinalResultCandidate,
   loadFinalResultCandidate,
 } from "../../../release-candidate/lib/final-result-candidate.mjs";
+import { resultHashes } from "../../../result-materialization/lib/materialize-results.mjs";
+import { resolveVersion } from "../../../result-materialization/lib/versioning.mjs";
 import { canonicalDatasetIndex } from "../../../result-materialization/lib/canonical-index.mjs";
 import { canonicalJson, hashJson } from "../../lib/common.mjs";
 import { createFinalResultReader } from "../../adapters/final-result-reader.mjs";
@@ -31,7 +30,7 @@ const encoder = fileURLToPath(
 );
 async function candidate(
   t,
-  { createAuthority = registry().createAuthority } = {},
+  { amount = "4.25", releaseVersion = "2026.11.0", previousResult = null } = {},
 ) {
   const input = await setup(t);
   // Author a second signed inventory exchange BEFORE freezing. This synthetic
@@ -44,20 +43,50 @@ async function candidate(
   const extra = structuredClone(document.processDataSet.exchanges.exchange[1]);
   extra["@dataSetInternalID"] = "3";
   extra.exchangeDirection = "Input";
-  extra.meanAmount = "4.25";
-  extra.resultingAmount = "4.25";
+  extra.meanAmount = amount;
+  extra.resultingAmount = amount;
   document.processDataSet.exchanges.exchange.push(extra);
+  const evidence = input.materializationEvidence;
+  const identity = evidence.catalog.datasets.find(
+    (row) => row.uuid === entry.uuid,
+  );
+  const provisional = {
+    ...identity,
+    profile: "synthetic-lci-lcia",
+    referencePivot:
+      document.processDataSet.processInformation.quantitativeReference,
+    document,
+  };
+  const { version, change } = resolveVersion(
+    { uuid: entry.uuid, ...resultHashes(provisional) },
+    previousResult,
+  );
+  document.processDataSet.administrativeInformation.publicationAndOwnership[
+    "common:dataSetVersion"
+  ] = version;
+  input.results.find((row) => row.uuid === entry.uuid).version = version;
+  const result = {
+    uuid: entry.uuid,
+    version,
+    change,
+    ...resultHashes(provisional),
+  };
   const bytes = Buffer.from(canonicalJson(document));
   await writeFile(file, bytes);
   Object.assign(entry, {
+    version,
     byteSize: bytes.length,
     sha256: sha(bytes),
     canonicalContentHash: hashJson(document),
   });
   input.index = canonicalDatasetIndex(input.index.datasets);
-  const evidence = input.materializationEvidence;
-  for (const row of evidence.index.datasets)
-    if (row.uuid === entry.uuid) Object.assign(row, entry);
+  for (const rows of [
+    evidence.index.datasets,
+    evidence.catalog.datasets,
+    evidence.manifest.datasets,
+  ])
+    for (const row of rows)
+      if (row.uuid === entry.uuid) Object.assign(row, entry);
   evidence.manifest.inputs.resultCatalogSha256 = hashJson(evidence.catalog);
   evidence.manifest.inputs.canonicalDatasetIndexSha256 = hashJson(
     evidence.index,
@@ -66,18 +95,18 @@ async function candidate(
   await prepareFinalResultInput({
     ...input,
     confirmInputHash: inspected.inputHash,
-    createAuthority,
   });
   const built = await buildFinalResultCandidate({
     finalInputDir: input.outDir,
     confirmInputHash: inspected.inputHash,
     outDir: path.join(input.root, "candidate"),
-    releaseVersion: "2026.11.0",
+    releaseVersion,
     encoder,
     tidasBin: process.env.RELEASE_PAIR_TIDAS_BIN,
   });
   return {
     input,
+    result,
     loaded: await loadFinalResultCandidate(built.path),
     candidateDir: built.path,
   };

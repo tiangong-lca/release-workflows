@@ -141,7 +141,7 @@ function parentSources(parent, expectedCandidate) {
   ) {
     requireValue(
       parent.finalInput?.schemaVersion ===
-        "tiangong.release.final-result-input.v1" &&
+        "tiangong.release.final-result-input.v2" &&
         parent.candidate.finalInput?.sha256 === hashJson(parent.finalInput),
     );
     for (const row of parent.finalInput.results) {

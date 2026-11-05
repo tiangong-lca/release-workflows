@@ -16,8 +16,8 @@ whenToUpdate:
 checkPaths:
   - workflows/calculation/**
   - workflows/result-materialization/**
-lastReviewedAt: 2026-11-03
-lastReviewedCommit: 1a1ca5860f08acaba578030a5a8428a71396a8f6
+lastReviewedAt: 2026-11-05
+lastReviewedCommit: aa89f18f91ea58953150a61d9c587691479ca467
 lastReviewedNote: "Release #106: reviewed copy-only historical metadata compatibility and comment preservation; recipe v2 and metadata policy v2 isolate regenerated artifacts without changing identity or numerical reconstruction."
 related:
   - ../README.md

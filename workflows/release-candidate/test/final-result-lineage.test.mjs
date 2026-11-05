@@ -195,7 +195,7 @@ test("legacy parent requires its original package-bound Materialization witness"
 test("a v3 parent must bind its structured final input; sources never become a direct substitute", () => {
   const input = derived();
   const finalInput = {
-    schemaVersion: "tiangong.release.final-result-input.v1",
+    schemaVersion: "tiangong.release.final-result-input.v2",
     results: input.parent.candidateIndex.datasets.map((d) => ({
       uuid: d.uuid,
       version: d.version,

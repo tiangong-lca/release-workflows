@@ -12,9 +12,9 @@ whenToUpdate:
   - 当顶层 Workflow 新增、删除、重命名或重新划分时
 checkPaths:
   - workflows/**
-lastReviewedAt: 2026-11-04
-lastReviewedCommit: c73631deedc7a47cdad5feac7eff02dd46f0e032
-lastReviewedNote: "Release #115: reviewed explicit deliverable routing, bounded large Method reads and compact verified projection metadata; calculation/publication authority and frozen artifacts remain unchanged."
+lastReviewedAt: 2026-11-05
+lastReviewedCommit: aa89f18f91ea58953150a61d9c587691479ca467
+lastReviewedNote: "Release #120: reviewed offline Result freeze, paired HDF5/ZIP and artifact-scoped publication handoff."
 related:
   - ../README.md
   - AGENTS.md

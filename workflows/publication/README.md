@@ -13,9 +13,9 @@ whenToUpdate:
   - 当发布选择、目标差异、状态转换、写入、审批、恢复或回读规则变化时
 checkPaths:
   - workflows/publication/**
-lastReviewedAt: 2026-11-02
-lastReviewedCommit: 7ce184ead831629cbca50a83fa4f22abb2ebb4b2
-lastReviewedNote: "Release #101: reviewed Supabase S3 base-path preservation, paired target hashing and pinned SDK upload/readback; publication authority is unchanged."
+lastReviewedAt: 2026-11-05
+lastReviewedCommit: e8c95247860a8d09a34bc7d485448de31f8baa4c
+lastReviewedNote: "Release #120: reviewed offline Result freeze, paired HDF5/ZIP and artifact-scoped publication handoff."
 related:
   - AGENTS.md
   - ../release-candidate/README.md
@@ -43,7 +43,7 @@ Dataset Transformation 不属于本 Workflow。任何 Process/LifeCycleModel 内
 ## 最终 Result v3 文件存储
 
 `lib/final-result-storage.mjs` 提供 `inspectFinalResultStorage` 和
-`executeFinalResultStorage`，消费已通过真实 HDF5/ZIP 回读及全局身份登记的
+`executeFinalResultStorage`，消费已通过真实 HDF5/ZIP 回读及本地输入校验的
 Candidate v3。inspect 仅本地读取，返回精确 storage plan/hash；execute 需要同一
 hash 确认，并重新验证 Candidate。CLI 为 `result-storage inspect/execute`；原 `plan prepare` 等命令
 仍按下文 Candidate v2/actor recipe 运行，不能用它们发布 v3。
@@ -115,7 +115,7 @@ CONN 的 host/port/database/user 身份和 S3 origin/region/bucket/prefix，密�
 验证入口为 `test/final-result-object-store.test.mjs`（真实 SDK 对 loopback 合成
 HTTP 服务）和 `test/final-result-storage.test.mjs`。后者还通过真实子进程 CLI 验证 inspect、execute 和只读复用；其实际产物/数据库联调
 显式要求 `RELEASE_PAIR_TIDAS_BIN` 与 `RELEASE_STORAGE_TEST_CONN`，且拒绝
-`127.0.0.1:61432/postgres` 以外的连接；它只用于 Database #879 拥有的本地合成库。
+`127.0.0.1:65422/postgres` 以外的连接；它只用于 Database #879 拥有的本地合成库。
 默认测试跳过该联调，不能称为通过。测试实际生成三个 Result、两组 HDF5 和两个
 ZIP，验证丢失 S3/数据库响应后的恢复、重试无对象写入以及远端损坏拒绝；身份和
 登记元数据留在任务测试库供 owner reset，HTTP 服务及临时文件在测试结束时释放。
@@ -587,7 +587,7 @@ probe API，不接受服务凭据、不调用批准/激活。每次由数据库�
 
 除上述真实文件/Worker 验证外，可在 owner-reset 的任务专用合成数据库使用
 `RELEASE_READINESS_TEST_CONN` 运行 `final-result-readiness-database.test.mjs`。
-该测试强制本地 `127.0.0.1:61432/postgres` 和 `hdf5-final-879` owner 标签，验证真实
+该测试强制本地 `127.0.0.1:65422/postgres` 和 `offline-final-result-916` owner 标签，验证真实
 SQL 登记与 lost-ACK 恢复，保留不可变合成审计供 owner reset。它的 HTTP 用户认证是
 固定 token 测试 facade，不替代 hosted PostgREST/Edge/Platform 验证。不要对共享或
 业务数据库运行该测试，也不要用合成回执执行真实发布。
@@ -711,6 +711,8 @@ approve/activate 都不盲目重试写入：先查询原审批或执行身份；
 只有精确内容匹配才记录观察。回读仍无记录时停止，按 status 排查后在新目录重试同一
 意图。原审批已使用/撤回/过期，或发布已被替换/撤回时，只返回历史状态，不恢复它。
 原执行已提交后，更新会话仍可恢复读取原记录；不伪称更新后的会话执行了旧操作。
+
+激活在切换 current 前核对所有历史已发布批次。相同 Result UUID/version 若已有不同标准文档内容，返回 `final_result_dataset_version_conflict`。先按上游版本规则重新生成数据集和配对 Candidate，再创建发布计划。同内容可复用版本，回滚继续绑定原 Candidate 和选择。
 
 激活后的回执 `publicReadbackVerified=false`，只证明独立查询确认了数据库发布状态。
 它不能替代下面独立的公开回读，浏览器交互验收另行执行。

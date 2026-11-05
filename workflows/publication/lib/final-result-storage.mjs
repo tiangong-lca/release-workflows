@@ -33,7 +33,7 @@ export function finalResultRowBindings(rows) {
         row.ordinal === ordinal &&
         UUID.test(row.uuid ?? "") &&
         VERSION.test(row.version ?? "") &&
-        UUID.test(row.registrationId ?? "") &&
+        HASH.test(row.canonicalContentHash ?? "") &&
         HASH.test(row.contentHash ?? "") &&
         ["direct", "derived"].includes(row.relationKind) &&
         Array.isArray(row.sources) &&
@@ -60,12 +60,12 @@ export function finalResultRowBindings(rows) {
       ordinal,
       row.uuid,
       row.version,
-      row.registrationId,
+      row.canonicalContentHash,
       row.contentHash,
       row.relationKind,
       ...sources,
     ];
-    block += sha(`tiangong.final-result-row.v1\n${fields.join("\n")}\n`) + "\n";
+    block += sha(`tiangong.final-result-row.v2\n${fields.join("\n")}\n`) + "\n";
     if ((ordinal + 1) % 500 === 0 || ordinal === rows.length - 1) {
       blocks.push(sha(block));
       block = "";
@@ -123,7 +123,7 @@ async function workload(candidateDir, targetHash) {
       uuid: row.uuid,
       version: row.version,
       ordinal: row.ordinal,
-      registrationId: row.identityReceipt.registrationId,
+      canonicalContentHash: row.canonicalContentHash,
       contentHash: row.contentHash,
       relationKind: row.relationKind,
       sources: row.sources,

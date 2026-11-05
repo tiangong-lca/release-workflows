@@ -122,9 +122,9 @@ async function main() {
       nextAction: {
         kind: "confirm_materialization_recipe",
         requiresConfirmation: true,
-        command: `${MATERIALIZATION_COMMAND} materialize start --intake ${shellQuote(result.path)} --processes <UUID@VERSION,...> --output-type <result-process|lifecycle-model> --result-process-layer <lci|lci-lcia> --first-generation --json`,
+        command: `${MATERIALIZATION_COMMAND} materialize start --intake ${shellQuote(result.path)} --processes <UUID@VERSION,...> --output-type <result-process|lifecycle-model> --result-process-layer <lci|lci-lcia> <version-option> --json`,
         description:
-          "Choose scope, final dataset type, and the Result Process content layer, then start an observable background run. Omit 'start' for a foreground run. LifecycleModel itself does not contain LCI/LCIA results.",
+          "Choose scope, output type, and Result layer. For an existing Result lineage use --previous-manifest <path> from the prior materialization that owns its latest version. Use --first-generation only for genuinely new lineages. Omit 'start' for a foreground run.",
       },
     });
     return;

@@ -11,7 +11,6 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { candidate, worker, id } from "./fixtures/final-reader.mjs";
 import { fixture as storageFixture } from "./fixtures/final-storage.mjs";
-import { createFinalResultIdentityStore } from "../../release-candidate/lib/final-result-identity.mjs";
 import { createFinalResultRegistry } from "../adapters/final-result-registry.mjs";
 import { createFinalResultPublication } from "../adapters/final-result-publication.mjs";
 import {
@@ -38,17 +37,17 @@ test(
     const connectionString = process.env.RELEASE_READINESS_TEST_CONN,
       url = new URL(connectionString);
     assert.equal(url.hostname, "127.0.0.1");
-    assert.equal(url.port, "61432");
+    assert.equal(url.port, "65422");
     assert.equal(url.username, "postgres");
     assert.equal(url.pathname, "/postgres");
     assert.equal(url.search, "");
     const { stdout } = await promisify(execFile)("docker", [
       "inspect",
-      "supabase_db_hdf5-final-879",
+      "supabase_db_offline-final-result-916",
     ]);
     assert.equal(
       JSON.parse(stdout)[0].Config.Labels["com.supabase.cli.project"],
-      "hdf5-final-879",
+      "offline-final-result-916",
     );
     const owner = new pg.Client({ connectionString });
     await owner.connect();
@@ -73,10 +72,7 @@ test(
     );
     const registry = createFinalResultRegistry({ connectionString });
     t.after(() => registry.close());
-    const f = await candidate(t, {
-      createAuthority: () =>
-        createFinalResultIdentityStore({ connectionString }),
-    });
+    const f = await candidate(t);
     const storage = await storageFixture(t, {
       databaseTargetHash: registry.databaseTargetHash,
     });
@@ -786,6 +782,231 @@ test(
         }),
         verifiedRun.readbackReceipt,
       );
+      // Seed only synthetic supporting datasets after the missing-support denial.
+      // Suppress unrelated asynchronous triggers for these fixture inserts.
+      const tables = {
+        contact: "contacts",
+        flow: "flows",
+        flowproperty: "flowproperties",
+        lciamethod: "lciamethods",
+        source: "sources",
+        unitgroup: "unitgroups",
+      };
+      await owner.query("begin");
+      try {
+        await owner.query("set local session_replication_role=replica");
+        for (const entry of f.loaded.index.datasets) {
+          if (entry.role === "result_process") continue;
+          const table = tables[entry.datasetType];
+          assert.ok(table);
+          const bytes = await readFile(
+            path.join(f.input.outDir, "canonical", entry.path),
+          );
+          assert.equal(sha(bytes), entry.sha256);
+          await owner.query(
+            `insert into public.${table}(id,version,json,user_id,state_code) values($1,$2,$3,$4,100)`,
+            [entry.uuid, entry.version, bytes.toString("utf8"), actorId],
+          );
+        }
+        await owner.query("commit");
+      } catch (error) {
+        await owner.query("rollback");
+        throw error;
+      }
+      async function verifyDownloads(publicationId, candidateHash) {
+        for (const format of ["tidas", "ilcd"]) {
+          const request = await fetch(
+            `http://127.0.0.1:${server.address().port}/rest/v1/rpc/qry_final_result_download_v2`,
+            {
+              method: "POST",
+              headers: {
+                authorization: `Bearer ${token}`,
+                "content-profile": "api",
+                apikey: "sb_publishable_synthetic",
+                "content-type": "application/json",
+              },
+              body: JSON.stringify({
+                p_publication_id: publicationId,
+                p_format: format,
+              }),
+            },
+          );
+          const { ok, data } = await request.json();
+          assert.equal(ok, true);
+          assert.equal(data.candidateHash, candidateHash);
+          assert.equal(data.file.name, `result.${format}.zip`);
+          const zip = await fetch(
+            `${storage.endpoint}/synthetic-results/test-owned/release-candidates/${candidateHash}/${data.file.name}`,
+          );
+          assert.equal(zip.status, 200);
+          const bytes = Buffer.from(await zip.arrayBuffer());
+          assert.equal(bytes.length, data.file.byteSize);
+          assert.equal(sha(bytes), data.file.sha256);
+          assert.equal(bytes.subarray(0, 2).toString(), "PK");
+        }
+      }
+      await verifyDownloads(
+        activated.publicationId,
+        inspected.plan.candidateHash,
+      );
+      async function storeCandidate(sample) {
+        const inspected = await inspectFinalResultStorage({
+          candidateDir: sample.candidateDir,
+          targetHash: storage.store.targetHash,
+        });
+        await executeFinalResultStorage({
+          candidateDir: sample.candidateDir,
+          confirmPlanHash: inspected.planHash,
+          objectStore: storage.store,
+          registry,
+        });
+        return inspected;
+      }
+      const replacement = await candidate(t, {
+        amount: "5.25",
+        releaseVersion: "2026.11.3",
+        previousResult: f.result,
+      });
+      assert.equal(replacement.result.uuid, f.result.uuid);
+      assert.equal(replacement.result.change, "major");
+      assert.equal(f.result.version, "01.00.000");
+      assert.equal(replacement.result.version, "02.00.000");
+      const replacementStorage = await storeCandidate(replacement);
+      async function publishSample(
+        sample,
+        n,
+        releaseVersion,
+        rollbackOfPublicationId = null,
+      ) {
+        const releaseRunId = id(n);
+        const planned = await buildFinalResultPublicationPlan({
+          candidateDir: sample.candidateDir,
+          targetHash: storage.store.targetHash,
+          actor: publication,
+          releaseRunId,
+          releaseVersion,
+          rollbackOfPublicationId,
+          reason: "synthetic rollback qualification",
+        });
+        await prepareFinalResultPublication({
+          local: planned.local,
+          confirmLocalPlanHash: planned.localPlanHash,
+          actor: publication,
+          record: async () => {},
+        });
+        const args = {
+          releaseRunId,
+          publishPlanHash: planned.local.publishPlanHash,
+          verificationId: id(n + 1),
+        };
+        await verifyFinalResultReadiness({
+          ...args,
+          candidateDir: sample.candidateDir,
+          inputDir: sample.input.outDir,
+          objectStore: storage.store,
+          registry,
+          actor,
+          reader: runtime.reader,
+          record: async () => {},
+        });
+        const approval = await publication.approve({
+          ...args,
+          approvalId: id(n + 2),
+          expectedApprovalId: null,
+          expiresAt: new Date(Date.now() + 3600000).toISOString(),
+          reason: "synthetic rollback qualification",
+        });
+        return publication.activate({
+          ...args,
+          approvalId: approval.approvalId,
+          approvalHash: approval.approvalHash,
+          idempotencyKey: `synthetic-rollback-${n}`,
+          credentialFingerprint: sha(token),
+        });
+      }
+      const second = await publishSample(replacement, 420, "2026.11.3");
+      assert.equal(
+        (await publication.head()).publicationId,
+        second.publicationId,
+      );
+      const readAmounts = async (publicationId, row) => {
+        const [reply] = await runEdge([
+          { ...query(row, "lci", { limit: 100 }), publicationId },
+        ]);
+        assert.equal(reply.status, 200);
+        return reply.body.data.data.items
+          .map((item) => item.amount)
+          .sort((a, b) => a - b);
+      };
+      assert.deepEqual(
+        await readAmounts(second.publicationId, replacement.result),
+        [-3, 5.25],
+      );
+      const [oldIdentity] = await runEdge([
+        {
+          ...query(f.result, "lci", { limit: 100 }),
+          publicationId: second.publicationId,
+        },
+      ]);
+      assert.equal(oldIdentity.status, 404);
+      await verifyDownloads(
+        second.publicationId,
+        replacementStorage.plan.candidateHash,
+      );
+      // A first-generation rebuild can be made offline, but must not replace
+      // any published version with different content, even if it is historical.
+      const conflicting = await candidate(t, {
+        amount: "6.25",
+        releaseVersion: "2026.11.6",
+      });
+      assert.equal(conflicting.result.version, f.result.version);
+      await storeCandidate(conflicting);
+      await assert.rejects(
+        publishSample(conflicting, 440, "2026.11.6"),
+        (error) =>
+          error.code === "final_actor_request_denied" &&
+          error.details?.semanticCode ===
+            "final_result_dataset_version_conflict",
+      );
+      assert.equal(
+        (await publication.head()).publicationId,
+        second.publicationId,
+      );
+      assert.equal((await publication.run(id(440))).publication, null);
+      const restored = await publishSample(
+        f,
+        430,
+        "2026.11.4",
+        activated.publicationId,
+      );
+      assert.notEqual(restored.publicationId, activated.publicationId);
+      assert.equal(
+        (await publication.head()).publicationId,
+        restored.publicationId,
+      );
+      assert.equal(
+        (await publication.run(id(430))).publication.rollbackOfPublicationId,
+        activated.publicationId,
+      );
+      assert.deepEqual(
+        await readAmounts(restored.publicationId, f.result),
+        [-3, 4.25],
+      );
+      await verifyDownloads(
+        restored.publicationId,
+        inspected.plan.candidateHash,
+      );
+      assert.equal(
+        (
+          await owner.query(
+            "select count(*)::int n from private.final_result_identities",
+          )
+        ).rows[0].n,
+        0,
+      );
+      t.diagnostic(
+        "Materialization bumped the changed Result from 01.00.000 to 02.00.000 before paired build. Publication rejected historical version reuse with different content and rollback restored exact prior HDF5/ZIP. Zero registry rows.",
+      );
       t.diagnostic(
         "Actual Edge v2: three Result overviews, complete paged LCI [-3,2.5,4.25], LCIA [0,42], absent LCIA, reader pin and actor RLS denials passed",
       );
@@ -797,7 +1018,7 @@ test(
           "select count(*)::int n from private.lca_release_publications",
         )
       ).rows[0].n,
-      1,
+      process.env.RELEASE_QUERY_EDGE_ROOT ? 3 : 1,
     );
 
     const planDir = path.join(f.input.root, "cli-publication-plan"),
@@ -810,13 +1031,16 @@ test(
       "--run-id",
       id(411),
       "--release-version",
-      "2026.11.2",
+      "2026.11.5",
       "--reason",
       "synthetic actor CLI selection",
       "--out-dir",
       planDir,
     ]);
-    assert.equal(planned.expectedCurrentPublicationId, activated.publicationId);
+    assert.equal(
+      planned.expectedCurrentPublicationId,
+      (await publication.head()).publicationId,
+    );
     assert.equal(planned.selectionCount, 3);
     const selected = await managerCommand("prepare", [
       "--plan-dir",
@@ -847,7 +1071,7 @@ test(
           "select count(*)::int n from private.lca_release_publications",
         )
       ).rows[0].n,
-      1,
+      process.env.RELEASE_QUERY_EDGE_ROOT ? 3 : 1,
     );
   },
 );

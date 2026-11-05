@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 intake、package、candidate qualification、scope refinement 或 Candidate 后继路径变化时
 checkPaths:
   - workflows/release-candidate/**
-lastReviewedAt: 2026-11-04
-lastReviewedCommit: c73631deedc7a47cdad5feac7eff02dd46f0e032
-lastReviewedNote: "Release #115: reviewed explicit deliverable routing, bounded large Method reads and compact verified projection metadata; calculation/publication authority and frozen artifacts remain unchanged."
+lastReviewedAt: 2026-11-05
+lastReviewedCommit: aa89f18f91ea58953150a61d9c587691479ca467
+lastReviewedNote: "Release #120: reviewed offline Result freeze, paired HDF5/ZIP and artifact-scoped publication handoff."
 related:
   - README.md
   - ../AGENTS.md
@@ -87,7 +87,7 @@ related:
 
 ## 硬边界
 
-- 不使用 actor service key、任意 SQL/REST mutation 或 canonical 表写入；仅最终输入身份 adapter 可经显式授权的数据面连接调用本契约列出的两个 Database-owned 服务 RPC，并在事务内设置服务角色。
+- 不使用 actor service key、任意 SQL/REST mutation 或 canonical 表写入；可选版本查询只调用只读版本 RPC。
 - 不解码、打印、持久化或放入命令参数的用户凭据。
 - 不从 mutable `latest` 补齐 graph、exchange、provider、method 或 version。
 - 不在 Package build 中生成或修改 Result Process、LifecycleModel、identity 或 dataset version。
@@ -114,28 +114,26 @@ Release Candidate 只有在以下条件同时成立时完成：
 - 当前投影 profile 要求每条 exchange 的有效 `resultingAmount`（包括零），不提供 `meanAmount` 回退；LCIA 读取最终 `meanAmount`。不归一化、不换算、不重新特征化；缺失层/方法与合法零值分开。
 - reference Flow Property 或参考 Unit 的 `meanValue ≠ 1` 只产生确定性、去重且有上限的 CLI 告警（`nonunit_reference_property`、`nonunit_reference_unit`），绝不换算或归一化数值；告警不进入投影对象、冻结输入、encoding receipt、parity 或 Candidate schema，`result verify` 不重算告警。
 - `lib/final-result-artifacts.mjs` 按层/方法集分组，逐结果 spool；CSR LCI、dense LCIA 与索引均由 Candidate 拥有的 `native/` 工具生成/回读。索引和单行/总文件预算不可绕过，零行及负值保留，失败不能产生合格 Candidate。
-- 普通文档/投影保持 8 MiB，LCIA Method 文档统一为 64 MiB，索引与保留投影元数据保持 128 MiB；完整身份登记计划单独 512 MiB，所有计划读取入口一致，单个登记请求仍为 8 MiB。完整闭包逐份验证，只有 Result exchange 引用的 Flow 进入投影缓存；Method 缓存只保留必要元数据与完整内容 hash；ZIP 仍保留全文，不能按 Result 重复复制大型 factors。资源错误必须区分文档与元数据，保留实际字节、上限、路径/身份和恢复指导。
-- encoding receipt 必须显式 `candidateQualified=false` 和 `publicationAuthorized=false`；只有后续独立 ZIP 一致性、身份权威登记及配对 Candidate 门禁成立才能取得相应资格。不能通过 v1 Calculation 绑定把新 Result 轴伪装成 source Unit 轴。
+- 普通文档/投影保持 8 MiB，LCIA Method 文档统一为 64 MiB，索引与保留投影元数据保持 128 MiB；本地输入计划单独 512 MiB，所有计划读取入口一致。完整闭包逐份验证，只有 Result exchange 引用的 Flow 进入投影缓存；Method 缓存只保留必要元数据与完整内容 hash；ZIP 仍保留全文，不能按 Result 重复复制大型 factors。资源错误必须区分文档与元数据，保留实际字节、上限、路径/身份和恢复指导。
+- encoding receipt 必须显式 `candidateQualified=false` 和 `publicationAuthorized=false`；只有后续独立 ZIP 一致性及配对 Candidate 门禁成立才能取得相应资格。不能通过 v1 Calculation 绑定把新 Result 轴伪装成 source Unit 轴。
 - 独立预期值测试分别验证领域投影与真实 HDF5 文件；不能仅以 writer 自己生成的相同错误值互比证明正确。
 
 ### 双产物局部资格
 
 - `buildFinalResultPair` 内部能力显式选择 `result-process-full-closure.v1` 两包，不修改 legacy `package build` 四包契约。工具必须声明 profile 与 report v2 能力。
 - 配对须覆盖实际 ZIP 解压验证、实际归档语义 round-trip、完整冻结文档与依赖、最终 Result 轴及实际 HDF5 全量数值。缺少方法能力不能补零，完整零结果不能丢行。
-- 配对 receipt 只证明本地文件一致，不替代身份登记、来源证据、Candidate 资格或发布批准。失败保留成功产物和诊断；不创建合格 Candidate、不覆盖原输出。
+- 配对 receipt 只证明本地文件一致，不替代来源证据、Candidate 资格或发布批准。失败保留成功产物和诊断；不创建合格 Candidate、不覆盖原输出。
 
-### 最终输入与身份登记
+### 最终输入
 
-- `inspectFinalResultInput` 只读重验 canonical bytes、完整语义依赖和 Materialization lineage，形成精确输入 hash；`prepareFinalResultInput` 必须确认同一 hash 后才能打开身份 authority。输入层仍不是 Candidate。
-- 最终身份登记仅调用 Database 的 `svc_result_identity_versions` 与 `svc_result_identity_register`，使用显式 operator 数据面连接、单客户端事务和有界参数；不引入 actor service key、任意 SQL、canonical 表写入或发布权限。实际远程登记仍需该操作的授权。
-- `first-generation` 不能免除权威占用查询和原子登记。legacy 占用、内容冲突须回上游重新生成版本和引用；不改写已冻结文件。响应丢失保留请求与已收到的凭证，只核对/重试同一输入，不自动换版本。
+- `inspectFinalResultInput` 复核完整 canonical 文件及依赖和 Materialization lineage，形成精确输入 hash。确认后 `prepareFinalResultInput` 在本地冻结目录重验副本与内容指纹。输入层仍不是 Candidate。
 - 直接关联来自 manifest 绑定的 Result Catalog sourceProcess；派生关联必须经过精确父 Candidate、父 Result 内容和 Transformation spec/receipt/handoff 的绑定。legacy 父 Candidate 要求原始 Package Plan 绑定的 Materialization witness；不得解析说明字段或将祖先视为直接替代结果。新父格式的关联读取有显式版本边界。
 - 编排层在消费 Derived Materialization 前仍调用 producer 的确定性 handoff/replay 校验；纯 lineage 解析不替代 canonical 文件验证或 Transformation 的业务验证。
 
 ### 配对 Candidate v3
 
-- `buildFinalResultCandidate` 消费已登记且完整重验的 final input；精确 input hash 和显式 release version 决定本地构建。它不登记新身份或改写输入。
-- v3 明确使用 Result-only 两包 profile，绑定 final input、输入计划、来源、canonical index、publication closure catalog、配对回读证据、各 query artifact 与完整 Result→artifact/ordinal catalog。缺少任何行、身份凭证或真实文件完整性即失败。
+- `buildFinalResultCandidate` 消费完整重验的 final input；精确 input hash 和显式 release version 决定本地构建。它不登记新身份或改写输入。
+- v3 明确使用 Result-only 两包 profile，绑定 final input、输入计划、来源、canonical index、publication closure catalog、配对回读证据、各 query artifact 与完整 Result→artifact/ordinal catalog。缺少任何行或真实文件完整性即失败。
 - 候选标记最后提交，已存在的输出目录（包括空目录）不可覆盖；失败保留工作目录及不完整目标，均不得作为 Candidate。v3 `candidateQualified=true` 仅证明本地资格，`publicationAuthorized=false` 保持不变。
 - `loadFinalResultCandidate` 按显式 v3 重验绑定、实际 ZIP/HDF5 文件和结果轴。Transformation 可消费这种候选的 Result 包；无 Unit 包时不能进入 Unit 聚合。legacy Publication 不接受 v3，必须经后继版本化发布契约。
 
@@ -143,10 +141,10 @@ Release Candidate 只有在以下条件同时成立时完成：
 
 - `result intake` 明确区分 direct Release Intake 与 Derived Materialization/parent/Transformation 路线。直接 expected methods 从冻结源轴读取；派生必须调用 producer replay，legacy 父包需要原始 Materialization witness。
 - 复用 publication reference catalog 选择 Result component，标准闭包与 TIDAS qualification 仍委托 Toolkit；不能截取工具有界摘要中的前 256 个 keys 当作完整闭包。
-- `result versions` 用现有 authority adapter 只读分页查询并生成有界、内容绑定的建议版本文件；采用 `conflict-next-major.v1`，不预留、不写身份、不原地改文件。Direct 回到 Materialization 重渲染，Derived 新建并复核 Transformation Draft；成功后都重新 intake/register/build。响应不明先核对原输入，不能自动变更版本。
-- `result inspect` 只读并重新校验 producer 证据；`result register` 是唯一身份远程写入动作，使用既有受保护 CONN 和精确 confirmation hash。`result build` 只消费已登记输入，`result verify` 只检验候选文件。
+- `result versions` 用现有 authority adapter 只读分页查询并生成有界、内容绑定的建议版本文件；采用 `conflict-next-major.v1`，不预留、不写身份、不原地改文件。Direct 回到 Materialization 重渲染，Derived 新建并复核 Transformation Draft；成功后都重新 intake/freeze/build。
+- `result inspect` 重新校验 producer 证据，`result freeze` 按确认 hash 保存本地副本。build 和 verify 消费本地冻结证据。
 - build 缺少 release version 返回两包版本确认，不启动生成。每个动作拒绝其他动作的参数；JSON 单对象并返回 workflow-local 模板与 cwd-independent continuation。
-- 不完整目录保留已移动文件；最终资格文件最后提交。CLI 不显示原始 provider/SQL 错误，登记响应不明的恢复首先核对原请求和已收到凭证。
+- 不完整目录保留已移动文件；最终资格文件最后提交。CLI 不显示原始 provider/SQL 错误。
 
 HDF5 manifest 的数值文件只输出 name/sha256/byteSize；plainByteSize 仅用于 gzip
 索引并且必须是精确解压字节数，不能在 HDF5 文件上写 null 占位。该 wire shape

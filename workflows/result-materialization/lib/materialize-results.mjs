@@ -236,7 +236,7 @@ export async function materializeResults({
   }
 }
 
-function resultHashes(result) {
+export function resultHashes(result) {
   const data = result.document.processDataSet;
   const semantic = {
     schema: "tiangong.release.result-process-semantic.v2",

@@ -5,7 +5,6 @@
       "uuid": "87920000-0000-4000-8000-000000000010",
       "version": "01.00.000",
       "ordinal": 0,
-      "registrationId": "87920000-0000-4000-8000-000000000020",
       "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "relationKind": "direct",
       "sources": [
@@ -13,13 +12,13 @@
           "uuid": "87920000-0000-4000-8000-000000000030",
           "version": "01.00.000"
         }
-      ]
+      ],
+      "canonicalContentHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
     },
     {
       "uuid": "87920000-0000-4000-8000-000000000011",
       "version": "01.00.000",
       "ordinal": 1,
-      "registrationId": "87920000-0000-4000-8000-000000000021",
       "contentHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "relationKind": "derived",
       "sources": [
@@ -31,14 +30,14 @@
           "uuid": "87920000-0000-4000-8000-000000000031",
           "version": "01.00.000"
         }
-      ]
+      ],
+      "canonicalContentHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
     }
   ],
-  "rowBindingsSha256": "b8586fb1422f0a8a3f17c925f363b5654c1bba2e8d6b0c4c6b4eceaea1bd9b5a",
+  "rowBindingsSha256": "5139254134105d80a5cfcd6ad5537e4a1f3b9198cb27265e6e6561a668e65992",
   "multiBlock": {
     "rowCount": 501,
     "resultStart": 100000,
-    "registrationStart": 200000,
-    "rowBindingsSha256": "21f73754a21708b451bbeb837b3eeacf076a81ca89a9a1c346591440f807b94f"
+    "rowBindingsSha256": "90433f6d8fe5ad2dc8821a15cab6cf81b47fe60c2bb67b0bfaf436631df55e8f"
   }
 }

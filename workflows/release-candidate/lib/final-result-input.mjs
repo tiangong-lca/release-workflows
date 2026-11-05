@@ -1,11 +1,4 @@
-import {
-  mkdir,
-  mkdtemp,
-  lstat,
-  readFile,
-  writeFile,
-  appendFile,
-} from "node:fs/promises";
+import { mkdir, mkdtemp, lstat, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { canonicalJson, hashJson, sha256Bytes, fail } from "./common.mjs";
 import { frozenDocument } from "./final-result-artifacts.mjs";
@@ -17,10 +10,6 @@ import {
   FINAL_RESULT_PROJECTION,
 } from "./final-result-projection.mjs";
 import { resolveFinalResultLineage } from "./final-result-lineage.mjs";
-import {
-  identityRegistrationRequest,
-  verifyIdentityReceipt,
-} from "./final-result-identity.mjs";
 import { readLocalJson, commitFrozenDirectory } from "./final-result-files.mjs";
 import {
   MAX_METADATA_BYTES as MAX_METADATA,
@@ -28,13 +17,18 @@ import {
   MAX_INPUT_PLAN_BYTES,
 } from "./resource-budget.mjs";
 function requireValue(value, code = "final_input_invalid") {
-  if (!value)
-    fail(
-      code,
-      "Final input must bind exact content, lineage and registry receipts",
-    );
+  if (!value) fail(code, "Final input must bind exact content and lineage");
 }
 const key = (e) => `${e.uuid}@${e.version}`;
+
+function resultContent(projection) {
+  return {
+    result: projection.identity,
+    hashDomain: projection.hashDomain,
+    canonicalContentHash: projection.canonicalContentHash,
+    contentHash: projection.contentHash,
+  };
+}
 
 // Inspection is read-only. Materialization evidence is structured, hash-bound
 // producer output; the orchestration layer verifies/replays Derived handoffs.
@@ -78,8 +72,7 @@ export async function inspectFinalResultInput({
   }
   const resolveDependency = dependencies.resolve;
   const selection = [];
-  const registrations = [];
-  let registrationBytes = 0;
+  const content = [];
   const seen = new Set();
   for (const selected of results) {
     const k = key(selected);
@@ -112,17 +105,8 @@ export async function inspectFinalResultInput({
       resolveDependency,
       warningSink,
     });
-    const request = identityRegistrationRequest(projection);
-    registrationBytes += Buffer.byteLength(canonicalJson(request));
-    checkBudget(
-      "input_plan",
-      registrationBytes,
-      MAX_INPUT_PLAN_BYTES,
-      entry,
-      registrations.length + 1,
-    );
     selection.push(row);
-    registrations.push(request);
+    content.push(resultContent(projection));
   }
   requireValue(
     index.datasets
@@ -136,13 +120,13 @@ export async function inspectFinalResultInput({
     results: selection,
   });
   const plan = {
-    schemaVersion: "tiangong.release.final-result-input-plan.v1",
+    schemaVersion: "tiangong.release.final-result-input-plan.v2",
     inputHash,
     indexHash: hashJson(index),
     lineageHash: hashJson(lineage),
     selection,
     lineage,
-    registrations,
+    content,
     candidateQualified: false,
     publicationAuthorized: false,
   };
@@ -154,9 +138,7 @@ export async function inspectFinalResultInput({
   return plan;
 }
 
-// Registration claims are irreversible identity occupancy, not publication.
-// Confirm the inspected input before creating a registry client. Failures retain
-// exact requests and successful receipts, allowing same-input reconciliation.
+// Freeze an independently checked local copy for build and later readback.
 export async function prepareFinalResultInput({
   canonicalRoot,
   index,
@@ -164,9 +146,7 @@ export async function prepareFinalResultInput({
   materializationEvidence,
   confirmInputHash,
   outDir,
-  createAuthority,
 }) {
-  requireValue(typeof createAuthority === "function");
   const warnings = [];
   const inspected = await inspectFinalResultInput({
     canonicalRoot,
@@ -189,7 +169,6 @@ export async function prepareFinalResultInput({
   }
   const staging = await mkdtemp(`${target}.work-`);
   const frozenRoot = path.join(staging, "canonical");
-  let authority;
   try {
     await mkdir(frozenRoot);
     for (const entry of index.datasets) {
@@ -228,54 +207,18 @@ export async function prepareFinalResultInput({
       canonicalJson(plan.lineage),
       { flag: "wx" },
     );
-    await writeFile(path.join(staging, "registration-receipts.ndjson"), "", {
-      flag: "wx",
-    });
-    authority = await createAuthority();
-    const registered = [];
-    for (const [ordinal, request] of plan.registrations.entries()) {
-      // Read current occupancy even for first-generation. A bounded page is not an
-      // availability promise; registration is the final atomic arbitration.
-      const page = await authority.versions(request.result.uuid, {
-        limit: 256,
-      });
-      requireValue(
-        page.resultId === request.result.uuid && Array.isArray(page.versions),
-        "final_input_authority_mismatch",
-      );
-      const occupied = page.versions.find(
-        (v) => v.version === request.result.version,
-      );
-      if (occupied)
-        requireValue(
-          occupied.status === "registered" &&
-            occupied.hashDomain === request.hashDomain &&
-            occupied.contentHash === request.contentHash,
-          "final_input_version_occupied",
-        );
-      const receipt = verifyIdentityReceipt(request, {
-        ok: true,
-        data: await authority.register(request),
-      });
-      await appendFile(
-        path.join(staging, "registration-receipts.ndjson"),
-        `${canonicalJson({ requestHash: hashJson(request), receipt })}\n`,
-      );
-      registered.push({
-        ...plan.selection[ordinal],
-        hashDomain: request.hashDomain,
-        canonicalContentHash: request.canonicalContentHash,
-        contentHash: request.contentHash,
-        identityReceipt: receipt,
-      });
-    }
     const finalInput = {
-      schemaVersion: "tiangong.release.final-result-input.v1",
+      schemaVersion: "tiangong.release.final-result-input.v2",
       inputHash: plan.inputHash,
       indexHash: plan.indexHash,
       lineageHash: plan.lineageHash,
       selection: plan.selection,
-      results: registered,
+      results: plan.selection.map((row, i) => ({
+        ...row,
+        hashDomain: plan.content[i].hashDomain,
+        canonicalContentHash: plan.content[i].canonicalContentHash,
+        contentHash: plan.content[i].contentHash,
+      })),
       candidateQualified: false,
       publicationAuthorized: false,
     };
@@ -299,29 +242,20 @@ export async function prepareFinalResultInput({
         candidateCreated: false,
         publicationAuthorized: false,
         code: error.code ?? "final_input_failed",
-        recovery:
-          "Reconcile exact recorded registrations; never reuse an occupied version for changed content",
+        recovery: "Verify the source input and retry in a new output directory",
       }),
       { flag: "wx" },
     );
     error.details = { ...error.details, retainedInput: staging };
     throw error;
-  } finally {
-    // Pool shutdown cannot change a persisted registration outcome, hide its
-    // recovery path, or turn an already frozen input into an apparent failure.
-    try {
-      await authority?.close();
-    } catch {
-      // The adapter has no business writes during close.
-    }
   }
 }
 
 // Persisted evidence is checked independently of the preparer's return value.
 export function verifyFrozenFinalInput({ input, index, plan, lineage }) {
   requireValue(
-    input?.schemaVersion === "tiangong.release.final-result-input.v1" &&
-      plan?.schemaVersion === "tiangong.release.final-result-input-plan.v1" &&
+    input?.schemaVersion === "tiangong.release.final-result-input.v2" &&
+      plan?.schemaVersion === "tiangong.release.final-result-input-plan.v2" &&
       lineage?.schemaVersion === "tiangong.release.final-result-lineage.v1" &&
       index?.schemaVersion === "tiangong.release.canonical-dataset-index.v1" &&
       index.datasetCount === index.datasets?.length &&
@@ -334,10 +268,10 @@ export function verifyFrozenFinalInput({ input, index, plan, lineage }) {
       hashJson(plan.lineage) === input.lineageHash &&
       Array.isArray(input.results) &&
       Array.isArray(input.selection) &&
-      Array.isArray(plan.registrations) &&
+      Array.isArray(plan.content) &&
       input.results.length > 0 &&
       input.results.length === input.selection.length &&
-      input.results.length === plan.registrations.length &&
+      input.results.length === plan.content.length &&
       hashJson(input.selection) === hashJson(plan.selection) &&
       input.inputHash === plan.inputHash &&
       input.inputHash ===
@@ -357,11 +291,7 @@ export function verifyFrozenFinalInput({ input, index, plan, lineage }) {
   const seen = new Set();
   for (const [i, row] of input.results.entries()) {
     const selected = input.selection[i];
-    const request = plan.registrations[i];
-    const receipt = verifyIdentityReceipt(request, {
-      ok: true,
-      data: row.identityReceipt,
-    });
+    const request = plan.content[i];
     const k = key(row);
     const source = sources.get(k);
     requireValue(
@@ -374,15 +304,14 @@ export function verifyFrozenFinalInput({ input, index, plan, lineage }) {
         selected.version === row.version &&
         source.relationKind === selected.relationKind &&
         hashJson(source.sources) === hashJson(selected.sources) &&
-        row.uuid === receipt.result.uuid &&
-        row.version === receipt.result.version &&
+        row.uuid === request?.result?.uuid &&
+        row.version === request?.result?.version &&
         hashJson(row) ===
           hashJson({
             ...selected,
             hashDomain: request.hashDomain,
             canonicalContentHash: request.canonicalContentHash,
             contentHash: request.contentHash,
-            identityReceipt: receipt,
           }),
       "final_input_binding_invalid",
     );
@@ -431,7 +360,7 @@ export async function loadFinalResultInput(inputDir) {
   const warnings = [];
   for (const [ordinal, row] of input.selection.entries()) {
     const entry = entries.get(`process:${key(row)}`);
-    const request = identityRegistrationRequest(
+    const request = resultContent(
       projectFinalResult({
         document: await frozenDocument(canonicalRoot, entry),
         identity: entry,
@@ -442,8 +371,8 @@ export async function loadFinalResultInput(inputDir) {
       }),
     );
     requireValue(
-      hashJson(request) === hashJson(plan.registrations[ordinal]),
-      "final_input_registration_drift",
+      hashJson(request) === hashJson(plan.content[ordinal]),
+      "final_input_content_drift",
     );
   }
   return {
