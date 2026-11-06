@@ -159,15 +159,16 @@ test(
       (d) => d.role === "unit_process",
     );
     assert.ok(support);
-    assert.deepEqual(support.components, ["result"]);
-    assert.deepEqual(loaded.catalog.components.unitProcess, {
-      available: false,
-      roots: [],
-      datasets: [],
-    });
-    assert.equal(loaded.catalog.components.result.roots.length, 3);
+    assert.equal(
+      loaded.catalog.schemaVersion,
+      "tiangong.release.candidate-publication-catalog.v2",
+    );
+    assert.equal(
+      loaded.catalog.datasets.filter((d) => d.role === "result_process").length,
+      3,
+    );
     assert.equal(loaded.queryCatalog.results.length, 3);
-    assert.ok(loaded.catalog.components.result.datasets.includes(support.key));
+    assert.ok(!("references" in support));
     assert.ok(
       !loaded.queryCatalog.results.some((r) => r.uuid === support.uuid),
     );
@@ -178,7 +179,7 @@ test(
       built.path,
       built.candidate.publicationCatalog.path,
     );
-    loaded.catalog.components.result.roots.push(support.key);
+    support.role = "result_process";
     const bytes = Buffer.from(canonicalJson(loaded.catalog));
     await writeFile(catalogFile, bytes);
     built.candidate.publicationCatalog.sha256 = sha256Bytes(bytes);

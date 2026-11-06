@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-05
-lastReviewedCommit: e8c95247860a8d09a34bc7d485448de31f8baa4c
-lastReviewedNote: "Release #124: reviewed Result-only roots, typed Process support closure, paired archive/query coverage and isolated reader/download/rollback proof."
+lastReviewedCommit: 009e3df54b4cde0eaac2b80f8ce99cf3b3229e54
+lastReviewedNote: "Release #126: compact membership handoff, local closure validation and complete ZIP listing proof."
 related:
   - AGENTS.md
   - ../release-candidate/README.md
@@ -51,7 +51,7 @@ hash 确认，并重新验证 Candidate。CLI 为 `result-storage inspect/execut
 受控 S3 adapter 只写入 `<prefix>/query-artifacts/<artifactId>/<manifestSha256>/`
 和 `<prefix>/release-candidates/<candidateSha256>/` 下的固定文件名。后者包括
 `release-candidate.json`、`publication-catalog.json`、`result.tidas.zip`、
-`result.ilcd.zip`。存储命名不改变 ZIP 内部内容与原下载文件名。
+`result.ilcd.zip`。其中 `publication-catalog.json` 只含精简 v2 成员清单，用于精确 Result 覆盖及实时 ZIP 支持数据权限；完整引用图由 Release 构建时验证，不上传且不交给 Database 遍历。文件名及外层 Candidate v3 保持不变，旧全图 payload 明确拒绝。存储命名不改变 ZIP 内部内容与原下载文件名。
 
 进程环境必须显式提供 `CONN`、`S3_ENDPOINT`、`S3_REGION`、`S3_BUCKET`，
 可选 `S3_PREFIX`。inspect 只解析目标并校验本地 Candidate，不联网、不读取

@@ -26,8 +26,8 @@ checkPaths:
   - .node-version
   - .github/workflows/ci.yml
 lastReviewedAt: 2026-11-06
-lastReviewedCommit: 454db011153b5298c3c484708a497a30fd49ac45
-lastReviewedNote: "Release #124: reviewed Result-only roots, typed Process support closure, paired archive/query coverage and isolated reader/download/rollback proof."
+lastReviewedCommit: 009e3df54b4cde0eaac2b80f8ce99cf3b3229e54
+lastReviewedNote: "Release #126: reviewed compact membership handoff, local closure validation and complete ZIP enumeration; existing workflow ownership unchanged."
 related:
   - README.md
   - .docpact/config.yaml

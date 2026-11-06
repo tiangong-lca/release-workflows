@@ -40,6 +40,7 @@ test(
     const project = {
       65422: "offline-final-result-916",
       65522: "result-dependencies-919",
+      65322: "compact-results-922",
     }[url.port];
     assert.ok(project, "only explicitly owned synthetic projects are allowed");
     assert.equal(url.username, "postgres");

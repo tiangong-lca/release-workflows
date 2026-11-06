@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lca.tiangong.earth/release/candidate-publication-catalog.v2.schema.json",
+  "title": "Final Result Compact Package Membership",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "canonicalDatasetIndexSha256",
+    "datasetCount",
+    "datasets"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "tiangong.release.candidate-publication-catalog.v2"
+    },
+    "canonicalDatasetIndexSha256": {
+      "$ref": "#/$defs/hash"
+    },
+    "datasetCount": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2000000
+    },
+    "datasets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/dataset"
+      },
+      "maxItems": 2000000
+    }
+  },
+  "$defs": {
+    "hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "datasetType",
+        "role",
+        "uuid",
+        "version",
+        "canonicalContentHash"
+      ],
+      "properties": {
+        "datasetType": {
+          "enum": [
+            "process",
+            "flow",
+            "flowproperty",
+            "unitgroup",
+            "lciamethod",
+            "contact",
+            "source"
+          ]
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "uuid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]{2}\\.[0-9]{2}\\.[0-9]{3}$"
+        },
+        "canonicalContentHash": {
+          "$ref": "#/$defs/hash"
+        }
+      }
+    }
+  }
+}

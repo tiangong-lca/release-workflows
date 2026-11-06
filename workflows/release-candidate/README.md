@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/release-candidate/**
 lastReviewedAt: 2026-11-05
-lastReviewedCommit: e8c95247860a8d09a34bc7d485448de31f8baa4c
-lastReviewedNote: "Release #124: reviewed Result-only roots, typed Process support closure, paired archive/query coverage and isolated reader/download/rollback proof."
+lastReviewedCommit: 009e3df54b4cde0eaac2b80f8ce99cf3b3229e54
+lastReviewedNote: "Release #126: compact membership handoff, local closure validation and complete ZIP listing proof."
 related:
   - AGENTS.md
   - ../../README.md
@@ -272,7 +272,7 @@ Candidate 成功冻结后必须展示两个互斥的当前方向：
 
 Candidate v2 在 canonical bytes 仍可验证时生成 `publication-catalog.json`，记录 exact identity、required references 和 Unit Process/Result component sets。Publication 的纯 include/exclude 只引用 Candidate 子集，不改变 Candidate；只有 dataset bytes、identity、version 或 package 内容变化才形成新 Candidate。
 
-同一 catalog 契约也用于配对 Candidate v3。每个 dataset 的 `references` 是去重后的 exact dataset key 字符串数组（`kind:uuid@version`），不是含 `target/location/role` 的引用对象；所有消费者与 JSON Schema 都使用此冻结形式。原始引用位置仅用于构建时的错误诊断，不进入 catalog 的引用数组。
+该 v1 catalog 只用于 legacy Candidate v2；配对 Candidate v3 使用下述精简 v2 成员契约。每个 dataset 的 `references` 是去重后的 exact dataset key 字符串数组（`kind:uuid@version`），不是含 `target/location/role` 的引用对象；所有消费者与 JSON Schema 都使用此冻结形式。原始引用位置仅用于构建时的错误诊断，不进入 catalog 的引用数组。
 
 ## 失败与恢复
 
@@ -342,9 +342,13 @@ RELEASE_PAIR_TIDAS_BIN=/absolute/path/to/tidas node --test workflows/release-can
 
 ### 配对 Candidate v3
 
-Result-only 的发布主体只包括 `result_process`。Result 通过 `referenceToIncludedProcesses` 等标准引用依赖的 Unit Process 保留原文和 `unit_process` 类型，作为 Result 闭包进入两种 ZIP，不成为独立 Unit 发布组件，也不产生 HDF5 行。构建和重读均核对根、完整依赖集合及索引角色。legacy 四包的主体选择不变。
+Result-only 的发布主体只包括 `result_process`。Result 通过 `referenceToIncludedProcesses` 等标准引用依赖的 Unit Process 保留原文和 `unit_process` 类型，作为 Result 闭包进入两种 ZIP，不成为独立 Unit 发布组件，也不产生 HDF5 行。构建时验证根的完整依赖闭包；重读核对精简成员与冻结索引的精确一致性。legacy 四包的主体选择不变。
 
 内部 `buildFinalResultCandidate({finalInputDir, confirmInputHash, outDir, releaseVersion, tidasBin, encoder})` 重新加载 final input，并对实际 canonical bytes 重算每个内容指纹；确认后生成并核验两类文件。最终 `release-candidate.json` 使用 v3，绑定 `final-result-input.json`、`input-plan.json`、`source-lineage.json`、canonical index、`publication-catalog.json`、`query-results.json` 与 `pair/` 中的两包和查询文件。`query-results.json` 逐个保存精确 Result、内容指纹、层能力、直接/派生关联和 artifact/ordinal；不是对用户公开的 DTO。
+
+`publication-catalog.json` 现在使用 `tiangong.release.candidate-publication-catalog.v2`：顶层只有 schemaVersion、canonicalDatasetIndexSha256、datasetCount、datasets；成员只有 datasetType、uuid、version、role、canonicalContentHash。完整引用图只在 Release 构建时验证，不落盘、不上传、不交给 Database 重复遍历。已有 index/配对证据绑定完整 ZIP，精简成员用于数据库批次、Result 覆盖和实时 ZIP 支持数据权限。没有新增身份登记、hash 台账或发布前远程依赖。旧全图格式的本地配对候选需要从相同冻结输入在新目录重建；不提供兼容读取，不改写已留存证据。
+
+ZIP 成员列表按完整输出流逐条验证并计数，不能使用命令诊断尾部作为列表。空包、绝对/父目录路径、异常超长条目和读取失败均在解压前拒绝。
 
 `loadFinalResultCandidate` 验证 v3 manifest/hash 链、真实包和 HDF5 bytes、结果轴完整覆盖，再允许本地消费者读取。Candidate 移动目录不会改变语义绑定。候选清单的 `validation.finalInputBinding` 记录输入校验。失败后使用同一输入和新的输出目录重试。
 
