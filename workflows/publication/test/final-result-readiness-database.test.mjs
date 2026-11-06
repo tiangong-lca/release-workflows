@@ -37,17 +37,21 @@ test(
     const connectionString = process.env.RELEASE_READINESS_TEST_CONN,
       url = new URL(connectionString);
     assert.equal(url.hostname, "127.0.0.1");
-    assert.equal(url.port, "65422");
+    const project = {
+      65422: "offline-final-result-916",
+      65522: "result-dependencies-919",
+    }[url.port];
+    assert.ok(project, "only explicitly owned synthetic projects are allowed");
     assert.equal(url.username, "postgres");
     assert.equal(url.pathname, "/postgres");
     assert.equal(url.search, "");
     const { stdout } = await promisify(execFile)("docker", [
       "inspect",
-      "supabase_db_offline-final-result-916",
+      `supabase_db_${project}`,
     ]);
     assert.equal(
       JSON.parse(stdout)[0].Config.Labels["com.supabase.cli.project"],
-      "offline-final-result-916",
+      project,
     );
     const owner = new pg.Client({ connectionString });
     await owner.connect();
@@ -72,7 +76,7 @@ test(
     );
     const registry = createFinalResultRegistry({ connectionString });
     t.after(() => registry.close());
-    const f = await candidate(t);
+    const f = await candidate(t, { processDependency: true });
     const storage = await storageFixture(t, {
       databaseTargetHash: registry.databaseTargetHash,
     });
@@ -785,6 +789,7 @@ test(
       // Seed only synthetic supporting datasets after the missing-support denial.
       // Suppress unrelated asynchronous triggers for these fixture inserts.
       const tables = {
+        process: "processes",
         contact: "contacts",
         flow: "flows",
         flowproperty: "flowproperties",
@@ -863,6 +868,7 @@ test(
         return inspected;
       }
       const replacement = await candidate(t, {
+        processDependency: true,
         amount: "5.25",
         releaseVersion: "2026.11.3",
         previousResult: f.result,
@@ -956,6 +962,7 @@ test(
       // A first-generation rebuild can be made offline, but must not replace
       // any published version with different content, even if it is historical.
       const conflicting = await candidate(t, {
+        processDependency: true,
         amount: "6.25",
         releaseVersion: "2026.11.6",
       });

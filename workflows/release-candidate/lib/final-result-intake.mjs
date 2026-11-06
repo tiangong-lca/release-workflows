@@ -380,6 +380,7 @@ export async function prepareFinalResultIntake({
     const catalog = await buildPublicationCatalog({
       canonicalRoot,
       index: assembled,
+      resultOnly: true,
     });
     const reachable = new Set(catalog.components.result.datasets);
     const selected = entries.filter((e) => reachable.has(key(e)));
