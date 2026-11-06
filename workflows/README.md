@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/**
 lastReviewedAt: 2026-11-06
-lastReviewedCommit: 009e3df54b4cde0eaac2b80f8ce99cf3b3229e54
-lastReviewedNote: "Release #126: reviewed compact membership handoff, local closure validation and complete ZIP enumeration; existing workflow ownership unchanged."
+lastReviewedCommit: c725220b1aee3012d0d0c82fd8125c87f0ad34d0
+lastReviewedNote: "Release #128: reviewed 7z/HDF5 workflow routing and complete archive readback; legacy four-ZIP ownership unchanged."
 related:
   - ../README.md
   - AGENTS.md
@@ -34,6 +34,6 @@ related:
 
 主线及当前跨 Workflow 能力限制见[根 README](../README.md#当前交接限制)。handoff 只表达目标与证据；执行前必须验证接收端确实支持该输入，不把导航或建议当作授权。
 
-最终 Result 的查询投影与原生 HDF5 编码由 [Release Candidate](release-candidate/README.md) 拥有。它与计算解耦；本地编码证据不替代 ZIP、Candidate 或 Publication 门禁。
+最终 Result 的查询投影与原生 HDF5 编码由 [Release Candidate](release-candidate/README.md) 拥有。它与计算解耦；本地编码证据不替代 7z 分发包、Candidate 或 Publication 门禁。
 
-Publication 的最终 Result v3 `result-storage inspect/execute` 消费冻结 Candidate，负责精确计划确认、不可覆盖上传、完整 GET 和 Database v2 存储登记；用户发布选择、批准和激活通过独立意图确认入口执行，`result-publication readback` 已接通公开数值/ZIP 回读与不可变凭证，详见其 README 的 recipe 边界。
+Publication 的最终 Result v3 `result-storage inspect/execute` 消费冻结 Candidate，负责精确计划确认、不可覆盖上传、完整 GET 和 Database v2 存储登记；用户发布选择、批准和激活通过独立意图确认入口执行，`result-publication readback` 已接通公开数值/7z 回读与不可变凭证，详见其 README 的 recipe 边界。

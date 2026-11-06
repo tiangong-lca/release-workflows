@@ -11,6 +11,7 @@ import {
 } from "./common.mjs";
 import { containedPath, readJson } from "./io.mjs";
 
+import { withSevenZipReadback } from "../../release-candidate/lib/seven-zip.mjs";
 import { loadFinalResultCandidate } from "../../release-candidate/lib/final-result-candidate.mjs";
 
 const execFileAsync = promisify(execFile);
@@ -74,7 +75,10 @@ export async function loadCandidate(
     );
   const packageSuffixes = {
     unit_process: "-UnitProcessDatabase.tidas.zip",
-    result_process: "-ResultDatabase.tidas.zip",
+    result_process:
+      candidate.schemaVersion === "tiangong.release.release-candidate.v3"
+        ? "-ResultDatabase.tidas.7z"
+        : "-ResultDatabase.tidas.zip",
   };
   if (requiredRole !== null && !(requiredRole in packageSuffixes))
     fail(
@@ -147,6 +151,15 @@ export async function loadProcessInputs(
   keys,
   { role = "unit_process" } = {},
 ) {
+  const archive = candidateEvidence.packagesByRole[role]?.archive;
+  if (archive?.endsWith(".7z"))
+    return withSevenZipReadback(archive, (root) =>
+      readProcessInputs(candidateEvidence, keys, role, root),
+    );
+  return readProcessInputs(candidateEvidence, keys, role, null);
+}
+
+async function readProcessInputs(candidateEvidence, keys, role, readbackRoot) {
   if (!Array.isArray(keys) || keys.length < 2)
     fail(
       "transformation_input_count_invalid",
@@ -183,7 +196,15 @@ export async function loadProcessInputs(
         "candidate_process_package_missing",
         `Candidate does not provide an archive for ${role}`,
       );
-    const bytes = await extractMember(archive, entry.path);
+    const file = readbackRoot ? path.join(readbackRoot, entry.path) : null;
+    if (file && (await stat(file)).size > 256 * 1024 * 1024)
+      fail(
+        "candidate_archive_member_read_failed",
+        "Candidate member exceeds read budget",
+      );
+    const bytes = file
+      ? await readFile(file)
+      : await extractMember(archive, entry.path);
     if (sha256Bytes(bytes) !== entry.sha256)
       fail(
         "transformation_input_hash_mismatch",

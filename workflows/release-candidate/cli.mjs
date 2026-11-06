@@ -113,7 +113,7 @@ intake prepare options:
   --materialization <path>  Completed Result Materialization directory
   --source-intake <path>    Frozen Materialization Intake containing source_closure
   --out-dir <path>          New immutable Release Intake directory
-  --delivery-format <id>    result-zip-hdf5 or legacy-four-zips; omission returns an explicit deliverable choice
+  --delivery-format <id>    result-7z-hdf5 or legacy-four-zips; omission returns an explicit deliverable choice
   --flow-cache <path>       Shared Elementary Flow cache; defaults to ${DEFAULT_FLOW_CACHE}
 
 cache options:

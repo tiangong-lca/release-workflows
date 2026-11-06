@@ -14,7 +14,7 @@ checkPaths:
   - workflows/release-candidate/**
 lastReviewedAt: 2026-11-05
 lastReviewedCommit: 009e3df54b4cde0eaac2b80f8ce99cf3b3229e54
-lastReviewedNote: "Release #126: compact membership handoff, local closure validation and complete ZIP listing proof."
+lastReviewedNote: "Release #128: reviewed final Result 7z packaging, complete readback and safe 413 diagnostics; offline generation and publication authority stay separate."
 related:
   - AGENTS.md
   - ../../README.md
@@ -37,7 +37,7 @@ related:
 
 ## 输入契约
 
-Release Candidate Workflow 先从冻结的 Materialization Intake 和 materialization 输出准备独立的 Release Intake，再按目标产物选择 Result ZIP + HDF5 配对路线或显式 legacy 四包路线。两个 Intake 语义不同：前者证明结果生成时使用的输入，后者补齐独立分发所需的依赖；任何阶段都不得原地修改已冻结 manifest。
+Release Candidate Workflow 先从冻结的 Materialization Intake 和 materialization 输出准备独立的 Release Intake，再按目标产物选择 Result 7z + HDF5 配对路线或显式 legacy 四包路线。两个 Intake 语义不同：前者证明结果生成时使用的输入，后者补齐独立分发所需的依赖；任何阶段都不得原地修改已冻结 manifest。
 
 输入至少包括：
 
@@ -126,7 +126,7 @@ node cli.mjs intake prepare \
   --out-dir /path/to/release-intake \
   --json
 
-# 需要 Result ZIP + HDF5：使用 intake prepare 返回的配对路线
+# 需要 Result 7z + HDF5：使用 intake prepare 返回的配对路线
 node cli.mjs result intake \
   --release-intake /path/to/release-intake \
   --out-dir /path/to/result-intake \
@@ -204,7 +204,7 @@ Agent 使用 CLI 返回的模板路径和 `requiredFacts` 填写回复。模板�
 
 两条执行路径生成相同的 `tiangong.release.elementary-flow-cache.v1`：manifest 记录内容 SHA-256、记录数以及数据库 watermark（已发布 Flow 数量与 `MAX(modified_at)`）。`cache status` 用一次轻量查询比较 watermark，并验证本地 artifact；因此能够区分 `fresh`、`missing`、`stale` 与 `invalid`。S3 `Expires` header 和 presigned URL expiry 只限制临时对象的可用期，不等同于自动删除；正常路径通过显式 DELETE 立即清理，异常终止遗留对象仍应由 Storage prefix lifecycle 兜底。
 
-`intake prepare --delivery-format result-zip-hdf5` 将后续命令指向 `result intake`；`--delivery-format legacy-four-zips` 指向 `package build`。未提供时返回 `nextDecision` 的两种明确选择，`nextActions` 为空，避免静默选择旧四包。Agent 应复用用户已经明确的目标，无需反复确认。已有 Release Intake 可直接进入相应路线；已有 legacy Candidate 不会原地补成 v3，配对路线从同一冻结 Release Intake 新建 Result-only 产物。若旧 Candidate 曾做排除或 Transformation，应先使用对应的新输入，不能把原始全量 Intake 当作同一 scope。
+`intake prepare --delivery-format result-7z-hdf5` 将后续命令指向 `result intake`；`--delivery-format legacy-four-zips` 指向 `package build`。未提供时返回 `nextDecision` 的两种明确选择，`nextActions` 为空，避免静默选择旧四包。Agent 应复用用户已经明确的目标，无需反复确认。已有 Release Intake 可直接进入相应路线；已有 legacy Candidate 不会原地补成 v3，配对路线从同一冻结 Release Intake 新建 Result-only 产物。若旧 Candidate 曾做排除或 Transformation，应先使用对应的新输入，不能把原始全量 Intake 当作同一 scope。
 
 `intake prepare` 不再隐式执行长时数据库下载。它只接受 fresh 缓存，扫描 source closure 中 LCIA Method 的 `characterisationFactors`，提取带精确 UUID/version 的 `referenceToFlowDataSet`，并从缓存匹配缺失的精确版本后冻结 dependency supplement。缓存缺失或过期会 fail closed，同时输出显式刷新命令。该过程不修改 Materialization Intake，也不把新增 Flow 误记为参与了原始计算。Release Intake manifest 只记录内容 hash；本地绝对路径单独保存在权限受限的 runtime locator 中，不进入可移植计划语义。
 
@@ -320,9 +320,15 @@ Method 上限按完整 canonical 文档计量，并在 direct/Derived Intake、�
 
 ### 最终 Result 双产物配对
 
+最终分发格式为真实 `.7z`。先由 Toolkit 构建并验证 Result-only 内容，Release 再用 **7-Zip 26.05** 编码：LZMA2、level 9、256 MiB 字典、4 GiB solid block、8 threads、关闭创建/访问/修改时间。小输入会由 7-Zip 自动缩小有效字典。两个包顺序生成；大字典的实际压缩内存高于字典本身，需要预留数 GiB 空闲内存。排序后的文件清单、固定权限与参数保证同平台/同工具的重复构建一致；跨平台字节一致性不是当前验收声明。
+
+安装官方控制台版后，将 `RELEASE_7ZIP_BIN` 指向 `7zz`（Windows 为 `7z.exe`）；默认从 PATH 查找。构建前校验工具版本，缺少工具不会先生成 HDF5。Toolkit 的 ZIP 只是临时中间包；Release 对最终 7z 解压后的完整成员逐一比对 bytes/SHA-256，再执行各格式验证、语义 round-trip 和 HDF5 parity。最终 receipt、Candidate、存储计划与下载只绑定 `.7z`。打包不改变 Result 的 UUID/version 或标准内容，也不增加远程身份登记。
+
+原有冻结 Candidate 不会被原地改写；从相同 frozen input 使用新输出目录构建新 Candidate。尚未上传的旧 ZIP 存储计划不能用于新 7z。Transformation/Derived Intake 对新包一次解压到独立临时目录，使用后清理，避免逐条重复解压固实块；文件数、路径、解压总量与单文档预算仍检查。legacy 四包路线仍为 ZIP。
+
 `lib/final-result-pair.mjs` 的 `buildFinalResultPair` 接受冻结 canonical collection、完整 index、精确 Result selection、release version，以及显式 Toolkit/encoder。它复制并重验输入，在同一输入上构建 HDF5 和 `result-process-full-closure.v1` 的 TIDAS/ILCD 两包；Toolkit 握手必须同时声明该 profile 和 `tidas.release-report.v2`，不按版本号猜能力。
 
-包实际解压后再次通过各格式验证，并在两个 ZIP 的实际内容之间执行 semantic round-trip。`final-result-parity.mjs` 从解压后的 TIDAS 文档及语义依赖重新形成期望值，核对完整 Result/Flow/Method 轴、单位、参考量、直接/派生元数据、所有 LCI 非零及 LCIA 数值，再调用原生工具逐行比较真实 HDF5。冻结 index 的每个成员都必须出现在所选 Result 完整闭包中；多余输入不能静默遗漏。LCI-only 与不同指标集合分别生成 artifact，零 LCIA 不表示缺少能力。
+包实际解压后再次通过各格式验证，并在两个 7z 的实际内容之间执行 semantic round-trip。`final-result-parity.mjs` 从解压后的 TIDAS 文档及语义依赖重新形成期望值，核对完整 Result/Flow/Method 轴、单位、参考量、直接/派生元数据、所有 LCI 非零及 LCIA 数值，再调用原生工具逐行比较真实 HDF5。冻结 index 的每个成员都必须出现在所选 Result 完整闭包中；多余输入不能静默遗漏。LCI-only 与不同指标集合分别生成 artifact，零 LCIA 不表示缺少能力。
 
 返回 `tiangong.release.final-result-pair.v1`，明确 `pairQualified=true`、`candidateQualified=false`、`publicationAuthorized=false`，并绑定实际包、query manifests、回读和 parity 证据。失败时保留唯一工作目录、成功产物及结构化诊断；不出现成功的配对输出，不覆盖已有目录。当前该模块是内部构建能力；原 `package build` CLI 和 legacy Candidate v2 四包语义不变。可信来源关联以及配对 Candidate 冻结仍由后续 Candidate 集成完成，不能把这个 receipt 直接交给旧发布入口。
 
@@ -338,17 +344,17 @@ RELEASE_PAIR_TIDAS_BIN=/absolute/path/to/tidas node --test workflows/release-can
 
 `result inspect` 复核 canonical 文件、完整依赖和结构化来源，返回精确 input hash。确认该 hash 后，`result freeze` 在独立本地目录逐份复核副本，生成 `final-result-input.json`、输入计划和来源清单。每个 Result 绑定规范内容与语义依赖的指纹，不需要数据库连接或登记回执。输入格式为 v2。此前生成的 v1 Result Intake 可从原冻结 Release Intake 或已验证的 Derived Materialization 重新准备。
 
-显式使用 `result versions` 可只读查看历史全局登记占用并生成上游版本建议。该命令不参与离线出包和批次发布。对已发布的 direct Result，使用上游 Materialization 的 `--previous-manifest` 依据原版本规则分配版本。派生 Result 的版本由 Transformation 在冻结时确定。两条路线都先生成新版本的标准数据集，再重新准备、冻结并生成 HDF5 与 ZIP。
+显式使用 `result versions` 可只读查看历史全局登记占用并生成上游版本建议。该命令不参与离线出包和批次发布。对已发布的 direct Result，使用上游 Materialization 的 `--previous-manifest` 依据原版本规则分配版本。派生 Result 的版本由 Transformation 在冻结时确定。两条路线都先生成新版本的标准数据集，再重新准备、冻结并生成 HDF5 与 7z。
 
 ### 配对 Candidate v3
 
-Result-only 的发布主体只包括 `result_process`。Result 通过 `referenceToIncludedProcesses` 等标准引用依赖的 Unit Process 保留原文和 `unit_process` 类型，作为 Result 闭包进入两种 ZIP，不成为独立 Unit 发布组件，也不产生 HDF5 行。构建时验证根的完整依赖闭包；重读核对精简成员与冻结索引的精确一致性。legacy 四包的主体选择不变。
+Result-only 的发布主体只包括 `result_process`。Result 通过 `referenceToIncludedProcesses` 等标准引用依赖的 Unit Process 保留原文和 `unit_process` 类型，作为 Result 闭包进入两种 7z，不成为独立 Unit 发布组件，也不产生 HDF5 行。构建时验证根的完整依赖闭包；重读核对精简成员与冻结索引的精确一致性。legacy 四包的主体选择不变。
 
 内部 `buildFinalResultCandidate({finalInputDir, confirmInputHash, outDir, releaseVersion, tidasBin, encoder})` 重新加载 final input，并对实际 canonical bytes 重算每个内容指纹；确认后生成并核验两类文件。最终 `release-candidate.json` 使用 v3，绑定 `final-result-input.json`、`input-plan.json`、`source-lineage.json`、canonical index、`publication-catalog.json`、`query-results.json` 与 `pair/` 中的两包和查询文件。`query-results.json` 逐个保存精确 Result、内容指纹、层能力、直接/派生关联和 artifact/ordinal；不是对用户公开的 DTO。
 
-`publication-catalog.json` 现在使用 `tiangong.release.candidate-publication-catalog.v2`：顶层只有 schemaVersion、canonicalDatasetIndexSha256、datasetCount、datasets；成员只有 datasetType、uuid、version、role、canonicalContentHash。完整引用图只在 Release 构建时验证，不落盘、不上传、不交给 Database 重复遍历。已有 index/配对证据绑定完整 ZIP，精简成员用于数据库批次、Result 覆盖和实时 ZIP 支持数据权限。没有新增身份登记、hash 台账或发布前远程依赖。旧全图格式的本地配对候选需要从相同冻结输入在新目录重建；不提供兼容读取，不改写已留存证据。
+`publication-catalog.json` 现在使用 `tiangong.release.candidate-publication-catalog.v2`：顶层只有 schemaVersion、canonicalDatasetIndexSha256、datasetCount、datasets；成员只有 datasetType、uuid、version、role、canonicalContentHash。完整引用图只在 Release 构建时验证，不落盘、不上传、不交给 Database 重复遍历。已有 index/配对证据绑定完整 7z，精简成员用于数据库批次、Result 覆盖和实时 7z 支持数据权限。没有新增身份登记、hash 台账或发布前远程依赖。旧全图格式的本地配对候选需要从相同冻结输入在新目录重建；不提供兼容读取，不改写已留存证据。
 
-ZIP 成员列表按完整输出流逐条验证并计数，不能使用命令诊断尾部作为列表。空包、绝对/父目录路径、异常超长条目和读取失败均在解压前拒绝。
+7z 成员列表按完整输出流逐条验证并计数，不能使用命令诊断尾部作为列表。空包、绝对/父目录路径、异常超长条目和读取失败均在解压前拒绝。
 
 `loadFinalResultCandidate` 验证 v3 manifest/hash 链、真实包和 HDF5 bytes、结果轴完整覆盖，再允许本地消费者读取。Candidate 移动目录不会改变语义绑定。候选清单的 `validation.finalInputBinding` 记录输入校验。失败后使用同一输入和新的输出目录重试。
 
@@ -379,7 +385,7 @@ node workflows/release-candidate/cli.mjs result intake \
   --out-dir <final-intake-dir> --tidas-bin <capability-complete-tidas> --json
 ```
 
-legacy 父 Candidate 还必须提供 `--parent-materialization <original-materialization-dir>`；旧 Transformation output 若未带 frozen spec，显式提供 `--spec <spec-dir>`。Intake 重新执行 producer replay，核对加工后的实际 bytes 和父关联；不从文字说明建立原过程映射。真实 ZIP 成员逐项按 index 校验，原有 publication reference catalog 用于选择 Result component，Toolkit 负责完整标准闭包与 TIDAS qualification。未被 Result 引用的 Unit、Model 或其他支持内容不进入新输入；缺失依赖直接失败，不猜 latest。
+legacy 父 Candidate 还必须提供 `--parent-materialization <original-materialization-dir>`；旧 Transformation output 若未带 frozen spec，显式提供 `--spec <spec-dir>`。Intake 重新执行 producer replay，核对加工后的实际 bytes 和父关联；不从文字说明建立原过程映射。真实 7z 成员逐项按 index 校验，原有 publication reference catalog 用于选择 Result component，Toolkit 负责完整标准闭包与 TIDAS qualification。未被 Result 引用的 Unit、Model 或其他支持内容不进入新输入；缺失依赖直接失败，不猜 latest。
 
 直接路线的层来自 producer catalog，预期方法来自同一 hash-bound source intake 的 process axis/LCIA records；不会通过读取不完整最终文档缩小期望集合。派生路线使用 producer replay 后的层/方法契约。Intake、inspect、freeze、build、verify 都不连接身份数据库；inspect 会重新核对原始 producer 证据及必要的 replay。运行时路径保存在权限受限 `runtime-locators.json`，不进入语义 input hash。
 

@@ -50,10 +50,10 @@ export function intakeContinuation({
   const cli = fileURLToPath(new URL("../cli.mjs", import.meta.url));
   const choices = [
     {
-      id: "result-zip-hdf5",
-      label: "Result ZIP + HDF5",
+      id: "result-7z-hdf5",
+      label: "Result 7z + HDF5",
       description:
-        "Result-only two ZIPs and paired LCI/LCIA HDF5. Continue through intake, inspect, freeze, then build offline; no new calculation.",
+        "Result-only two 7z archives and paired LCI/LCIA HDF5. Continue through intake, inspect, freeze, then build offline; no new calculation.",
       args: [
         "result",
         "intake",
@@ -90,9 +90,7 @@ export function intakeContinuation({
     !choices.some((c) => c.id === deliveryFormat)
   )
     throw Object.assign(
-      new Error(
-        "--delivery-format must be result-zip-hdf5 or legacy-four-zips",
-      ),
+      new Error("--delivery-format must be result-7z-hdf5 or legacy-four-zips"),
       { code: "invalid_arguments" },
     );
   return {

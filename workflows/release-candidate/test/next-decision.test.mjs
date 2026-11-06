@@ -48,9 +48,9 @@ test("Release Intake selects paired deliverables explicitly and never silently d
   assert.deepEqual(choice.nextActions, []);
   assert.deepEqual(
     choice.nextDecision.choices.map((c) => c.id),
-    ["result-zip-hdf5", "legacy-four-zips"],
+    ["result-7z-hdf5", "legacy-four-zips"],
   );
-  for (const deliveryFormat of ["result-zip-hdf5", "legacy-four-zips"]) {
+  for (const deliveryFormat of ["result-7z-hdf5", "legacy-four-zips"]) {
     const selected = intakeContinuation({ ...input, deliveryFormat });
     assert.equal(selected.nextDecision.required, false);
     assert.equal(selected.nextActions.length, 1);
@@ -62,7 +62,7 @@ test("Release Intake selects paired deliverables explicitly and never silently d
     );
     assert.deepEqual(
       action.argv.slice(2, 4),
-      deliveryFormat === "result-zip-hdf5"
+      deliveryFormat === "result-7z-hdf5"
         ? ["result", "intake"]
         : ["package", "build"],
     );
@@ -97,7 +97,7 @@ test("deliverable selector rejects invalid or misplaced choices before reading i
       "--delivery-format",
       "invalid",
     ],
-    ["package", "build", "--delivery-format", "result-zip-hdf5"],
+    ["package", "build", "--delivery-format", "result-7z-hdf5"],
   ]) {
     const result = spawnSync(process.execPath, [cli, ...args, "--json"], {
       cwd: os.tmpdir(),

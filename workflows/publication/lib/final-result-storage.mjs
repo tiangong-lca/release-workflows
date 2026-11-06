@@ -194,7 +194,7 @@ async function workload(candidateDir, targetHash) {
     ...(await Promise.all(
       loaded.candidate.packages.map(async (p) => ({
         file: {
-          name: `result.${p.format}.zip`,
+          name: `result.${p.format}.7z`,
           sha256: p.sha256,
           byteSize: p.byteSize,
         },

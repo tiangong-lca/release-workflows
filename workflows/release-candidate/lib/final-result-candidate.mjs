@@ -411,7 +411,7 @@ export async function loadFinalResultCandidate(candidateDir) {
   for (const p of candidate.packages) {
     requireValue(
       p.path ===
-        `pair/packages/TiangongLCA-${candidate.releaseVersion}-ResultDatabase.${p.format}.zip`,
+        `pair/packages/TiangongLCA-${candidate.releaseVersion}-ResultDatabase.${p.format}.7z`,
     );
     await verifyLargeFile(root, {
       name: p.path,

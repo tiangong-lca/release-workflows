@@ -15,7 +15,7 @@ checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-06
 lastReviewedCommit: 009e3df54b4cde0eaac2b80f8ce99cf3b3229e54
-lastReviewedNote: "Release #126: compact membership handoff, local closure validation and complete ZIP listing proof."
+lastReviewedNote: "Release #128: reviewed final Result 7z packaging, complete readback and safe 413 diagnostics; offline generation and publication authority stay separate."
 related:
   - README.md
   - ../AGENTS.md
@@ -135,15 +135,17 @@ Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认
 
 ## 最终 Result v3 存储适配
 
+最终完整包固定为 `result.tidas.7z` 和 `result.ilcd.7z`，与 Candidate 中实际归档的 hash/bytes 绑定；不能把旧 ZIP 仅改扩展名。已知 413/EntityTooLarge 在完整 GET 未恢复匹配对象时报告 `final_storage_object_too_large`，保留固定文件名、字节数、上传阶段、HTTP 状态和 multipart 清理状态。不得返回 provider 原文，也不得建议原样重试。丢失响应仍先完整 GET 调和，只中止本次已知 multipart。
+
 - `lib/final-result-storage.mjs` 只消费重新验证的配对 Candidate v3。inspect 在本地绑定 Candidate/目标/完整文件集/行映射；execute 必须确认完全相同的 storage plan hash。`result-storage inspect/execute` 是独立 opt-in CLI；它不替代后继发布选择、reader readiness、actor approval 或 activation。inspect 不打开远程客户端，不要求 S3 写凭据；execute 在确认及新输出目录检查之后才构造受控 adapter。
 - `adapters/final-result-object-store.mjs` 使用显式数据面 S3/IAM 凭据；`adapters/final-result-registry.mjs` 使用受保护 CONN、单客户端参数化事务与服务角色，仅调用五个 Database-owned v2 query/Candidate 存储 RPC 与四个 readiness begin/artifacts/seal/describe RPC。不读取 actor token，不接受任意 SQL，不写 canonical/state 120，不调用批准/激活接口。
 - 对象键只从 artifact UUID/manifest hash、Candidate byte hash 和固定文件名派生。PUT 和 multipart complete 使用 `If-None-Match: *`，不覆盖已有文件；只可中止本次已知 multipart upload，不能 DeleteObject。每次执行与重试都完整 GET 校验 bytes/hash，不把 ETag 或原数据库 seal 当成当前文件可用性的证明。
 - 最终 Result 的 publication-catalog 仅接收精简 v2 成员；完整图只由 Release 构建验证，不上传或交给 Database 遍历。实时支持数据权限与批次绑定保持。
-- 本地已验证的索引/ZIP 与远端 GET 字节摘要相同后才按产物登记实际 Result 轴和完整包范围，行使用内容指纹与 Candidate 根关联。行按 500 条且 JSONB logical size 不超过 1 MiB 分批，映射摘要必须与 Database 的 ASCII 500-row block contract 一致。
+- 本地已验证的索引/7z 与远端 GET 字节摘要相同后才按产物登记实际 Result 轴和完整包范围，行使用内容指纹与 Candidate 根关联。行按 500 条且 JSONB logical size 不超过 1 MiB 分批，映射摘要必须与 Database 的 ASCII 500-row block contract 一致。
 - 超时、响应丢失与并发同键写入必须先精确回读。query/Candidate seal 响应不明时用 service-only describe 恢复原回执；不能换 artifact、Candidate、Result 版本或覆盖原回执。中止分片无法确认或创建分片响应丢失时明确 `multipartCleanupRequired`，不得声称清理完成。
 - 目标 fingerprint 绑定数据库连接身份（不含密码）、规范化存储 endpoint/region/bucket/prefix。根 endpoint 的身份不变；Supabase 精确 `/storage/v1/s3` base path 必须同时保留在哈希与 SDK 请求中，不能退化为 origin。配置必须指向已经治理的非公开存储；adapter 不改变 bucket policy，也不能以文件核验代替非公开环境准入。原 actor recipes 与 Portal projection 的 secret/locator 禁止仍保持。
 - CLI 只读取显式进程环境中的 `CONN` 与既有 `S3_*` 白名单，不隐式载入 `.env` 或 AWS credential provider chain，不接受凭据参数。证据输出必须位于冻结 Candidate 外部，含符号链接解析。每次 execute 使用新的输出目录：先写 attempt、成功后写 receipt；失败保留 attempt/failure，精确重试用新目录，不能删除记录伪造完成。stdout/stderr 只返回有界摘要与安全错误码；原始 provider/连接异常不外泄。
-- 该阶段只产生不可变存储登记证据，始终 `publicationAuthorized=false`。普通用户访问、完整 ZIP 授权及原子 current 切换由版本化 Database/Edge/Platform 接入另行完成。
+- 该阶段只产生不可变存储登记证据，始终 `publicationAuthorized=false`。普通用户访问、完整 7z 授权及原子 current 切换由版本化 Database/Edge/Platform 接入另行完成。
 
 ## 最终 Result reader 验证
 
@@ -182,7 +184,7 @@ Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认
 - 仅对提交结果不明的同一不可变 payload 重试一次，数据库以原 UUID 仲裁；连续不明
   或冲突必须停止。失败重开验证使用新 UUID 与新观察，不能延长、改写或补造历史证据。
   成功回执仍 `publicationAuthorized=false`；不生成批准、不激活、不写业务数据。
-- 整体本地资格验证须覆盖真实 Toolkit ZIP、Release HDF5、S3 SDK/HTTP、Worker
+- 整体本地资格验证须覆盖真实 Toolkit 7z、Release HDF5、S3 SDK/HTTP、Worker
   与隔离 PostgreSQL 的 identity/storage/selection/runtime/readiness RPC。测试用
   HTTP facade 只接收固定合成 token 并执行真实 actor SQL；不将其描述为 hosted JWT、
   Edge 或 Platform 的端到端证明。
@@ -232,11 +234,11 @@ Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认
 `result-publication readback` 只使用当前 actor 和相同 API origin 的公开 Edge。
 逐一对全部选定 Result 的冻结标准投影核对 overview、完整 LCI 和声明的 LCIA，
 固定 publication/runtime；查询失败不得用原 Bundle 或私有 reader 成功替代。
-可授权 ZIP 必须独立完整 GET 校验长度/hash，明确不可用单独记录，其余错误失败。
+可授权 7z 必须独立完整 GET 校验长度/hash，明确不可用单独记录，其余错误失败。
 签名 URL 只在内存中使用，不保存、不转发 actor 凭据、不跟随跳转。
 
 观测原文必须先独占落盘，再登记 immutable manager attestation，并独立读回原文摘要。
-Database 重新检查 current、选择、reader、实时角色/ZIP 权限和新鲜度。写入结果不明
+Database 重新检查 current、选择、reader、实时角色/7z 权限和新鲜度。写入结果不明
 先恢复同一 run 记录，禁止换新内容覆盖凭证。`readback_verified` 是发布后的审计状态，
 不能作为首次公开可见性的额外门槛；失败不隐式撤回、回滚或再次激活。历史凭证不
 承诺当前持续可用，也不冒充浏览器交互或 hosted JWT 验收。

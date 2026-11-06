@@ -277,3 +277,45 @@ test("actual CLI dispatch offers both storage actions and reports missing enviro
     assert.equal(error.stdout, "");
   }
 });
+
+test("size rejection preserves safe context without an unchanged retry command", async (t) => {
+  const f = await fixture(t);
+  await assert.rejects(
+    runFinalResultStorageCommand(
+      "execute",
+      { ...f.options, confirm: f.planHash },
+      {
+        ...f.dependencies,
+        execute: async () => {
+          throw Object.assign(new Error("provider-secret-never-log"), {
+            code: "final_storage_object_too_large",
+            details: {
+              fileName: "result.ilcd.7z",
+              byteSize: 999,
+              stage: "upload_part",
+              httpStatus: 413,
+              multipartCleanupRequired: false,
+              raw: environment.CONN,
+            },
+          });
+        },
+      },
+    ),
+    (error) => {
+      assert.equal(error.code, "final_storage_object_too_large");
+      assert.match(error.message, /do not retry unchanged/u);
+      assert.equal(error.nextActions, undefined);
+      assert.equal(error.details.fileName, "result.ilcd.7z");
+      return true;
+    },
+  );
+  const failure = await readFile(
+    path.join(f.options["out-dir"], "storage-failure.json"),
+    "utf8",
+  );
+  assert.doesNotMatch(failure, /provider-secret|postgresql:/u);
+  assert.equal(
+    JSON.parse(failure).remoteOutcome,
+    "object-size-rejected-no-matching-object",
+  );
+});

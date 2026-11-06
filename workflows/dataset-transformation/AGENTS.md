@@ -14,7 +14,7 @@ checkPaths:
   - workflows/dataset-transformation/**
 lastReviewedAt: 2026-11-01
 lastReviewedCommit: b972a085d013ebb24b72a44b9ece549b782d46f5
-lastReviewedNote: "Release #99: reviewed direct/Derived Result Intake, explicit inspect/register/build/verify commands, parent replay, final Candidate consumers and marker-last recovery; publication remains separate."
+lastReviewedNote: "Release #128: reviewed final Result 7z packaging, complete readback and safe 413 diagnostics; offline generation and publication authority stay separate."
 related:
   - README.md
   - dsl-v0.md
@@ -86,4 +86,6 @@ Execution output 同时保留 frozen spec。生产者拥有只读确定性重放
 
 ## 配对父 Candidate
 
-读取 v3 父 Candidate 时，先调用 Candidate owner 的完整只读资格验证，核对身份凭证、pair/index/catalog 绑定与实际 ZIP/HDF5 bytes，然后按精确 Result role 从包内读取 Process。Result-only v3 不提供 Unit 包，不能作为 Unit 聚合输入。文件可读与业务兼容性分开验证；现有共同 Calculation lineage 和字段决定要求不放宽。
+读取 v3 父 Candidate 时，先调用 Candidate owner 的完整只读资格验证，核对身份凭证、pair/index/catalog 绑定与实际 7z/HDF5 bytes，然后按精确 Result role 从包内读取 Process。Result-only v3 不提供 Unit 包，不能作为 Unit 聚合输入。文件可读与业务兼容性分开验证；现有共同 Calculation lineage 和字段决定要求不放宽。
+
+配对 v3 的 Result 包为 7z。读取前完整验证 Candidate，按调用一次解压到独立临时目录并在结束时清理；不能为每个 Process 重复解压固实块。legacy Unit/Result 四包继续按 ZIP 读取。

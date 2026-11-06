@@ -325,3 +325,49 @@ test("readiness GETs never repair missing files or alter corrupt objects", async
   );
   assert.ok(f.requests.every((request) => request.method === "GET"));
 });
+
+for (const [mode, stage, multipart, cleanup] of [
+  ["size-put", "put_object", false, false],
+  ["size-create", "create_multipart", true, false],
+  ["size-part", "upload_part", true, false],
+  ["size-complete", "complete_multipart", true, false],
+  ["size-abort-failure", "upload_part", true, true],
+])
+  test(`explicit 413 ${stage}/${mode} is actionable and safely reconciled`, async (t) => {
+    const f = await fixture(t, {
+      mode,
+      bytes: Buffer.alloc(multipart ? 16 * 1024 ** 2 + 1 : 64, 7),
+    });
+    await assert.rejects(
+      f.store.ensureQuery(ref, f.descriptor, f.filePath),
+      (error) => {
+        assert.equal(error.code, "final_storage_object_too_large");
+        assert.deepEqual(error.details, {
+          fileName: "lci.h5",
+          byteSize: f.bytes.length,
+          stage,
+          httpStatus: 413,
+          multipartCleanupRequired: cleanup,
+        });
+        assert.doesNotMatch(
+          JSON.stringify(error),
+          /provider-secret|synthetic-access|synthetic-secret|uploadId|127\.0\.0\.1/u,
+        );
+        return true;
+      },
+    );
+    assert.equal(f.requests.at(-1).method, "GET");
+    assert.equal(f.objects.size, 0);
+    assert.equal(f.parts.size, cleanup ? 1 : 0);
+  });
+
+test("final 7z object stores native-download MIME and exact bytes", async (t) => {
+  const f = await fixture(t);
+  const descriptor = { ...f.descriptor, name: "result.tidas.7z" };
+  await f.store.ensureCandidate("a".repeat(64), descriptor, f.filePath);
+  assert.equal(
+    f.requests.find((r) => r.method === "PUT").contentType,
+    "application/x-7z-compressed",
+  );
+  assert.deepEqual([...f.objects.values()], [f.bytes]);
+});

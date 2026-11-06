@@ -20,8 +20,8 @@ checkPaths:
   - workflows/**
   - .docpact/config.yaml
 lastReviewedAt: 2026-11-06
-lastReviewedCommit: 009e3df54b4cde0eaac2b80f8ce99cf3b3229e54
-lastReviewedNote: "Release #126: reviewed compact membership handoff, local closure validation and complete ZIP enumeration; existing workflow ownership unchanged."
+lastReviewedCommit: c725220b1aee3012d0d0c82fd8125c87f0ad34d0
+lastReviewedNote: "Release #128: reviewed 7z/HDF5 workflow routing and complete archive readback; legacy four-ZIP ownership unchanged."
 related:
   - AGENTS.md
   - docs/architecture.md
@@ -38,7 +38,7 @@ related:
 | -------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | [Calculation](workflows/calculation/README.md)                       | ResultSet、Closure、计算任务、Calculation Bundle 下载与完整性验证              |
 | [Result Materialization](workflows/result-materialization/README.md) | 从已验证 Bundle 生成 Result/Model，或验证并冻结加工后的 Derived Result         |
-| [Release Candidate](workflows/release-candidate/README.md)           | 闭合输入、Result ZIP/HDF5 配对或旧四包、失败影响分析与不可变 Candidate         |
+| [Release Candidate](workflows/release-candidate/README.md)           | 闭合输入、Result 7z/HDF5 配对或旧四包、失败影响分析与不可变 Candidate          |
 | [Dataset Transformation](workflows/dataset-transformation/README.md) | Candidate 中精确 Unit/Result Process 的语义决策、确定性加权、验证与 handoff    |
 | [Publication](workflows/publication/README.md)                       | Candidate 精确范围、审批、可恢复发布与独立回读；另有 opt-in Portal LCIA recipe |
 
@@ -57,7 +57,7 @@ Candidate 构建不构成发布授权。Publication 可选择引用完整的子�
 
 Transformation 的 inspect、freeze、execute 已实现；其 `completed` 只证明本节点产物和 handoff 已生成。Unit 聚合使旧 Result evidence 失效，需要新的计算；Result 聚合产生 Derived Result，不重新求解或补造 LifecycleModel。
 
-Materialization 的 `materialize derived` 接收精确 Derived Result handoff；Candidate 的 `result intake/inspect/freeze/build/verify` 接通结构化来源及离线 Result-only 两包/HDF5 Candidate。`package build` 继续提供 legacy 四包路线。Publication 的 `result-storage inspect/execute` 接通 v3 存储计划、条件上传、完整 GET 和 Database v2 登记；`result-readiness verify` 已连接完整文件/reader 核验、不可变磁盘证据与 Database seal；`result-publication plan/prepare/status` 接通选择确认与状态观察；独立批准/激活意图确认入口已接通，`result-publication readback` 已接通公开数值/ZIP 回读与不可变凭证，不能交给旧四包发布入口。进入后继 Workflow 前应核对其真实输入契约；不能通过重命名产物、复用旧证据或补造 Model 绕过限制。具体节点和限制由各 Workflow 文档维护。
+Materialization 的 `materialize derived` 接收精确 Derived Result handoff；Candidate 的 `result intake/inspect/freeze/build/verify` 接通结构化来源及离线 Result-only 两包/HDF5 Candidate。`package build` 继续提供 legacy 四包路线。Publication 的 `result-storage inspect/execute` 接通 v3 存储计划、条件上传、完整 GET 和 Database v2 登记；`result-readiness verify` 已连接完整文件/reader 核验、不可变磁盘证据与 Database seal；`result-publication plan/prepare/status` 接通选择确认与状态观察；独立批准/激活意图确认入口已接通，`result-publication readback` 已接通公开数值/7z 回读与不可变凭证，不能交给旧四包发布入口。进入后继 Workflow 前应核对其真实输入契约；不能通过重命名产物、复用旧证据或补造 Model 绕过限制。具体节点和限制由各 Workflow 文档维护。
 
 ## 开发与阅读
 
@@ -65,4 +65,4 @@ Agent 从 [AGENTS.md](AGENTS.md) 进入，按路径读取 scoped contract。根 
 
 精确工具链以 `.node-version` 和根 `package.json` 为准；安装及验证入口见根 AGENTS。运行产物放在 ignored `.release/`。机密配置仅按 `.env.example` 和所属 Workflow 契约使用，不加入源码或运行证据。
 
-最终 Result 的查询投影与原生 HDF5 编码由 [Release Candidate](workflows/release-candidate/README.md) 拥有。它与计算解耦；本地编码证据不替代 ZIP、Candidate 或 Publication 门禁。
+最终 Result 的查询投影与原生 HDF5 编码由 [Release Candidate](workflows/release-candidate/README.md) 拥有。它与计算解耦；本地编码证据不替代 7z 分发包、Candidate 或 Publication 门禁。

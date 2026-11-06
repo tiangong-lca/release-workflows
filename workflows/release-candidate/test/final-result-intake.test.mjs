@@ -651,7 +651,7 @@ test("intake prepare CLI carries selected deliverables in JSON and shows both ch
   const cli = fileURLToPath(new URL("../cli.mjs", import.meta.url));
   for (const deliveryFormat of [
     undefined,
-    "result-zip-hdf5",
+    "result-7z-hdf5",
     "legacy-four-zips",
   ]) {
     const args = [
@@ -693,6 +693,6 @@ test("intake prepare CLI carries selected deliverables in JSON and shows both ch
     ],
     { cwd: os.tmpdir() },
   );
-  assert.match(stdout, /Result ZIP \+ HDF5/);
+  assert.match(stdout, /Result 7z \+ HDF5/);
   assert.match(stdout, /Legacy four ZIPs \(no HDF5\)/);
 });

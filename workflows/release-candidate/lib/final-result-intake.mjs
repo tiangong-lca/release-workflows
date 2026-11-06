@@ -1,3 +1,4 @@
+import { withSevenZipReadback } from "./seven-zip.mjs";
 import {
   mkdir,
   mkdtemp,
@@ -256,6 +257,19 @@ async function copyMaterialized(root, index, destination) {
   return entries;
 }
 async function addParentDependencies(parent, destination, entries) {
+  const archive = parent.packagesByRole.result_process.archive;
+  if (archive.endsWith(".7z"))
+    return withSevenZipReadback(archive, (root) =>
+      copyParentDependencies(parent, destination, entries, root),
+    );
+  return copyParentDependencies(parent, destination, entries, null);
+}
+async function copyParentDependencies(
+  parent,
+  destination,
+  entries,
+  readbackRoot,
+) {
   const byKey = new Map(entries.map((e) => [key(e), e]));
   let total = 0;
   for (const entry of parent.index.datasets) {
@@ -279,11 +293,27 @@ async function addParentDependencies(parent, destination, entries) {
       total <= 32 * 1024 * 1024 * 1024,
       "final_intake_source_budget",
     );
-    const { stdout: bytes } = await execFileAsync(
-      "unzip",
-      ["-p", parent.packagesByRole.result_process.archive, entry.path],
-      { encoding: "buffer", maxBuffer: documentBudget(entry), timeout: 60000 },
-    );
+    const extractedFile = readbackRoot
+      ? path.join(readbackRoot, entry.path)
+      : null;
+    if (extractedFile)
+      checkBudget(
+        "document",
+        (await stat(extractedFile)).size,
+        documentBudget(entry),
+        entry,
+      );
+    const { stdout: bytes } = extractedFile
+      ? { stdout: await readFile(extractedFile) }
+      : await execFileAsync(
+          "unzip",
+          ["-p", parent.packagesByRole.result_process.archive, entry.path],
+          {
+            encoding: "buffer",
+            maxBuffer: documentBudget(entry),
+            timeout: 60000,
+          },
+        );
     requireValue(
       bytes.length === entry.byteSize &&
         sha256Bytes(bytes) === entry.sha256 &&

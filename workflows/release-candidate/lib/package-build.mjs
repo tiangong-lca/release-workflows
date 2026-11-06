@@ -1,3 +1,4 @@
+import { extractSevenZip } from "./seven-zip.mjs";
 import { inspectZipMembers } from "./zip-members.mjs";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -498,18 +499,35 @@ export async function verifyBuiltPackages({
   workspace,
   releaseVersion,
   reportPath,
+  archiveExtension = "zip",
   profile = PACKAGE_PROFILE,
   spawnCommand = spawnBounded,
 }) {
   const packages = [];
   for (const [, product, format] of distributionPackages(profile)) {
-    const fileName = `TiangongLCA-${releaseVersion}-${product}.${format}.zip`;
+    const fileName = `TiangongLCA-${releaseVersion}-${product}.${format}.${archiveExtension}`;
     const archive = path.join(packagesDir, fileName);
-    const listing = await inspectZipMembers(archive, spawnCommand);
+    if (
+      !["zip", "7z"].includes(archiveExtension) ||
+      (archiveExtension === "7z" && profile !== RESULT_PACKAGE_PROFILE)
+    )
+      fail(
+        "package_archive_format_invalid",
+        "Unsupported package archive format",
+      );
+    const extracted = path.join(workspace, "readback", fileName);
+    await mkdir(path.dirname(extracted), { recursive: true });
+    const seven =
+      archiveExtension === "7z"
+        ? await extractSevenZip(archive, extracted)
+        : null;
+    const listing = seven
+      ? { code: 0, valid: true, memberCount: seven.memberCount }
+      : await inspectZipMembers(archive, spawnCommand);
     if (listing.code !== 0 || !listing.valid)
       await failPackageVerification({
         code: "package_archive_invalid",
-        message: `Cannot read ZIP member catalog: ${fileName}`,
+        message: `Cannot read archive member catalog: ${fileName}`,
         stage: "zip_catalog",
         format,
         product,
@@ -519,18 +537,14 @@ export async function verifyBuiltPackages({
         releaseVersion,
         reportPath,
       });
-    const extracted = path.join(workspace, "readback", fileName);
-    await mkdir(extracted, { recursive: true });
-    const extraction = await spawnCommand("unzip", [
-      "-qq",
-      archive,
-      "-d",
-      extracted,
-    ]);
+    if (!seven) await mkdir(extracted, { recursive: true });
+    const extraction = seven
+      ? { code: 0 }
+      : await spawnCommand("unzip", ["-qq", archive, "-d", extracted]);
     if (extraction.code !== 0)
       await failPackageVerification({
         code: "package_archive_invalid",
-        message: `Cannot extract ZIP: ${fileName}`,
+        message: `Cannot extract archive: ${fileName}`,
         stage: "zip_readback",
         format,
         product,
@@ -555,7 +569,7 @@ export async function verifyBuiltPackages({
         code: memoryExceeded
           ? "tidas_memory_budget_exceeded"
           : `${format}_package_validation_failed`,
-        message: `${format.toUpperCase()} validation failed after ZIP readback: ${fileName}`,
+        message: `${format.toUpperCase()} validation failed after archive readback: ${fileName}`,
         stage: action,
         format,
         product,
