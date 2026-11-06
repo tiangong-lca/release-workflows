@@ -13,9 +13,9 @@ whenToUpdate:
   - 当 Publication 的范围、状态、授权、写入、恢复或回读规则变化时
 checkPaths:
   - workflows/publication/**
-lastReviewedAt: 2026-11-05
-lastReviewedCommit: aa89f18f91ea58953150a61d9c587691479ca467
-lastReviewedNote: "Release #120: reviewed offline Result freeze, paired HDF5/ZIP and artifact-scoped publication handoff."
+lastReviewedAt: 2026-11-06
+lastReviewedCommit: 454db011153b5298c3c484708a497a30fd49ac45
+lastReviewedNote: "Release #124: reviewed Result-only roots, typed Process support closure, paired archive/query coverage and isolated reader/download/rollback proof."
 related:
   - README.md
   - ../AGENTS.md

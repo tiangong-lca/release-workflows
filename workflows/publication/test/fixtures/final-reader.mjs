@@ -30,9 +30,14 @@ const encoder = fileURLToPath(
 );
 async function candidate(
   t,
-  { amount = "4.25", releaseVersion = "2026.11.0", previousResult = null } = {},
+  {
+    amount = "4.25",
+    releaseVersion = "2026.11.0",
+    previousResult = null,
+    processDependency = false,
+  } = {},
 ) {
-  const input = await setup(t);
+  const input = await setup(t, { processDependency });
   // Author a second signed inventory exchange BEFORE freezing. This synthetic
   // Result forces real cursor continuation without modifying a frozen artifact.
   const entry = input.index.datasets.find((e) =>

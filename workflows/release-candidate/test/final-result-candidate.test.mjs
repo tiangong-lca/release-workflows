@@ -4,7 +4,7 @@ import { readFile, writeFile, access, cp, symlink } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { setup } from "./fixtures/final-input.mjs";
-import { canonicalJson } from "../lib/common.mjs";
+import { canonicalJson, sha256Bytes } from "../lib/common.mjs";
 import {
   inspectFinalResultInput,
   prepareFinalResultInput,
@@ -21,8 +21,8 @@ import {
 const encoder = fileURLToPath(
   new URL("../native/target/debug/release-result-hdf5", import.meta.url),
 );
-async function frozenInput(t) {
-  const input = await setup(t);
+async function frozenInput(t, options) {
+  const input = await setup(t, options);
   const plan = await inspectFinalResultInput(input);
   await prepareFinalResultInput({
     ...input,
@@ -147,3 +147,58 @@ test(
     });
   },
 );
+
+test(
+  "Result-only Candidate retains referenced Unit Process in ZIP but not HDF5 roots",
+  { skip: !process.env.RELEASE_PAIR_TIDAS_BIN },
+  async (t) => {
+    const { args } = await frozenInput(t, { processDependency: true });
+    const built = await buildFinalResultCandidate(args);
+    const loaded = await loadFinalResultCandidate(built.path);
+    const support = loaded.catalog.datasets.find(
+      (d) => d.role === "unit_process",
+    );
+    assert.ok(support);
+    assert.deepEqual(support.components, ["result"]);
+    assert.deepEqual(loaded.catalog.components.unitProcess, {
+      available: false,
+      roots: [],
+      datasets: [],
+    });
+    assert.equal(loaded.catalog.components.result.roots.length, 3);
+    assert.equal(loaded.queryCatalog.results.length, 3);
+    assert.ok(loaded.catalog.components.result.datasets.includes(support.key));
+    assert.ok(
+      !loaded.queryCatalog.results.some((r) => r.uuid === support.uuid),
+    );
+    assert.equal(loaded.index.datasets.length, 12);
+    // Pair qualification has independently checked every indexed document in both actual archives.
+    assert.equal(built.candidate.packages.length, 2);
+    const catalogFile = path.join(
+      built.path,
+      built.candidate.publicationCatalog.path,
+    );
+    loaded.catalog.components.result.roots.push(support.key);
+    const bytes = Buffer.from(canonicalJson(loaded.catalog));
+    await writeFile(catalogFile, bytes);
+    built.candidate.publicationCatalog.sha256 = sha256Bytes(bytes);
+    await writeFile(
+      path.join(built.path, "release-candidate.json"),
+      canonicalJson(built.candidate),
+    );
+    await assert.rejects(loadFinalResultCandidate(built.path), {
+      code: "final_candidate_binding_invalid",
+    });
+  },
+);
+test("unreferenced Unit Process is rejected before any encoder or packager runs", async (t) => {
+  const { args } = await frozenInput(t, { processDependency: "unreferenced" });
+  await assert.rejects(
+    buildFinalResultCandidate({
+      ...args,
+      encoder: "must-not-run",
+      tidasBin: "must-not-run",
+    }),
+    { code: "final_candidate_binding_invalid" },
+  );
+});

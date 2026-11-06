@@ -258,3 +258,47 @@ test("streaming catalog file equals canonical serialization and binds its bytes"
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("Result-only roots preserve transitive Process dependencies and legacy components", async (t) => {
+  const ids = [1, 2, 3].map(
+    (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
+  );
+  const { root, index } = await tempIndex(
+    ids.map((uuid, n) => ({
+      dataset: {
+        datasetType: "process",
+        role: n === 0 ? "result_process" : "unit_process",
+        uuid,
+        version: "01.00.000",
+        path: `processes/${uuid}.json`,
+      },
+      document: unitProcessDocument({
+        "@refObjectId": ids[(n + 1) % ids.length],
+        "@version": "01.00.000",
+      }),
+    })),
+  );
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const legacy = await buildPublicationCatalog({ canonicalRoot: root, index });
+  assert.equal(legacy.components.unitProcess.roots.length, 2);
+  const result = await buildPublicationCatalog({
+    canonicalRoot: root,
+    index,
+    resultOnly: true,
+  });
+  assert.equal(result.components.unitProcess.available, false);
+  assert.equal(result.components.result.roots.length, 1);
+  assert.equal(result.components.result.datasets.length, 3);
+  assert.equal(
+    result.datasets.filter((r) => r.role === "unit_process").length,
+    2,
+  );
+  await assert.rejects(
+    buildPublicationCatalog({
+      canonicalRoot: root,
+      index: { datasets: index.datasets.slice(0, 2) },
+      resultOnly: true,
+    }),
+    { code: "publication_catalog_reference_missing" },
+  );
+});

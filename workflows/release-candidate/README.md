@@ -14,7 +14,7 @@ checkPaths:
   - workflows/release-candidate/**
 lastReviewedAt: 2026-11-05
 lastReviewedCommit: e8c95247860a8d09a34bc7d485448de31f8baa4c
-lastReviewedNote: "Release #120: reviewed offline Result freeze, paired HDF5/ZIP and artifact-scoped publication handoff."
+lastReviewedNote: "Release #124: reviewed Result-only roots, typed Process support closure, paired archive/query coverage and isolated reader/download/rollback proof."
 related:
   - AGENTS.md
   - ../../README.md
@@ -341,6 +341,8 @@ RELEASE_PAIR_TIDAS_BIN=/absolute/path/to/tidas node --test workflows/release-can
 显式使用 `result versions` 可只读查看历史全局登记占用并生成上游版本建议。该命令不参与离线出包和批次发布。对已发布的 direct Result，使用上游 Materialization 的 `--previous-manifest` 依据原版本规则分配版本。派生 Result 的版本由 Transformation 在冻结时确定。两条路线都先生成新版本的标准数据集，再重新准备、冻结并生成 HDF5 与 ZIP。
 
 ### 配对 Candidate v3
+
+Result-only 的发布主体只包括 `result_process`。Result 通过 `referenceToIncludedProcesses` 等标准引用依赖的 Unit Process 保留原文和 `unit_process` 类型，作为 Result 闭包进入两种 ZIP，不成为独立 Unit 发布组件，也不产生 HDF5 行。构建和重读均核对根、完整依赖集合及索引角色。legacy 四包的主体选择不变。
 
 内部 `buildFinalResultCandidate({finalInputDir, confirmInputHash, outDir, releaseVersion, tidasBin, encoder})` 重新加载 final input，并对实际 canonical bytes 重算每个内容指纹；确认后生成并核验两类文件。最终 `release-candidate.json` 使用 v3，绑定 `final-result-input.json`、`input-plan.json`、`source-lineage.json`、canonical index、`publication-catalog.json`、`query-results.json` 与 `pair/` 中的两包和查询文件。`query-results.json` 逐个保存精确 Result、内容指纹、层能力、直接/派生关联和 artifact/ordinal；不是对用户公开的 DTO。
 

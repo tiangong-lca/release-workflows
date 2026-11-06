@@ -15,7 +15,7 @@ checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-05
 lastReviewedCommit: e8c95247860a8d09a34bc7d485448de31f8baa4c
-lastReviewedNote: "Release #120: reviewed offline Result freeze, paired HDF5/ZIP and artifact-scoped publication handoff."
+lastReviewedNote: "Release #124: reviewed Result-only roots, typed Process support closure, paired archive/query coverage and isolated reader/download/rollback proof."
 related:
   - AGENTS.md
   - ../release-candidate/README.md
@@ -587,7 +587,7 @@ probe API，不接受服务凭据、不调用批准/激活。每次由数据库�
 
 除上述真实文件/Worker 验证外，可在 owner-reset 的任务专用合成数据库使用
 `RELEASE_READINESS_TEST_CONN` 运行 `final-result-readiness-database.test.mjs`。
-该测试强制本地 `127.0.0.1:65422/postgres` 和 `offline-final-result-916` owner 标签，验证真实
+该测试只接受本地 `127.0.0.1:65422/postgres` / `offline-final-result-916` 或 `127.0.0.1:65522/postgres` / `result-dependencies-919` 的精确端口与 owner 标签配对。样本包含保留在 ZIP 的 Unit Process 依赖，验证真实
 SQL 登记与 lost-ACK 恢复，保留不可变合成审计供 owner reset。它的 HTTP 用户认证是
 固定 token 测试 facade，不替代 hosted PostgREST/Edge/Platform 验证。不要对共享或
 业务数据库运行该测试，也不要用合成回执执行真实发布。

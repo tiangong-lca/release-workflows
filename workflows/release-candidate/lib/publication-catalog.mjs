@@ -16,7 +16,11 @@ export function publicationCatalogSetHash(datasets) {
   );
 }
 
-export async function buildPublicationCatalog({ canonicalRoot, index }) {
+export async function buildPublicationCatalog({
+  canonicalRoot,
+  index,
+  resultOnly = false,
+}) {
   const records = new Map();
   const keysByUuid = new Map();
   for (const dataset of index.datasets ?? []) {
@@ -81,12 +85,14 @@ export async function buildPublicationCatalog({ canonicalRoot, index }) {
   }
 
   const unitProcessRoots = [...records.values()]
-    .filter((record) => record.role === "unit_process")
+    .filter((record) => !resultOnly && record.role === "unit_process")
     .map(({ key }) => key)
     .sort();
   const resultRoots = [...records.values()]
     .filter((record) =>
-      ["result_process", "lifecycle_model"].includes(record.role),
+      resultOnly
+        ? record.datasetType === "process" && record.role === "result_process"
+        : ["result_process", "lifecycle_model"].includes(record.role),
     )
     .map(({ key }) => key)
     .sort();

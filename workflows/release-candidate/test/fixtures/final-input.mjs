@@ -1,14 +1,63 @@
 import { mkdtemp, mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { hashJson, canonicalJson } from "../../lib/common.mjs";
+import { hashJson, canonicalJson, sha256Bytes } from "../../lib/common.mjs";
+import { buildIndex } from "../../lib/package-build.mjs";
 import { id, version } from "./final-result.mjs";
-export async function setup(t) {
+export async function setup(t, { processDependency = false } = {}) {
   const root = await mkdtemp(path.join(os.tmpdir(), "final-result-input-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const fixture = JSON.parse(
     await readFile(new URL("./paired-final-results.json", import.meta.url)),
   );
+  if (processDependency) {
+    const result = fixture.records.find((r) => r.document.processDataSet);
+    const dependency = structuredClone(result);
+    const uuid = id(81);
+    dependency.path = `processes/${uuid}.json`;
+    const process = dependency.document.processDataSet;
+    process.processInformation.dataSetInformation["common:UUID"] = uuid;
+    process.modellingAndValidation.LCIMethodAndAllocation.typeOfDataSet =
+      "Unit process, single operation";
+    delete process.LCIAResults;
+    if (processDependency !== "unreferenced") {
+      result.document.processDataSet.processInformation.technology ??= {
+        technologyDescriptionAndIncludedProcesses: {
+          "@xml:lang": "en",
+          "#text": "Synthetic process dependency",
+        },
+      };
+      result.document.processDataSet.processInformation.technology.referenceToIncludedProcesses =
+        {
+          "@type": "process data set",
+          "@refObjectId": uuid,
+          "@version": version,
+          "@uri": `../processes/${uuid}.xml`,
+          "common:shortDescription": {
+            "@xml:lang": "en",
+            "#text": "Synthetic included process",
+          },
+        };
+    }
+    fixture.records.push(dependency);
+    fixture.index.datasets.push({
+      datasetType: "process",
+      role: "unit_process",
+      uuid,
+      version,
+      path: dependency.path,
+    });
+    for (const entry of fixture.index.datasets) {
+      const record = fixture.records.find((r) => r.path === entry.path);
+      const bytes = Buffer.from(canonicalJson(record.document));
+      Object.assign(entry, {
+        byteSize: bytes.length,
+        sha256: sha256Bytes(bytes),
+        canonicalContentHash: hashJson(record.document),
+      });
+    }
+    fixture.index = buildIndex(fixture.index.datasets);
+  }
   const canonicalRoot = path.join(root, "canonical");
   await mkdir(canonicalRoot);
   for (const r of fixture.records) {

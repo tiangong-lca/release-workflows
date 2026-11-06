@@ -25,11 +25,66 @@ function requireValue(value, code = "final_candidate_binding_invalid") {
   if (!value)
     fail(
       code,
-      "Paired Candidate evidence does not bind the exact registered final Result content",
+      "Paired Candidate evidence does not bind the exact frozen final Result content",
     );
 }
 function same(a, b) {
   requireValue(hashJson(a) === hashJson(b));
+}
+function verifyResultCatalogScope(catalog, index) {
+  const keyOf = (r) =>
+    `${r.datasetType}:${String(r.uuid).toLowerCase()}@${r.version}`;
+  const keys = index.datasets.map(keyOf).sort();
+  const roots = index.datasets
+    .filter((r) => r.datasetType === "process" && r.role === "result_process")
+    .map(keyOf)
+    .sort();
+  requireValue(
+    catalog.canonicalDatasetIndexSha256 === hashJson(index),
+    "final_candidate_closure_scope",
+  );
+  same(catalog.components.unitProcess, {
+    available: false,
+    roots: [],
+    datasets: [],
+  });
+  same(catalog.components.result, { available: true, roots, datasets: keys });
+  requireValue(
+    catalog.datasetCount === keys.length &&
+      catalog.datasets.length === keys.length,
+    "final_candidate_closure_scope",
+  );
+  const records = new Map(catalog.datasets.map((r) => [r.key, r]));
+  requireValue(records.size === keys.length, "final_candidate_closure_scope");
+  for (const entry of index.datasets) {
+    const record = records.get(keyOf(entry));
+    requireValue(
+      record &&
+        record.role === entry.role &&
+        record.datasetType === entry.datasetType &&
+        record.uuid === entry.uuid.toLowerCase() &&
+        record.version === entry.version &&
+        record.path === entry.path &&
+        record.sha256 === entry.sha256 &&
+        record.canonicalContentHash === entry.canonicalContentHash,
+      "final_candidate_closure_scope",
+    );
+    same(record.components, ["result"]);
+  }
+  const seen = new Set(),
+    pending = [...roots];
+  while (pending.length) {
+    const key = pending.pop();
+    if (seen.has(key)) continue;
+    const record = records.get(key);
+    requireValue(
+      record && Array.isArray(record.references),
+      "final_candidate_closure_scope",
+    );
+    seen.add(key);
+    for (const reference of record.references) pending.push(reference);
+  }
+  requireValue(seen.size === keys.length, "final_candidate_closure_scope");
 }
 function packageSet(packages) {
   return packages.map(({ path, sha256, byteSize }) => ({
@@ -171,13 +226,9 @@ export async function buildFinalResultCandidate({
     const catalog = await buildPublicationCatalog({
       canonicalRoot: frozen.canonicalRoot,
       index: frozen.index,
+      resultOnly: true,
     });
-    requireValue(
-      catalog.components.unitProcess.available === false &&
-        catalog.components.result.datasets.length ===
-          frozen.index.datasets.length,
-      "final_candidate_closure_scope",
-    );
+    verifyResultCatalogScope(catalog, frozen.index);
     const catalogSha256 = await writePublicationCatalogFile(
       catalog,
       path.join(staging, "publication-catalog.json"),
@@ -431,11 +482,7 @@ export async function loadFinalResultCandidate(candidateDir) {
     },
     MAX_METADATA,
   );
-  requireValue(
-    catalog.canonicalDatasetIndexSha256 === hashJson(index) &&
-      catalog.components.unitProcess.available === false &&
-      catalog.components.result.datasets.length === index.datasets.length,
-  );
+  verifyResultCatalogScope(catalog, index);
   return {
     root,
     candidate,
