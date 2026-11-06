@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/release-candidate/**
 lastReviewedAt: 2026-11-05
-lastReviewedCommit: aa89f18f91ea58953150a61d9c587691479ca467
-lastReviewedNote: "Release #124: reviewed Result-only roots, typed Process support closure, paired archive/query coverage and isolated reader/download/rollback proof."
+lastReviewedCommit: 009e3df54b4cde0eaac2b80f8ce99cf3b3229e54
+lastReviewedNote: "Release #126: compact membership handoff, local closure validation and complete ZIP listing proof."
 related:
   - README.md
   - ../AGENTS.md
@@ -133,8 +133,8 @@ Release Candidate 只有在以下条件同时成立时完成：
 ### 配对 Candidate v3
 
 - `buildFinalResultCandidate` 消费完整重验的 final input；精确 input hash 和显式 release version 决定本地构建。它不登记新身份或改写输入。
-- Result-only 的根仅为 `result_process`；被根引用的 `unit_process` 保留原始角色、内容及传递闭包，只作为 ZIP 依赖，不创建独立 Unit 组件或 HDF5 行。构建与重读校验精确根和闭包，拒绝夹带无关成员。legacy 四包的选根规则不变。
-- v3 明确使用 Result-only 两包 profile，绑定 final input、输入计划、来源、canonical index、publication closure catalog、配对回读证据、各 query artifact 与完整 Result→artifact/ordinal catalog。缺少任何行或真实文件完整性即失败。
+- Result-only 的根仅为 `result_process`；被根引用的 `unit_process` 保留原始角色、内容及传递闭包，只作为 ZIP 依赖，不创建独立 Unit 组件或 HDF5 行。构建校验精确根和完整闭包，拒绝夹带无关成员；重读校验精简 v2 成员与冻结索引完全一致。legacy 四包的选根规则不变。
+- v3 明确使用 Result-only 两包 profile，绑定 final input、输入计划、来源、canonical index、compact v2 publication membership、配对回读证据、各 query artifact 与完整 Result→artifact/ordinal catalog。缺少任何行或真实文件完整性即失败。
 - 候选标记最后提交，已存在的输出目录（包括空目录）不可覆盖；失败保留工作目录及不完整目标，均不得作为 Candidate。v3 `candidateQualified=true` 仅证明本地资格，`publicationAuthorized=false` 保持不变。
 - `loadFinalResultCandidate` 按显式 v3 重验绑定、实际 ZIP/HDF5 文件和结果轴。Transformation 可消费这种候选的 Result 包；无 Unit 包时不能进入 Unit 聚合。legacy Publication 不接受 v3，必须经后继版本化发布契约。
 
@@ -150,3 +150,5 @@ Release Candidate 只有在以下条件同时成立时完成：
 HDF5 manifest 的数值文件只输出 name/sha256/byteSize；plainByteSize 仅用于 gzip
 索引并且必须是精确解压字节数，不能在 HDF5 文件上写 null 占位。该 wire shape
 与 Database v2 stage 的严格字段数以及 Worker optional field 解码保持一致。
+
+完整引用图仅是 Release 本地构建校验的临时数据，不落盘或上传。Database 只接收精简成员做批次/Result 覆盖和实时下载权限检查；旧配对候选全图格式不兼容读取。ZIP 列表须全流验证并计数，不得从诊断 stdout 尾部推断包范围。

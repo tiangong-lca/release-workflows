@@ -1,16 +1,13 @@
 import { MAX_INPUT_PLAN_BYTES } from "./resource-budget.mjs";
 import { mkdir, lstat, mkdtemp, writeFile, rm } from "node:fs/promises";
 import path from "node:path";
-import { canonicalJson, hashJson, fail } from "./common.mjs";
+import { canonicalJson, hashJson, sha256Bytes, fail } from "./common.mjs";
 import {
   loadFinalResultInput,
   verifyFrozenFinalInput,
 } from "./final-result-input.mjs";
 import { buildFinalResultPair, successful } from "./final-result-pair.mjs";
-import {
-  buildPublicationCatalog,
-  writePublicationCatalogFile,
-} from "./publication-catalog.mjs";
+import { buildPublicationCatalog } from "./publication-catalog.mjs";
 import {
   readLocalJson,
   verifiedBytes,
@@ -31,7 +28,7 @@ function requireValue(value, code = "final_candidate_binding_invalid") {
 function same(a, b) {
   requireValue(hashJson(a) === hashJson(b));
 }
-function verifyResultCatalogScope(catalog, index) {
+export function verifyResultCatalogScope(catalog, index) {
   const keyOf = (r) =>
     `${r.datasetType}:${String(r.uuid).toLowerCase()}@${r.version}`;
   const keys = index.datasets.map(keyOf).sort();
@@ -86,6 +83,40 @@ function verifyResultCatalogScope(catalog, index) {
   }
   requireValue(seen.size === keys.length, "final_candidate_closure_scope");
 }
+// The dependency graph is a build-time proof. Publication only needs exact
+// package membership for Result coverage and live support-data authorization.
+export function finalResultMembership(index) {
+  const datasets = index.datasets
+    .map(({ datasetType, role, uuid, version, canonicalContentHash }) => ({
+      datasetType,
+      role,
+      uuid: uuid.toLowerCase(),
+      version,
+      canonicalContentHash,
+    }))
+    .sort((a, b) => {
+      const ka = `${a.datasetType}:${a.uuid}@${a.version}`;
+      const kb = `${b.datasetType}:${b.uuid}@${b.version}`;
+      return ka < kb ? -1 : ka > kb ? 1 : 0;
+    });
+  return {
+    schemaVersion: "tiangong.release.candidate-publication-catalog.v2",
+    canonicalDatasetIndexSha256: hashJson(index),
+    datasetCount: datasets.length,
+    datasets,
+  };
+}
+
+async function buildMembership(frozen) {
+  const graph = await buildPublicationCatalog({
+    canonicalRoot: frozen.canonicalRoot,
+    index: frozen.index,
+    resultOnly: true,
+  });
+  verifyResultCatalogScope(graph, frozen.index);
+  return finalResultMembership(frozen.index);
+}
+
 function packageSet(packages) {
   return packages.map(({ path, sha256, byteSize }) => ({
     path,
@@ -223,15 +254,17 @@ export async function buildFinalResultCandidate({
       await writeFile(path.join(staging, name), canonicalJson(value), {
         flag: "wx",
       });
-    const catalog = await buildPublicationCatalog({
-      canonicalRoot: frozen.canonicalRoot,
-      index: frozen.index,
-      resultOnly: true,
-    });
-    verifyResultCatalogScope(catalog, frozen.index);
-    const catalogSha256 = await writePublicationCatalogFile(
-      catalog,
+    const catalog = await buildMembership(frozen);
+    const catalogBytes = Buffer.from(canonicalJson(catalog));
+    requireValue(
+      catalogBytes.length <= MAX_METADATA,
+      "final_candidate_metadata_budget",
+    );
+    const catalogSha256 = sha256Bytes(catalogBytes);
+    await writeFile(
       path.join(staging, "publication-catalog.json"),
+      catalogBytes,
+      { flag: "wx" },
     );
     const paired = await buildFinalResultPair({
       canonicalRoot: frozen.canonicalRoot,
@@ -482,7 +515,7 @@ export async function loadFinalResultCandidate(candidateDir) {
     },
     MAX_METADATA,
   );
-  verifyResultCatalogScope(catalog, index);
+  same(catalog, finalResultMembership(index));
   return {
     root,
     candidate,

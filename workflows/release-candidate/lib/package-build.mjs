@@ -1,3 +1,4 @@
+import { inspectZipMembers } from "./zip-members.mjs";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
@@ -504,8 +505,8 @@ export async function verifyBuiltPackages({
   for (const [, product, format] of distributionPackages(profile)) {
     const fileName = `TiangongLCA-${releaseVersion}-${product}.${format}.zip`;
     const archive = path.join(packagesDir, fileName);
-    const listing = await spawnCommand("unzip", ["-Z1", archive]);
-    if (listing.code !== 0)
+    const listing = await inspectZipMembers(archive, spawnCommand);
+    if (listing.code !== 0 || !listing.valid)
       await failPackageVerification({
         code: "package_archive_invalid",
         message: `Cannot read ZIP member catalog: ${fileName}`,
@@ -514,25 +515,6 @@ export async function verifyBuiltPackages({
         product,
         fileName,
         stderr: listing.stderr,
-        completedPackages: packages,
-        releaseVersion,
-        reportPath,
-      });
-    const members = listing.stdout.split(/\r?\n/u).filter(Boolean);
-    if (
-      members.length === 0 ||
-      members.some(
-        (member) =>
-          member.startsWith("/") || member.split(/[\\/]/u).includes(".."),
-      )
-    )
-      await failPackageVerification({
-        code: "package_archive_invalid",
-        message: `ZIP contains no members or unsafe paths: ${fileName}`,
-        stage: "zip_catalog",
-        format,
-        product,
-        fileName,
         completedPackages: packages,
         releaseVersion,
         reportPath,
@@ -608,7 +590,7 @@ export async function verifyBuiltPackages({
       fileName,
       product,
       format,
-      memberCount: members.length,
+      memberCount: listing.memberCount,
       ...artifact,
       outcome: "passed",
       validation: report,
@@ -1122,14 +1104,21 @@ async function runTidasPreflight({
 
 export function spawnBounded(command, args, options = {}) {
   return new Promise((resolve, reject) => {
+    const { onStdout, ...spawnOptions } = options;
     const child = spawn(command, args, {
-      ...options,
+      ...spawnOptions,
       stdio: ["ignore", "pipe", "pipe"],
     });
     let stdout = "";
     let stderr = "";
     const append = (current, chunk) => `${current}${chunk}`.slice(-1_000_000);
-    child.stdout.on("data", (chunk) => (stdout = append(stdout, chunk)));
+    let stdoutTruncated = false;
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => {
+      onStdout?.(chunk);
+      stdoutTruncated ||= stdout.length + chunk.length > 1_000_000;
+      stdout = append(stdout, chunk);
+    });
     child.stderr.on("data", (chunk) => (stderr = append(stderr, chunk)));
     child.once("error", (error) => {
       if (error.code === "ENOENT")
@@ -1150,7 +1139,9 @@ export function spawnBounded(command, args, options = {}) {
         );
       else reject(error);
     });
-    child.once("close", (code) => resolve({ code, stdout, stderr }));
+    child.once("close", (code) =>
+      resolve({ code, stdout, stderr, stdoutTruncated }),
+    );
   });
 }
 
