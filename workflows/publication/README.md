@@ -15,7 +15,7 @@ checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-05
 lastReviewedCommit: 009e3df54b4cde0eaac2b80f8ce99cf3b3229e54
-lastReviewedNote: "Release #126: compact membership handoff, local closure validation and complete ZIP listing proof."
+lastReviewedNote: "Release #128: reviewed final Result 7z packaging, complete readback and safe 413 diagnostics; offline generation and publication authority stay separate."
 related:
   - AGENTS.md
   - ../release-candidate/README.md
@@ -587,7 +587,7 @@ probe API，不接受服务凭据、不调用批准/激活。每次由数据库�
 
 除上述真实文件/Worker 验证外，可在 owner-reset 的任务专用合成数据库使用
 `RELEASE_READINESS_TEST_CONN` 运行 `final-result-readiness-database.test.mjs`。
-该测试只接受本地 `127.0.0.1:65422/postgres` / `offline-final-result-916` 或 `127.0.0.1:65522/postgres` / `result-dependencies-919` 的精确端口与 owner 标签配对。样本包含保留在 ZIP 的 Unit Process 依赖，验证真实
+该测试只接受本地 `127.0.0.1:65422/postgres` / `offline-final-result-916` 或 `127.0.0.1:65522/postgres` / `result-dependencies-919` 的精确端口与 owner 标签配对。样本包含保留在 7z 的 Unit Process 依赖，验证真实
 SQL 登记与 lost-ACK 恢复，保留不可变合成审计供 owner reset。它的 HTTP 用户认证是
 固定 token 测试 facade，不替代 hosted PostgREST/Edge/Platform 验证。不要对共享或
 业务数据库运行该测试，也不要用合成回执执行真实发布。
@@ -595,7 +595,7 @@ SQL 登记与 lost-ACK 恢复，保留不可变合成审计供 owner reset。它
 增加 `RELEASE_QUERY_EDGE_ROOT`（明确的 Edge checkout）和可选 `RELEASE_QUERY_DENO_BIN`
 可同时运行 Edge 的 `test/fixtures/final-result-gateway.ts`：真实 handler 和 Supabase SDK
 通过上述 SQL facade 查询已激活的合成结果，并由真实 Worker 从 Release HDF5 读取全部
-LCI 分页和 LCIA。测试还验证 runtime pin、源数据及 ZIP 权限拒绝；临时输入只有合成 token，
+LCI 分页和 LCIA。测试还验证 runtime pin、源数据及 7z 权限拒绝；临时输入只有合成 token，
 随 fixture 删除。该资格证明跨仓库数值/协议与数据库鉴权，不证明 hosted JWT 或生产发布。
 
 ### 整体就绪验证命令
@@ -732,7 +732,7 @@ node workflows/publication/cli.mjs result-publication readback \
 不调用计算、不访问 Worker 私有接口。冷缓存最多五次、间隔两秒；单次 Edge 请求
 十五秒/2 MiB，超出后保留失败证据，另开目录重试。
 
-每个格式独立申请短期链接，对可访问的 ZIP 流式 GET 全部字节并比对长度与 SHA-256。
+每个格式独立申请短期链接，对可访问的 7z 流式 GET 全部字节并比对长度与 SHA-256。
 单文件上限 32 GiB、GET 至多 120 秒；不转发用户认证头、不跟随重定向、不保存签名
 URL。部分选择或支持数据权限导致的明确 404 记录 `unavailable`，不冒充下载成功；
 其他错误和字节不匹配都失败。Database 记录时再次核对这两项的实时授权结果。
@@ -744,3 +744,7 @@ URL。部分选择或支持数据权限导致的明确 404 记录 `unavailable`�
 也不会自动回滚。确认失败先保留 `public-readback-intent.json` 并 `status` 查询原 run；
 已有凭证只恢复历史观察，不覆盖或重新激活。该 CLI 证明 API 与文件回读，不代替
 Platform 浏览器验收、真实 hosted JWT 资格或持续可用性监控。
+
+### Result 7z 存储诊断
+
+最终 Result 包使用 `result.tidas.7z` / `result.ilcd.7z`；Database、Edge 和 Platform 的对应版本须一起采用，部署与激活仍需独立授权。HDF5 查询格式不变。S3 协议本身不提供统一的 bucket/global 有效大小上限查询；工具不猜测限额、不引入管理凭据，也不修改配置。`final_storage_object_too_large` 表示服务端明确拒绝大小且完整 GET 未恢复匹配对象：核对有效限额或在新 Candidate 中生成更小归档，保留失败 attempt，不原样重试。若 `multipartCleanupRequired=true`，仍须先调和清理状态。

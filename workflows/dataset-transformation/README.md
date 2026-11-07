@@ -15,7 +15,7 @@ checkPaths:
   - workflows/dataset-transformation/**
 lastReviewedAt: 2026-11-01
 lastReviewedCommit: b972a085d013ebb24b72a44b9ece549b782d46f5
-lastReviewedNote: "Release #99: reviewed direct/Derived Result Intake, explicit inspect/register/build/verify commands, parent replay, final Candidate consumers and marker-last recovery; publication remains separate."
+lastReviewedNote: "Release #128: reviewed final Result 7z packaging, complete readback and safe 413 diagnostics; offline generation and publication authority stay separate."
 related:
   - AGENTS.md
   - dsl-v0.md
@@ -141,3 +141,5 @@ node workflows/dataset-transformation/cli.mjs transform execute \
 - 远程 authoring、Candidate 构建或 Publication side effect。
 
 这些能力需要新的 operation/version 和对应真实证据，不能通过扩大 v0 隐式语义加入。
+
+配对 v3 的 Result 包为 7z。读取前完整验证 Candidate，按调用一次解压到独立临时目录并在结束时清理；不能为每个 Process 重复解压固实块。legacy Unit/Result 四包继续按 ZIP 读取。

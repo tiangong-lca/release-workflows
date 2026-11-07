@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/**
 lastReviewedAt: 2026-11-06
-lastReviewedCommit: 009e3df54b4cde0eaac2b80f8ce99cf3b3229e54
-lastReviewedNote: "Release #126: compact membership handoff, local closure validation and complete ZIP listing proof."
+lastReviewedCommit: c725220b1aee3012d0d0c82fd8125c87f0ad34d0
+lastReviewedNote: "Release #128: reviewed final Result 7z packaging, complete readback and safe 413 diagnostics; offline generation and publication authority stay separate."
 related:
   - ../AGENTS.md
   - ../README.md

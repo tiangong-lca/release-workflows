@@ -235,6 +235,39 @@ export async function runFinalResultStorageCommand(
     const details = {
       attemptRetained: attemptCreated,
       ...([
+        "manifest.json",
+        "results.json.gz",
+        "inventory-items.json.gz",
+        "impacts.json.gz",
+        "lci.h5",
+        "lcia.h5",
+        "release-candidate.json",
+        "publication-catalog.json",
+        "result.tidas.7z",
+        "result.ilcd.7z",
+      ].includes(error?.details?.fileName)
+        ? { fileName: error.details.fileName }
+        : {}),
+      ...(Number.isSafeInteger(error?.details?.byteSize) &&
+      error.details.byteSize > 0 &&
+      error.details.byteSize <= 32 * 1024 ** 3
+        ? { byteSize: error.details.byteSize }
+        : {}),
+      ...([
+        "local_read",
+        "put_object",
+        "create_multipart",
+        "upload_part",
+        "complete_multipart",
+      ].includes(error?.details?.stage)
+        ? { stage: error.details.stage }
+        : {}),
+      ...(Number.isInteger(error?.details?.httpStatus) &&
+      error.details.httpStatus >= 400 &&
+      error.details.httpStatus <= 599
+        ? { httpStatus: error.details.httpStatus }
+        : {}),
+      ...([
         "CONN",
         "S3_ENDPOINT",
         "S3_REGION",
@@ -253,17 +286,22 @@ export async function runFinalResultStorageCommand(
         code,
         failedAt: new Date().toISOString(),
         publicationAuthorized: false,
-        remoteOutcome: "reconcile-exact-identity-before-retry",
+        remoteOutcome:
+          code === "final_storage_object_too_large"
+            ? "object-size-rejected-no-matching-object"
+            : "reconcile-exact-identity-before-retry",
         ...details,
       }).catch(() => {});
     }
     const safeError = Object.assign(
       new Error(
-        "Final Result storage did not complete. Preserve attempt evidence and retry the same confirmed Candidate and target using a new output directory.",
+        code === "final_storage_object_too_large"
+          ? "Storage rejected the object size. Verify the effective upload limit or build a smaller archive in a new Candidate; do not retry unchanged. Preserve attempt and cleanup evidence."
+          : "Final Result storage did not complete. Preserve attempt evidence and reconcile the same confirmed Candidate and target before retrying in a new output directory.",
       ),
       { code, details },
     );
-    if (attemptCreated)
+    if (attemptCreated && code !== "final_storage_object_too_large")
       safeError.nextActions = [
         next([
           "execute",

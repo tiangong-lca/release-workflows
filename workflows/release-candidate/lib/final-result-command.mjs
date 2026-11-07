@@ -181,7 +181,7 @@ export async function runFinalResultCommand(
               {
                 kind: "regenerate_upstream",
                 description:
-                  "Direct: rerun the same Materialization request with --result-version-plan and this file. Derived: explicitly adopt toVersion and its matching URI in a new Transformation Draft, then inspect/freeze/execute and materialize derived. Rebuild Result Intake, inspect, freeze and build; never edit frozen artifacts or relabel existing HDF5/ZIP.",
+                  "Direct: rerun the same Materialization request with --result-version-plan and this file. Derived: explicitly adopt toVersion and its matching URI in a new Transformation Draft, then inspect/freeze/execute and materialize derived. Rebuild Result Intake, inspect, freeze and build; never edit frozen artifacts or relabel existing HDF5/7z.",
                 versionPlan: output,
                 argv: conflicts.some((e) => e.relationKind === "derived")
                   ? ["node", TRANSFORM, "dsl", "inspect", "--help"]
@@ -313,7 +313,7 @@ export async function runFinalResultCommand(
         completeness: "decision_required",
         recommendedVersion,
         fileNames: ["tidas", "ilcd"].map(
-          (f) => `TiangongLCA-${recommendedVersion}-ResultDatabase.${f}.zip`,
+          (f) => `TiangongLCA-${recommendedVersion}-ResultDatabase.${f}.7z`,
         ),
         nextActions: [
           next(

@@ -7,7 +7,7 @@ const actorId = "87990000-0000-4000-8000-000000000001";
 const pub = "87990000-0000-4000-8000-000000000002";
 const bytes = Buffer.from("synthetic complete ZIP transport bytes");
 const file = {
-  name: "result.tidas.zip",
+  name: "result.tidas.7z",
   sha256: createHash("sha256").update(bytes).digest("hex"),
   byteSize: bytes.length,
 };

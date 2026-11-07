@@ -24,6 +24,7 @@ import {
   tidasSpawnOptions,
 } from "./package-build.mjs";
 
+import { compressResultPackage, requireSevenZip } from "./seven-zip.mjs";
 import { commitFrozenDirectory } from "./final-result-files.mjs";
 
 export function successful(report, schema) {
@@ -76,8 +77,9 @@ export async function buildFinalResultPair({
   )
     fail(
       "final_pair_root_scope",
-      "ZIP roots and HDF5 Results must be the same exact set",
+      "Archive roots and HDF5 Results must be the same exact set",
     );
+  await requireSevenZip();
   const target = path.resolve(outDir);
   await mkdir(path.dirname(target), { recursive: true });
   try {
@@ -143,8 +145,16 @@ export async function buildFinalResultPair({
       releaseVersion,
       RESULT_PACKAGE_PROFILE,
     );
+    for (const format of ["tidas", "ilcd"]) {
+      const base = path.join(
+        packages,
+        `TiangongLCA-${releaseVersion}-ResultDatabase.${format}`,
+      );
+      await compressResultPackage(`${base}.zip`, `${base}.7z`);
+      await rm(`${base}.zip`);
+    }
     const expectedNames = ["tidas", "ilcd"].map(
-      (f) => `TiangongLCA-${releaseVersion}-ResultDatabase.${f}.zip`,
+      (f) => `TiangongLCA-${releaseVersion}-ResultDatabase.${f}.7z`,
     );
     if (
       canonicalJson((await readdir(packages)).sort()) !==
@@ -161,6 +171,7 @@ export async function buildFinalResultPair({
       workspace: readback,
       releaseVersion,
       profile: RESULT_PACKAGE_PROFILE,
+      archiveExtension: "7z",
     });
     for (const item of verification.packages) successful(item.validation);
     await writeFile(
@@ -186,7 +197,7 @@ export async function buildFinalResultPair({
     if (roundtrip.code !== 0)
       fail(
         "final_pair_archive_roundtrip",
-        "Actual ZIP contents fail semantic roundtrip",
+        "Actual 7z contents fail semantic roundtrip",
         { stderr: roundtrip.stderr.slice(-4000) },
       );
     const roundtripReport = JSON.parse(roundtrip.stdout);

@@ -26,8 +26,8 @@ const QUERY_NAMES = new Set([
 const CANDIDATE_NAMES = new Set([
   "release-candidate.json",
   "publication-catalog.json",
-  "result.tidas.zip",
-  "result.ilcd.zip",
+  "result.tidas.7z",
+  "result.ilcd.7z",
 ]);
 const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
 function requireValue(value, code = "final_storage_contract_invalid") {
@@ -205,6 +205,7 @@ export function createFinalResultObjectStore({
       complete = false;
     let cleanupRequired = false;
     let multipartStarted = false;
+    let stage = "local_read";
     try {
       handle = await open(sourcePath, "r");
       const info = await handle.stat();
@@ -234,6 +235,7 @@ export function createFinalResultObjectStore({
           digest(bytes) === file.sha256,
           "final_storage_local_drift",
         );
+        stage = "put_object";
         await timed((signal) =>
           client.send(
             new PutObjectCommand({
@@ -241,18 +243,23 @@ export function createFinalResultObjectStore({
               Body: bytes,
               ContentLength: bytes.length,
               IfNoneMatch: "*",
-              ContentType: "application/octet-stream",
+              ContentType: file.name.endsWith(".7z")
+                ? "application/x-7z-compressed"
+                : "application/octet-stream",
             }),
             { abortSignal: signal },
           ),
         );
       } else {
         multipartStarted = true;
+        stage = "create_multipart";
         const begun = await timed((signal) =>
           client.send(
             new CreateMultipartUploadCommand({
               ...keyFields,
-              ContentType: "application/octet-stream",
+              ContentType: file.name.endsWith(".7z")
+                ? "application/x-7z-compressed"
+                : "application/octet-stream",
             }),
             { abortSignal: signal },
           ),
@@ -274,6 +281,7 @@ export function createFinalResultObjectStore({
             Math.min(PART, file.byteSize - position),
           );
           hash.update(bytes);
+          stage = "upload_part";
           const part = await timed((signal) =>
             client.send(
               new UploadPartCommand({
@@ -296,6 +304,7 @@ export function createFinalResultObjectStore({
           hash.digest("hex") === file.sha256,
           "final_storage_local_drift",
         );
+        stage = "complete_multipart";
         await timed((signal) =>
           client.send(
             new CompleteMultipartUploadCommand({
@@ -310,7 +319,10 @@ export function createFinalResultObjectStore({
         complete = true;
       }
     } catch (error) {
-      if (multipartStarted && !uploadId) cleanupRequired = true;
+      const tooLarge =
+        error.$metadata?.httpStatusCode === 413 ||
+        error.name === "EntityTooLarge";
+      if (multipartStarted && !uploadId) cleanupRequired = !tooLarge;
       if (uploadId && !complete) {
         try {
           await timed((signal) =>
@@ -336,7 +348,21 @@ export function createFinalResultObjectStore({
       }
       // A failed response does not prove that the conditional write failed.
       // Reconcile with a full GET below, never an unconditional overwrite.
-      return { outcomeUnknown: true, cleanupRequired };
+      return {
+        outcomeUnknown: true,
+        cleanupRequired,
+        tooLarge,
+        diagnostic: {
+          fileName: file.name,
+          byteSize: file.byteSize,
+          stage,
+          ...(Number.isInteger(error.$metadata?.httpStatusCode) &&
+          error.$metadata.httpStatusCode >= 400 &&
+          error.$metadata.httpStatusCode <= 599
+            ? { httpStatus: error.$metadata.httpStatusCode }
+            : {}),
+        },
+      };
     } finally {
       await handle?.close().catch(() => {});
     }
@@ -358,15 +384,23 @@ export function createFinalResultObjectStore({
     } catch (error) {
       error.details = {
         ...error.details,
+        ...uploaded.diagnostic,
         multipartCleanupRequired: uploaded.cleanupRequired,
       };
       throw error;
     }
     if (!verified)
       fail(
-        "final_storage_upload_unknown",
-        "No complete matching object was recovered; retry the same immutable storage plan",
-        { multipartCleanupRequired: uploaded.cleanupRequired },
+        uploaded.tooLarge
+          ? "final_storage_object_too_large"
+          : "final_storage_upload_unknown",
+        uploaded.tooLarge
+          ? "Storage rejected the object size. Verify the effective upload limit or build a smaller archive; unchanged retries cannot resolve this rejection."
+          : "No complete matching object was recovered; reconcile the same immutable storage plan before retry",
+        {
+          ...uploaded.diagnostic,
+          multipartCleanupRequired: uploaded.cleanupRequired,
+        },
       );
     return {
       file: verified,

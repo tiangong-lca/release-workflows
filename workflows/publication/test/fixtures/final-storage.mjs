@@ -56,6 +56,7 @@ export async function fixture(
       key,
       search: url.search,
       conditional: request.headers["if-none-match"],
+      contentType: request.headers["content-type"],
       bytes: 0,
     });
     const record = requests.at(-1);
@@ -75,6 +76,8 @@ export async function fixture(
       return;
     }
     if (request.method === "POST" && url.searchParams.has("uploads")) {
+      if (mode === "size-create")
+        return xmlError(response, 413, "EntityTooLarge");
       const id = `synthetic-upload-${++uploadCount}`;
       parts.set(id, []);
       if (mode === "create-lost-ack") {
@@ -92,7 +95,7 @@ export async function fixture(
         url.searchParams.has("uploadId"),
         "only own multipart abort, never DeleteObject",
       );
-      if (mode === "abort-failure")
+      if (["abort-failure", "size-abort-failure"].includes(mode))
         return xmlError(response, 403, "AccessDenied");
       parts.delete(url.searchParams.get("uploadId"));
       response.writeHead(204);
@@ -103,6 +106,17 @@ export async function fixture(
     for await (const chunk of request) chunks.push(chunk);
     const body = Buffer.concat(chunks);
     record.bytes = body.length;
+    if (
+      (["size-part", "size-abort-failure"].includes(mode) &&
+        url.searchParams.has("partNumber")) ||
+      (mode === "size-put" &&
+        request.method === "PUT" &&
+        !url.searchParams.has("partNumber")) ||
+      (mode === "size-complete" &&
+        request.method === "POST" &&
+        url.searchParams.has("uploadId"))
+    )
+      return xmlError(response, 413, "EntityTooLarge");
     if (request.method === "PUT" && url.searchParams.has("partNumber")) {
       const id = url.searchParams.get("uploadId"),
         n = Number(url.searchParams.get("partNumber"));

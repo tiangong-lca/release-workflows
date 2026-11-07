@@ -16,9 +16,9 @@ checkPaths:
   - workflows/dataset-transformation/lib/**
   - workflows/dataset-transformation/cli.mjs
   - workflows/dataset-transformation/test/**
-lastReviewedAt: 2026-11-01
-lastReviewedCommit: b972a085d013ebb24b72a44b9ece549b782d46f5
-lastReviewedNote: "Release #99: reviewed direct/Derived Result Intake, explicit inspect/register/build/verify commands, parent replay, final Candidate consumers and marker-last recovery; publication remains separate."
+lastReviewedAt: 2026-11-06
+lastReviewedCommit: c725220b1aee3012d0d0c82fd8125c87f0ad34d0
+lastReviewedNote: "Release #128: reviewed final Result 7z packaging, complete readback and safe 413 diagnostics; offline generation and publication authority stay separate."
 related:
   - README.md
   - contracts/dataset-transformation-dsl.v0.schema.json

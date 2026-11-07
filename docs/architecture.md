@@ -18,8 +18,8 @@ checkPaths:
   - .docpact/config.yaml
   - workflows/**
 lastReviewedAt: 2026-11-06
-lastReviewedCommit: 009e3df54b4cde0eaac2b80f8ce99cf3b3229e54
-lastReviewedNote: "Release #126: reviewed compact membership handoff, local closure validation and complete ZIP enumeration; existing workflow ownership unchanged."
+lastReviewedCommit: c725220b1aee3012d0d0c82fd8125c87f0ad34d0
+lastReviewedNote: "Release #128: reviewed final Result 7z packaging, complete readback and safe 413 diagnostics; offline generation and publication authority stay separate."
 related:
   - ../AGENTS.md
   - ../README.md
@@ -94,3 +94,5 @@ JavaScript/MJS 与禁止生产 TypeScript/compiler/codegen 的约束由依赖图
 ## 查询产物存储边界
 
 Calculation 的 opt-in query-artifact adapter 调用 Worker 公共 CLI 上传数值查询文件，独立验证 S3 bytes 后登记 Database-owned metadata/source/release 关联。它不属于 actor Publication recipe，也不创建 canonical dataset、ZIP、Approval 或 publication。该 v1 入口仍使用 Worker 编码；最终 Result v2 编码由 Release Candidate 拥有，不能经原 Bundle-only 绑定接口注册。Database 拥有封闭服务 RPC 的 lineage/幂等约束，Edge 每次读取仍检查 actor 与 current publication。操作及恢复入口见 Calculation README。
+
+最终 Result 分发压缩由 Release Candidate 拥有：Toolkit 生成并验证标准内容，Release 使用固定版本 7-Zip 将其编码为大字典固实 7z，并从实际归档回读验证。临时 ZIP 不作为最终发布包；Database/Edge/Platform 消费现有 descriptor 中的真实 .7z 名称、bytes/hash。HDF5 数值与 Result 身份不因压缩变化而改写。

@@ -29,6 +29,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install qualified Result archive tool
+        run: |
+          mkdir -p "$RUNNER_TEMP/result-7zip"
+          curl --fail --location --retry 3 https://github.com/ip7z/7zip/releases/download/26.05/7z2605-linux-x64.tar.xz -o "$RUNNER_TEMP/result-7zip/tool.tar.xz"
+          echo "22cf82fcc6eb7474f1d5bb4f02c0f8ebd573a718089d6833dc30f8350a3b232e  $RUNNER_TEMP/result-7zip/tool.tar.xz" | sha256sum --check
+          tar -xJf "$RUNNER_TEMP/result-7zip/tool.tar.xz" -C "$RUNNER_TEMP/result-7zip"
+          echo "RELEASE_7ZIP_BIN=$RUNNER_TEMP/result-7zip/7zz" >> "$GITHUB_ENV"
+
       - name: Validate workflow documentation baseline
         run: pnpm run prepush:gate
 

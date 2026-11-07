@@ -38,7 +38,7 @@ test(
       url = new URL(connectionString);
     assert.equal(url.hostname, "127.0.0.1");
     const project = {
-      65422: "offline-final-result-916",
+      65422: "result-7z-926",
       65522: "result-dependencies-919",
       65322: "compact-results-922",
     }[url.port];
@@ -840,7 +840,7 @@ test(
           const { ok, data } = await request.json();
           assert.equal(ok, true);
           assert.equal(data.candidateHash, candidateHash);
-          assert.equal(data.file.name, `result.${format}.zip`);
+          assert.equal(data.file.name, `result.${format}.7z`);
           const zip = await fetch(
             `${storage.endpoint}/synthetic-results/test-owned/release-candidates/${candidateHash}/${data.file.name}`,
           );

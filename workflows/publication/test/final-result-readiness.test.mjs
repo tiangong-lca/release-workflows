@@ -136,7 +136,7 @@ test(
           ? f.loaded.candidate.publicationCatalog.path
           : file.name.startsWith("result.")
             ? f.loaded.candidate.packages.find(
-                (p) => file.name === `result.${p.format}.zip`,
+                (p) => file.name === `result.${p.format}.7z`,
               ).path
             : file.name;
       await storage.store.ensureCandidate(

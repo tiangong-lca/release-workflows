@@ -14,7 +14,7 @@ checkPaths:
   - workflows/release-candidate/**
 lastReviewedAt: 2026-11-05
 lastReviewedCommit: 009e3df54b4cde0eaac2b80f8ce99cf3b3229e54
-lastReviewedNote: "Release #126: compact membership handoff, local closure validation and complete ZIP listing proof."
+lastReviewedNote: "Release #128: reviewed final Result 7z packaging, complete readback and safe 413 diagnostics; offline generation and publication authority stay separate."
 related:
   - README.md
   - ../AGENTS.md
@@ -48,7 +48,7 @@ related:
 
 ## 当前本地 Package 契约
 
-- `intake prepare` 通过 `--delivery-format result-zip-hdf5|legacy-four-zips` 承接用户已明确的产物目标；省略时返回两种选择，不默认跳到旧四包。旧四包完成不能表示 HDF5 已生成。
+- `intake prepare` 通过 `--delivery-format result-7z-hdf5|legacy-four-zips` 承接用户已明确的产物目标；省略时返回两种选择，不默认跳到旧四包。旧四包完成不能表示 HDF5 已生成。
 - `intake prepare` 从不可变的 Materialization Intake 和完整 LifecycleModel materialization 生成独立 Release Intake；不得原地修改任一上游 manifest。
 - Release Intake 按精确 UUID/version 补齐 LCIA Method characterisation factor 引用但 source closure 缺失的 Flow。常规 Intake 只消费项目级 Elementary Flow 缓存；以 published count 和 `MAX(modified_at)` 判断缓存 freshness，缺失或过期时 fail closed，并只提示显式刷新命令。缓存刷新必须使用有界、只读 snapshot，不得由 Intake 隐式触发。显式 `cache refresh` 默认把导出放到受管 Worker EC2 上执行：Release 通过 SSH stdin 传递本次进程内数据面配置，远端不落凭据文件；远端向同一 Supabase project 的 Storage 写入一小时有效的临时 gzip artifact，本地下载并逐条校验后先删除临时对象，再原子替换共享缓存。数据库与 Storage project binding 无法一致验证时必须 fail closed。
 - 慢速本机数据库流式刷新只可通过显式 `--execution local` 使用；远端路径失败时不得静默降级。
@@ -121,7 +121,7 @@ Release Candidate 只有在以下条件同时成立时完成：
 ### 双产物局部资格
 
 - `buildFinalResultPair` 内部能力显式选择 `result-process-full-closure.v1` 两包，不修改 legacy `package build` 四包契约。工具必须声明 profile 与 report v2 能力。
-- 配对须覆盖实际 ZIP 解压验证、实际归档语义 round-trip、完整冻结文档与依赖、最终 Result 轴及实际 HDF5 全量数值。缺少方法能力不能补零，完整零结果不能丢行。
+- 配对须覆盖实际 7z 解压验证、实际归档语义 round-trip、完整冻结文档与依赖、最终 Result 轴及实际 HDF5 全量数值。缺少方法能力不能补零，完整零结果不能丢行。
 - 配对 receipt 只证明本地文件一致，不替代来源证据、Candidate 资格或发布批准。失败保留成功产物和诊断；不创建合格 Candidate、不覆盖原输出。
 
 ### 最终输入
@@ -133,10 +133,10 @@ Release Candidate 只有在以下条件同时成立时完成：
 ### 配对 Candidate v3
 
 - `buildFinalResultCandidate` 消费完整重验的 final input；精确 input hash 和显式 release version 决定本地构建。它不登记新身份或改写输入。
-- Result-only 的根仅为 `result_process`；被根引用的 `unit_process` 保留原始角色、内容及传递闭包，只作为 ZIP 依赖，不创建独立 Unit 组件或 HDF5 行。构建校验精确根和完整闭包，拒绝夹带无关成员；重读校验精简 v2 成员与冻结索引完全一致。legacy 四包的选根规则不变。
+- Result-only 的根仅为 `result_process`；被根引用的 `unit_process` 保留原始角色、内容及传递闭包，只作为 7z 依赖，不创建独立 Unit 组件或 HDF5 行。构建校验精确根和完整闭包，拒绝夹带无关成员；重读校验精简 v2 成员与冻结索引完全一致。legacy 四包的选根规则不变。
 - v3 明确使用 Result-only 两包 profile，绑定 final input、输入计划、来源、canonical index、compact v2 publication membership、配对回读证据、各 query artifact 与完整 Result→artifact/ordinal catalog。缺少任何行或真实文件完整性即失败。
 - 候选标记最后提交，已存在的输出目录（包括空目录）不可覆盖；失败保留工作目录及不完整目标，均不得作为 Candidate。v3 `candidateQualified=true` 仅证明本地资格，`publicationAuthorized=false` 保持不变。
-- `loadFinalResultCandidate` 按显式 v3 重验绑定、实际 ZIP/HDF5 文件和结果轴。Transformation 可消费这种候选的 Result 包；无 Unit 包时不能进入 Unit 聚合。legacy Publication 不接受 v3，必须经后继版本化发布契约。
+- `loadFinalResultCandidate` 按显式 v3 重验绑定、实际 7z/HDF5 文件和结果轴。Transformation 可消费这种候选的 Result 包；无 Unit 包时不能进入 Unit 聚合。legacy Publication 不接受 v3，必须经后继版本化发布契约。
 
 ### Result-only Intake 与 CLI
 
@@ -151,4 +151,4 @@ HDF5 manifest 的数值文件只输出 name/sha256/byteSize；plainByteSize 仅�
 索引并且必须是精确解压字节数，不能在 HDF5 文件上写 null 占位。该 wire shape
 与 Database v2 stage 的严格字段数以及 Worker optional field 解码保持一致。
 
-完整引用图仅是 Release 本地构建校验的临时数据，不落盘或上传。Database 只接收精简成员做批次/Result 覆盖和实时下载权限检查；旧配对候选全图格式不兼容读取。ZIP 列表须全流验证并计数，不得从诊断 stdout 尾部推断包范围。
+完整引用图仅是 Release 本地构建校验的临时数据，不落盘或上传。Database 只接收精简成员做批次/Result 覆盖和实时下载权限检查；旧配对候选全图格式不兼容读取。7z 列表须全流验证并计数，不得从诊断 stdout 尾部推断包范围。

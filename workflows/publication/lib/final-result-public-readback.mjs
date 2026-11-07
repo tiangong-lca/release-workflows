@@ -203,7 +203,7 @@ export async function verifyFinalResultPublicReadback({
     const p = candidate.candidate.packages.find((p) => p.format === format);
     required(p);
     downloads[format] = await reader.download(pub.publicationId, format, {
-      name: `result.${format}.zip`,
+      name: `result.${format}.7z`,
       sha256: p.sha256,
       byteSize: p.byteSize,
     });
