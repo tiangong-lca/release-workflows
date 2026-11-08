@@ -87,6 +87,7 @@ Commands:
   result-readiness inspect Inspect exact configuration/selection and private reader without remote writes
   result-readiness verify  Verify all selected files and reader probes; register readiness only
   result-storage inspect  Locally verify a final Result v3 Candidate and freeze its storage plan
+  result-storage preflight  Read-only database/TLS and exact registry checks; no upload/registration
   result-storage execute  Confirm that plan, store/read back files and register immutable evidence
   plan prepare          Resolve dependency-safe scope into an unapproved Draft Plan
   payload materialize  Extract only the resolved TIDAS datasets from the Candidate
@@ -176,14 +177,17 @@ Notes:
   prepare/publish/readback RPCs; the platform dataset commands are never used for them and
   no intermediate 0 or 100 row is ever created.
 
-result-storage inspect:
+result-storage inspect / preflight:
   --candidate <v3-directory> --out-dir <new-directory>
 
 result-storage execute:
   --candidate <v3-directory> --confirm <storage-plan-sha256> --out-dir <new-attempt-directory>
   Requires explicit CONN, S3_ENDPOINT, S3_REGION, S3_BUCKET; optional S3_PREFIX.
   Execute also requires S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY; optional S3_SESSION_TOKEN.
-  Inspect makes no remote requests and requires no S3 credentials. No .env is loaded.
+  Optional --config-env <path> shares the Publication loader with readiness, including CA configuration.
+  Inspect makes no remote requests. Preflight only queries the database; neither needs S3 credentials.
+  Execute automatically preflights the database before the first upload or registration.
+  Configuration files are explicit; there is no implicit .env discovery or storage login.
   Retry the same Candidate/target/confirmation in a NEW output directory; preserve prior attempts.
   Storage success does not authorize publication or make a result visible.
 
@@ -271,6 +275,8 @@ async function main() {
       runFinalResultReadinessCommand("verify", options),
     "result-storage inspect": (options) =>
       runFinalResultStorageCommand("inspect", options),
+    "result-storage preflight": (options) =>
+      runFinalResultStorageCommand("preflight", options),
     "result-storage execute": (options) =>
       runFinalResultStorageCommand("execute", options),
     "plan prepare": planPrepare,
@@ -297,12 +303,15 @@ async function main() {
     return;
   }
   if (
-    !commandName.startsWith("result-readiness ") &&
-    (options["config-env"] || options["bootstrap-session"])
+    (options["config-env"] &&
+      !commandName.startsWith("result-readiness ") &&
+      !commandName.startsWith("result-storage ")) ||
+    (options["bootstrap-session"] &&
+      !commandName.startsWith("result-readiness "))
   )
     throw coded(
       "invalid_arguments",
-      "Readiness configuration options are accepted only by result-readiness inspect/verify",
+      "--config-env is supported by storage/readiness; --bootstrap-session is supported only by readiness",
     );
   const payload = await handlers[commandName](options);
   payload.replyTemplate = replyTemplateFor(commandName, { ok: true });

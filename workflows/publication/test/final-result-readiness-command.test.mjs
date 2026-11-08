@@ -415,7 +415,7 @@ test("real CLI reports a missing explicit config safely and does not extend conf
         assert.equal(
           reply.error.code,
           command[0] === "result-readiness"
-            ? "final_readiness_config_file_invalid"
+            ? "final_publication_config_file_invalid"
             : "invalid_arguments",
         );
         assert.doesNotMatch(e.stderr, /never-print/);

@@ -10,15 +10,22 @@ import {
 import {
   inspectFinalResultStorage,
   executeFinalResultStorage,
+  preflightFinalResultStorage,
 } from "./final-result-storage.mjs";
 import {
   finalResultDatabaseTargetHash,
   createFinalResultRegistry,
+  safePublicationDatabaseDetails,
 } from "../adapters/final-result-registry.mjs";
 import {
   finalResultStorageTarget,
   createFinalResultObjectStore,
 } from "../adapters/final-result-object-store.mjs";
+import {
+  preparePublicationEnvironment,
+  PUBLICATION_STORAGE_SETTINGS,
+  PUBLICATION_STORAGE_CREDENTIALS,
+} from "./publication-environment.mjs";
 
 const CLI = fileURLToPath(new URL("../cli.mjs", import.meta.url));
 const HASH = /^[0-9a-f]{64}$/u;
@@ -83,15 +90,17 @@ export async function runFinalResultStorageCommand(
     env = process.env,
     inspect = inspectFinalResultStorage,
     execute = executeFinalResultStorage,
+    preflight = preflightFinalResultStorage,
+    prepareEnvironment = preparePublicationEnvironment,
     createObjectStore = createFinalResultObjectStore,
     createRegistry = createFinalResultRegistry,
   } = {},
 ) {
   const allowed =
-    action === "inspect"
-      ? ["candidate", "out-dir", "json", "help"]
+    action === "inspect" || action === "preflight"
+      ? ["candidate", "out-dir", "config-env", "json", "help"]
       : action === "execute"
-        ? ["candidate", "out-dir", "confirm", "json", "help"]
+        ? ["candidate", "out-dir", "confirm", "config-env", "json", "help"]
         : null;
   if (!allowed) fail("unknown_command", "Unknown final Result storage action");
   for (const key of Object.keys(options))
@@ -118,6 +127,13 @@ export async function runFinalResultStorageCommand(
     objectStore,
     registry;
   try {
+    ({ environment: env } = await prepareEnvironment(options, {
+      env,
+      settings: [
+        ...PUBLICATION_STORAGE_SETTINGS,
+        ...(action === "execute" ? PUBLICATION_STORAGE_CREDENTIALS : []),
+      ],
+    }));
     const { target, targetHash } = finalResultStorageEnvironment(env);
     await assertFinalResultExternalOutput(candidateDir, outDir);
     const { plan, planHash } = await inspect({ candidateDir, targetHash });
@@ -164,9 +180,46 @@ export async function runFinalResultStorageCommand(
             planHash,
             "--out-dir",
             `${outDir}-execution`,
+            ...(options["config-env"]
+              ? ["--config-env", path.resolve(options["config-env"])]
+              : []),
             "--json",
           ]),
         ],
+      };
+    }
+    if (action === "preflight") {
+      await assertAbsent(outDir);
+      await mkdir(path.dirname(outDir), { recursive: true });
+      await mkdir(outDir, { mode: 0o700 });
+      await writeCanonical(path.join(outDir, "storage-attempt.json"), {
+        schemaVersion: "tiangong.final-result-storage-preflight-attempt.v1",
+        planHash,
+        candidateHash: plan.candidateHash,
+        targetHash,
+        startedAt: new Date().toISOString(),
+        publicationAuthorized: false,
+      });
+      attemptCreated = true;
+      registry = createRegistry({ connectionString: env.CONN.trim() });
+      if (registry.databaseTargetHash !== target.databaseTargetHash)
+        fail(
+          "final_storage_target_mismatch",
+          "Database preflight target differs from the storage plan",
+        );
+      const report = await preflight({ plan, registry });
+      await writeCanonical(path.join(outDir, "storage-preflight.json"), report);
+      return {
+        ...common,
+        outcome: "final_result_storage_preflight_verified",
+        completeness: "database_preflight_verified_storage_pending",
+        databaseReady: true,
+        uploadAttempted: false,
+        registryWriteAttempted: false,
+        artifacts: {
+          storagePreflight: path.join(outDir, "storage-preflight.json"),
+        },
+        nextActions: [],
       };
     }
     if (options.confirm !== planHash)
@@ -234,6 +287,14 @@ export async function runFinalResultStorageCommand(
         : "final_storage_command_failed";
     const details = {
       attemptRetained: attemptCreated,
+      ...safePublicationDatabaseDetails(error),
+      ...([
+        "config-env",
+        ...PUBLICATION_STORAGE_SETTINGS,
+        ...PUBLICATION_STORAGE_CREDENTIALS,
+      ].includes(error?.details?.setting)
+        ? { setting: error.details.setting }
+        : {}),
       ...([
         "manifest.json",
         "results.json.gz",
@@ -287,21 +348,34 @@ export async function runFinalResultStorageCommand(
         failedAt: new Date().toISOString(),
         publicationAuthorized: false,
         remoteOutcome:
-          code === "final_storage_object_too_large"
-            ? "object-size-rejected-no-matching-object"
-            : "reconcile-exact-identity-before-retry",
+          error?.details?.phase === "database_preflight" ||
+          action === "preflight"
+            ? "read-only-preflight-no-upload-or-registry-write"
+            : code === "final_storage_object_too_large"
+              ? "object-size-rejected-no-matching-object"
+              : "reconcile-exact-identity-before-retry",
         ...details,
       }).catch(() => {});
     }
     const safeError = Object.assign(
       new Error(
-        code === "final_storage_object_too_large"
-          ? "Storage rejected the object size. Verify the effective upload limit or build a smaller archive in a new Candidate; do not retry unchanged. Preserve attempt and cleanup evidence."
-          : "Final Result storage did not complete. Preserve attempt evidence and reconcile the same confirmed Candidate and target before retrying in a new output directory.",
+        code === "final_publication_database_tls_failed"
+          ? "Database TLS verification failed; configure RELEASE_DATABASE_CA_FILE or CONN sslrootcert and run result-storage preflight before retrying"
+          : code.startsWith("final_publication_")
+            ? "Publication configuration or database check failed; inspect the safe setting, stage and code, then run result-storage preflight"
+            : code === "final_storage_object_too_large"
+              ? "Storage rejected the object size. Verify the effective upload limit or build a smaller archive in a new Candidate; do not retry unchanged. Preserve attempt and cleanup evidence."
+              : "Final Result storage did not complete. Preserve attempt evidence and reconcile the same confirmed Candidate and target before retrying in a new output directory.",
       ),
-      { code, details },
+      { code, details, nextActions: [] },
     );
-    if (attemptCreated && code !== "final_storage_object_too_large")
+    if (
+      attemptCreated &&
+      action === "execute" &&
+      !code.startsWith("final_publication_") &&
+      error?.details?.phase !== "database_preflight" &&
+      code !== "final_storage_object_too_large"
+    )
       safeError.nextActions = [
         next([
           "execute",
@@ -311,6 +385,9 @@ export async function runFinalResultStorageCommand(
           options.confirm,
           "--out-dir",
           `${outDir}-retry`,
+          ...(options["config-env"]
+            ? ["--config-env", path.resolve(options["config-env"])]
+            : []),
           "--json",
         ]),
       ];

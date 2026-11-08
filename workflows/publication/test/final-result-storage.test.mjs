@@ -240,6 +240,35 @@ test(
       { code: "final_storage_confirmation_mismatch" },
     );
     assert.equal(s3.requests.length, 0);
+    // The real execute path must fail before any object request or registry
+    // write when the shared database preflight cannot connect.
+    await assert.rejects(
+      executeFinalResultStorage({
+        ...args,
+        confirmPlanHash: inspected.planHash,
+        registry: {
+          ...registry,
+          async describeQuery() {
+            throw Object.assign(new Error("synthetic TLS failure"), {
+              code: "final_publication_database_tls_failed",
+            });
+          },
+          async stageQuery() {
+            assert.fail("failed preflight cannot stage rows");
+          },
+          async sealQuery() {
+            assert.fail("failed preflight cannot seal evidence");
+          },
+          async registerCandidate() {
+            assert.fail("failed preflight cannot register Candidate");
+          },
+        },
+      }),
+      (error) =>
+        error.code === "final_publication_database_tls_failed" &&
+        error.details.phase === "database_preflight",
+    );
+    assert.equal(s3.requests.length, 0);
     // Simulate lost database ACK after actual COMMIT, without changing requests.
     const uncertain = {
       ...registry,
