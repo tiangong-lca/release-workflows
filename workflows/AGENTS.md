@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/**
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: 4f532e4507a3e860e875a276ecddf2c7f145a422
-lastReviewedNote: "Release #131: reviewed explicit readiness configuration, read-only inspection, protected secret sources and unchanged approval/activation boundaries."
+lastReviewedCommit: e29a2bfa11f307cbbbe0ad429e91aeae57cbcf03
+lastReviewedNote: "Release #133: reviewed shared Publication configuration/CA preparation, read-only storage preflight, safe database diagnostics and unchanged upload/registration/approval authority."
 related:
   - ../AGENTS.md
   - ../README.md
@@ -67,6 +67,8 @@ Publication 的独立数据面 adapter；它只消费冻结 Candidate，不移�
 与存储登记、后继数据库 readiness seal/actor approval 分开。单个 Result probe 成功
 不等于发布范围全部合格，也不自动授权激活；精确调用边界见 Publication 契约。
 
-Publication 的 readiness 可显式加载本机配置并执行只读 `inspect`，再由 `verify` 登记
-完整文件与 reader 数值证据；这两个入口拥有配置/会话 opt-in，不扩展其他 Workflow 或
-发布批准的凭据契约。通用运行代码纳入 Publication，`.release/` 只保留本机文件和证据。
+Publication 的 storage/readiness 共用显式配置加载和数据库连接准备。storage 的
+`preflight` 只读检查数据库，`execute` 在上传/登记前自动执行同样预检；readiness
+继续由 `inspect` 只读观察、`verify` 登记完整文件与 reader 数值证据。
+配置文件必须显式选择；会话 bootstrap 仍仅由 readiness 显式启用，不扩展 actor
+批准/激活的凭据契约。通用运行代码纳入 Publication，`.release/` 只保留本机文件和证据。

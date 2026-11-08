@@ -68,6 +68,19 @@ const templates = Object.freeze({
       "nextActions",
     ],
   ],
+  "result-storage preflight": [
+    "final-result-storage",
+    "final-result-storage.md",
+    [
+      "command",
+      "outcome",
+      "completeness",
+      "storagePlanHash",
+      "publicationAuthorized",
+      "artifacts",
+      "nextActions",
+    ],
+  ],
   "result-storage execute": [
     "final-result-storage",
     "final-result-storage.md",

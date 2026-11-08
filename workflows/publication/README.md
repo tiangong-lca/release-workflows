@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: 4f532e4507a3e860e875a276ecddf2c7f145a422
-lastReviewedNote: "Release #131: reviewed explicit readiness configuration, read-only inspection, protected secret sources and unchanged approval/activation boundaries."
+lastReviewedCommit: e29a2bfa11f307cbbbe0ad429e91aeae57cbcf03
+lastReviewedNote: "Release #133: reviewed shared Publication configuration/CA preparation, read-only storage preflight, safe database diagnostics and unchanged upload/registration/approval authority."
 related:
   - AGENTS.md
   - ../release-candidate/README.md
@@ -45,7 +45,7 @@ Dataset Transformation 不属于本 Workflow。任何 Process/LifeCycleModel 内
 `lib/final-result-storage.mjs` 提供 `inspectFinalResultStorage` 和
 `executeFinalResultStorage`，消费已通过真实 HDF5/ZIP 回读及本地输入校验的
 Candidate v3。inspect 仅本地读取，返回精确 storage plan/hash；execute 需要同一
-hash 确认，并重新验证 Candidate。CLI 为 `result-storage inspect/execute`；原 `plan prepare` 等命令
+hash 确认，并重新验证 Candidate。CLI 为 `result-storage inspect/preflight/execute`；原 `plan prepare` 等命令
 仍按下文 Candidate v2/actor recipe 运行，不能用它们发布 v3。
 
 受控 S3 adapter 只写入 `<prefix>/query-artifacts/<artifactId>/<manifestSha256>/`
@@ -55,9 +55,38 @@ hash 确认，并重新验证 Candidate。CLI 为 `result-storage inspect/execut
 
 进程环境必须显式提供 `CONN`、`S3_ENDPOINT`、`S3_REGION`、`S3_BUCKET`，
 可选 `S3_PREFIX`。inspect 只解析目标并校验本地 Candidate，不联网、不读取
-S3 secret。execute 还要求 `S3_ACCESS_KEY_ID`、`S3_SECRET_ACCESS_KEY`，可选
+S3 secret。preflight 额外执行只读数据库检查，同样不需要 S3 secret。
+execute 还要求 `S3_ACCESS_KEY_ID`、`S3_SECRET_ACCESS_KEY`，可选
 `S3_SESSION_TOKEN`；不会隐式读取 `.env` 或其他 AWS credential provider。
 目标必须是已经治理的非公开存储，CLI 不改变 bucket policy。
+
+storage 与 readiness 共用 Publication 配置加载器和同一个数据库连接适配器。
+显式传入 `--config-env /absolute/path/.env`，只读取该命令需要的白名单；非空进程值
+与文件值冲突时失败，不修改 `process.env`。共享加载阶段不触发用户登录或读取 reader
+密钥文件；readiness 后续仍按自身显式配置准备 reader 和可选用户会话。
+`RELEASE_DATABASE_CA_FILE` 在这两类入口中统一加入 `CONN` 并强制 `verify-full`；
+CA 和 `CONN` 中的 TLS 文件路径相对显式配置文件目录解析，没有配置文件时相对 cwd。
+已有不同 `sslrootcert` 与 CA 配置冲突时拒绝。密码和 TLS 文件不改变数据库目标 hash。
+
+```bash
+node workflows/publication/cli.mjs result-storage preflight \
+  --config-env /absolute/path/.env \
+  --candidate /absolute/path/final-candidate \
+  --out-dir /absolute/path/new-storage-preflight --json
+```
+
+preflight 校验本地 Candidate、目标和数据库 TLS/服务角色，并用现有 describe RPC
+核对精确 artifact/Candidate 的登记状态及已有回执。它不构造 S3 client、不上传、
+不登记、不运行 reader 或审批；完整结果写入 `storage-preflight.json`。
+它不证明 S3 写权限、远端文件完整性或发布 readiness。正常 execute 会在第一笔
+上传/登记前自动执行同样检查，不需要额外手动跑一次。
+
+连接前的证书、认证、网络错误分别报告 `final_publication_database_tls_failed`、
+`final_publication_database_auth_failed`、`final_publication_database_unavailable`。
+预检失败保留安全的 `databaseStage`、白名单 `databaseCode` 或 SQLSTATE，明确
+`uploadAttempted=false`、`registryWriteAttempted=false`，不建议原样重试上传。
+原始连接/provider 文本和凭据不落盘。真正已派发写入后的响应/提交不明仍保留
+`final_storage_registry_outcome_unknown`，必须精确回读同一身份后恢复。
 
 S3 endpoint 支持 HTTPS 根地址，以及 Supabase 项目存储域名上的精确
 `/storage/v1/s3` 路径；字面量 loopback 也支持该路径用于本地验证。
@@ -641,9 +670,9 @@ Candidate 文件及全部选中 artifact 文件，按每个 artifact 的首末�
 `--config-env` 只读取指定文件，无默认文件发现，也不执行 shell 或插值。支持 Node 24
 的 dotenv 语法；同一文件的重复 key 按 Node 规则使用最后一项。只加载 readiness 白名单，
 忽略其他 Workflow 和 Node 启动配置。非空 process 值与文件内同名非空值不一致时，
-以 `final_readiness_environment_conflict` 及 setting 名失败，不静默选一个环境。
+以 `final_publication_environment_conflict` 及 setting 名失败，不静默选一个环境。
 没有 `--config-env` 时继续只使用显式进程环境，且不修改 `process.env`。
-此选项专用于 readiness，不能传给 approve/activate 等其他 Publication 命令。
+此选项由 storage/readiness 共用，不能传给 approve/activate 等 actor Publication 命令。
 不要用 Node 启动选项 `--env-file` 替代这个受控加载入口。
 
 必需目标配置是 `CONN`、`S3_ENDPOINT`、`S3_REGION`、`S3_BUCKET`（可选 `S3_PREFIX`）。

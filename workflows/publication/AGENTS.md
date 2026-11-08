@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: 4f532e4507a3e860e875a276ecddf2c7f145a422
-lastReviewedNote: "Release #131: reviewed explicit readiness configuration, read-only inspection, protected secret sources and unchanged approval/activation boundaries."
+lastReviewedCommit: e29a2bfa11f307cbbbe0ad429e91aeae57cbcf03
+lastReviewedNote: "Release #133: reviewed shared Publication configuration/CA preparation, read-only storage preflight, safe database diagnostics and unchanged upload/registration/approval authority."
 related:
   - README.md
   - ../AGENTS.md
@@ -144,7 +144,9 @@ Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认
 - 本地已验证的索引/7z 与远端 GET 字节摘要相同后才按产物登记实际 Result 轴和完整包范围，行使用内容指纹与 Candidate 根关联。行按 500 条且 JSONB logical size 不超过 1 MiB 分批，映射摘要必须与 Database 的 ASCII 500-row block contract 一致。
 - 超时、响应丢失与并发同键写入必须先精确回读。query/Candidate seal 响应不明时用 service-only describe 恢复原回执；不能换 artifact、Candidate、Result 版本或覆盖原回执。中止分片无法确认或创建分片响应丢失时明确 `multipartCleanupRequired`，不得声称清理完成。
 - 目标 fingerprint 绑定数据库连接身份（不含密码）、规范化存储 endpoint/region/bucket/prefix。根 endpoint 的身份不变；Supabase 精确 `/storage/v1/s3` base path 必须同时保留在哈希与 SDK 请求中，不能退化为 origin。配置必须指向已经治理的非公开存储；adapter 不改变 bucket policy，也不能以文件核验代替非公开环境准入。原 actor recipes 与 Portal projection 的 secret/locator 禁止仍保持。
-- CLI 只读取显式进程环境中的 `CONN` 与既有 `S3_*` 白名单，不隐式载入 `.env` 或 AWS credential provider chain，不接受凭据参数。证据输出必须位于冻结 Candidate 外部，含符号链接解析。每次 execute 使用新的输出目录：先写 attempt、成功后写 receipt；失败保留 attempt/failure，精确重试用新目录，不能删除记录伪造完成。stdout/stderr 只返回有界摘要与安全错误码；原始 provider/连接异常不外泄。
+- storage/readiness 通过同一 Publication 加载器读取显式进程值及可选 `--config-env` 文件；各命令只读取自己的白名单，不隐式发现 `.env` 或 AWS credential provider，不修改进程环境。CA/TLS 文件统一解析并在提供 CA 时强制 verify-full，不改变数据库目标身份。storage 的只读 inspect/preflight 不读取 S3/actor/reader secrets；actor-only 命令不接入数据面凭据或会话 bootstrap。
+- storage `preflight` 只校验本地 Candidate 与数据库 describe 状态；`execute` 必须在第一笔对象上传/登记前执行同样检查。已知连接/TLS/认证失败与只读查询失败不归为写入不明；真正已派发写入后的不明结果继续精确回读恢复。错误只保留白名单 code、阶段和 SQLSTATE，不输出原始异常、连接串或凭据。
+- 证据输出必须位于冻结 Candidate 外部，含符号链接解析。每次 execute/preflight 使用新的输出目录：先写 attempt、成功后写相应 receipt/report；失败保留 attempt/failure。配置错误须先修配置，不能推荐原样重试上传；恢复仍用同一 Candidate/target/hash，不能删除记录伪造完成。
 - 该阶段只产生不可变存储登记证据，始终 `publicationAuthorized=false`。普通用户访问、完整 7z 授权及原子 current 切换由版本化 Database/Edge/Platform 接入另行完成。
 
 ## 最终 Result reader 验证
@@ -189,10 +191,11 @@ Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认
   HTTP facade 只接收固定合成 token 并执行真实 actor SQL；不将其描述为 hosted JWT、
   Edge 或 Platform 的端到端证明。
 
-- `result-readiness inspect/verify` 默认只读取显式进程环境；只有 `--config-env` 才
-  加载指定文件中的 readiness 白名单，拒绝与非空进程值冲突，不修改 `process.env`。
-  只有 `--bootstrap-session` 且缺少 JWT 时才调用现有用户 session helper 换取短期
-  会话，返回 token 不持久化、不自动刷新。其他 Publication 命令不接受这两个选项。
+- `result-storage inspect/preflight/execute` 与 `result-readiness inspect/verify`
+  默认只读取显式进程环境；只有 `--config-env` 才由共享加载器读取指定文件的命令白名单，
+  拒绝与非空进程值冲突，不修改 `process.env`。
+  只有 readiness 显式传入 `--bootstrap-session` 且缺少 JWT 时才调用现有用户 session
+  helper 换取短期会话，返回 token 不持久化、不自动刷新。actor-only 命令不接受这两个选项。
 - Runtime preparation 统一项目 origin/精确 `/functions/v1` base，显式 CA 文件只增强为
   verify-full，保持数据库 target identity；reader 密钥只能来自一个显式环境/file/SSH
   来源。SSH 仅执行固定、有界、非交互的只读 key 提取，不接受任意命令、不传其他凭据，

@@ -266,6 +266,82 @@ async function persistReceipt(write, read, expected) {
   return record.readbackReceipt;
 }
 
+// Existing service-only describe RPCs run in read-only transactions. This check
+// is shared by the standalone diagnostic and every execute, before the first
+// object ensure/upload. It never stages rows, seals evidence or registers data.
+export async function preflightFinalResultStorage({ plan, registry }) {
+  try {
+    const artifacts = [];
+    for (const entry of plan.artifacts) {
+      const existing = await registry.describeQuery(
+        entry.artifact.artifactId,
+        plan.targetHash,
+      );
+      if (existing) {
+        required(
+          same(existing.artifact, entry.artifact) &&
+            existing.inputHash === plan.inputHash &&
+            existing.resultCount === entry.resultCount &&
+            Number.isSafeInteger(existing.registeredResultCount) &&
+            existing.registeredResultCount >= 0 &&
+            existing.registeredResultCount <= entry.resultCount &&
+            existing.publicationAuthorized === false,
+          "final_storage_registry_preflight_conflict",
+        );
+        if (existing.readbackReceipt != null)
+          required(
+            matchingReceipt(existing.readbackReceipt, {
+              schemaVersion: "tiangong.final-result-query-readback.v1",
+              verification: "full-get-sha256-and-axis",
+              targetHash: plan.targetHash,
+              rowBindingsSha256: entry.rowBindingsSha256,
+              artifact: entry.artifact,
+              inputHash: plan.inputHash,
+              files: entry.files,
+            }),
+            "final_storage_registry_preflight_conflict",
+          );
+      }
+      artifacts.push({
+        artifactId: entry.artifact.artifactId,
+        registeredResultCount: existing?.registeredResultCount ?? 0,
+        sealed: existing?.readbackReceipt != null,
+      });
+    }
+    const candidate = await registry.describeCandidate(
+      plan.candidateHash,
+      plan.targetHash,
+    );
+    if (candidate?.readbackReceipt != null)
+      required(
+        matchingReceipt(candidate.readbackReceipt, {
+          schemaVersion: "tiangong.final-result-candidate-readback.v1",
+          candidateSha256: plan.candidateHash,
+          targetHash: plan.targetHash,
+          verification: "full-get-sha256-and-package-closure",
+          files: plan.files,
+        }),
+        "final_storage_registry_preflight_conflict",
+      );
+    return {
+      schemaVersion: "tiangong.final-result-storage-preflight.v1",
+      candidateHash: plan.candidateHash,
+      targetHash: plan.targetHash,
+      databaseReady: true,
+      artifacts,
+      candidateRegistered: candidate?.readbackReceipt != null,
+      uploadAttempted: false,
+      registryWriteAttempted: false,
+      publicationAuthorized: false,
+    };
+  } catch (error) {
+    // Only this boundary can assert that failure preceded all object uploads
+    // and registry writes in execute. Later failures retain reconciliation.
+    error.details = { ...error.details, phase: "database_preflight" };
+    throw error;
+  }
+}
+
 export async function executeFinalResultStorage({
   candidateDir,
   confirmPlanHash,
@@ -281,6 +357,7 @@ export async function executeFinalResultStorage({
     confirmPlanHash === w.planHash,
     "final_storage_confirmation_mismatch",
   );
+  await preflightFinalResultStorage({ plan: w.plan, registry });
   const artifactReceipts = [];
   let multipartCleanupRequired = false;
   const verifyObject = (response) => {

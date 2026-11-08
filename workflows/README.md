@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/**
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: 4f532e4507a3e860e875a276ecddf2c7f145a422
-lastReviewedNote: "Release #131: reviewed explicit readiness configuration, read-only inspection, protected secret sources and unchanged approval/activation boundaries."
+lastReviewedCommit: e29a2bfa11f307cbbbe0ad429e91aeae57cbcf03
+lastReviewedNote: "Release #133: reviewed shared Publication configuration/CA preparation, read-only storage preflight, safe database diagnostics and unchanged upload/registration/approval authority."
 related:
   - ../README.md
   - AGENTS.md
@@ -36,4 +36,4 @@ related:
 
 最终 Result 的查询投影与原生 HDF5 编码由 [Release Candidate](release-candidate/README.md) 拥有。它与计算解耦；本地编码证据不替代 7z 分发包、Candidate 或 Publication 门禁。
 
-Publication 的最终 Result v3 `result-storage inspect/execute` 消费冻结 Candidate，负责精确计划确认、不可覆盖上传、完整 GET 和 Database v2 存储登记；`result-readiness inspect/verify` 接通显式配置、私有 reader 预检和 readiness 登记；用户发布选择、批准和激活通过独立意图确认入口执行，`result-publication readback` 已接通公开数值/7z 回读与不可变凭证，详见其 README 的 recipe 边界。
+Publication 的最终 Result v3 `result-storage inspect/preflight/execute` 消费冻结 Candidate，与 readiness 共用配置和数据库连接准备，负责精确计划确认、上传前只读预检、不可覆盖上传、完整 GET 和 Database v2 存储登记；`result-readiness inspect/verify` 接通显式配置、私有 reader 预检和 readiness 登记；用户发布选择、批准和激活通过独立意图确认入口执行，`result-publication readback` 已接通公开数值/7z 回读与不可变凭证，详见其 README 的 recipe 边界。

@@ -138,6 +138,88 @@ test("confirmation and output collision fail before any remote client is created
   );
   assert.deepEqual(f.calls, []);
 });
+test("preflight queries only the exact database identity, without storage credentials or upload clients", async (t) => {
+  const f = await fixture(t);
+  const env = { ...environment };
+  Object.defineProperty(env, "S3_SECRET_ACCESS_KEY", {
+    get() {
+      throw new Error("no secret needed for preflight");
+    },
+  });
+  const result = await runFinalResultStorageCommand("preflight", f.options, {
+    ...f.dependencies,
+    env,
+    createRegistry: () => ({
+      databaseTargetHash:
+        finalResultStorageEnvironment(environment).target.databaseTargetHash,
+      async describeCandidate(candidate, target) {
+        f.calls.push("read");
+        assert.equal(candidate, f.plan.candidateHash);
+        assert.equal(target, f.plan.targetHash);
+        return null;
+      },
+      async close() {
+        f.calls.push("close");
+      },
+    }),
+  });
+  assert.deepEqual(f.calls, ["read", "close"]);
+  assert.equal(result.uploadAttempted, false);
+  assert.equal(result.registryWriteAttempted, false);
+  assert.deepEqual(result.nextActions, []);
+  const report = JSON.parse(await readFile(result.artifacts.storagePreflight));
+  assert.equal(report.candidateRegistered, false);
+  assert.doesNotMatch(
+    JSON.stringify(result) + JSON.stringify(report),
+    /never-print|postgresql:/,
+  );
+});
+test("TLS preflight failure retains safe diagnostics and never suggests an unchanged upload retry", async (t) => {
+  const f = await fixture(t);
+  await assert.rejects(
+    runFinalResultStorageCommand("preflight", f.options, {
+      ...f.dependencies,
+      createRegistry: () => ({
+        databaseTargetHash:
+          finalResultStorageEnvironment(environment).target.databaseTargetHash,
+        async describeCandidate() {
+          throw Object.assign(new Error(environment.CONN), {
+            code: "final_publication_database_tls_failed",
+            details: {
+              databaseStage: "connect",
+              databaseCode: "SELF_SIGNED_CERT_IN_CHAIN",
+              sqlState: null,
+              raw: environment.CONN,
+            },
+          });
+        },
+        async close() {
+          f.calls.push("close");
+        },
+      }),
+    }),
+    (error) => {
+      assert.equal(error.code, "final_publication_database_tls_failed");
+      assert.equal(error.details.phase, "database_preflight");
+      assert.equal(error.details.databaseCode, "SELF_SIGNED_CERT_IN_CHAIN");
+      assert.equal(error.details.uploadAttempted, false);
+      assert.deepEqual(error.nextActions, []);
+      assert.match(error.message, /RELEASE_DATABASE_CA_FILE/);
+      assert.doesNotMatch(JSON.stringify(error), /never-print|postgresql:/);
+      return true;
+    },
+  );
+  assert.deepEqual(f.calls, ["close"]);
+  const failure = await readFile(
+    path.join(f.options["out-dir"], "storage-failure.json"),
+    "utf8",
+  );
+  assert.equal(
+    JSON.parse(failure).remoteOutcome,
+    "read-only-preflight-no-upload-or-registry-write",
+  );
+  assert.doesNotMatch(failure, /never-print|postgresql:/);
+});
 test("remote failure retains sanitized evidence and closes both clients; no success marker exists", async (t) => {
   const f = await fixture(t);
   await assert.rejects(
@@ -304,7 +386,7 @@ test("size rejection preserves safe context without an unchanged retry command",
     (error) => {
       assert.equal(error.code, "final_storage_object_too_large");
       assert.match(error.message, /do not retry unchanged/u);
-      assert.equal(error.nextActions, undefined);
+      assert.deepEqual(error.nextActions, []);
       assert.equal(error.details.fileName, "result.ilcd.7z");
       return true;
     },

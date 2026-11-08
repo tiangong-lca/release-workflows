@@ -11,7 +11,10 @@ import {
   finalResultStorageEnvironment,
 } from "./final-result-storage-command.mjs";
 import { verifyFinalResultReadiness } from "./final-result-readiness.mjs";
-import { createFinalResultRegistry } from "../adapters/final-result-registry.mjs";
+import {
+  createFinalResultRegistry,
+  safePublicationDatabaseDetails,
+} from "../adapters/final-result-registry.mjs";
 import { createFinalResultObjectStore } from "../adapters/final-result-object-store.mjs";
 import { createFinalResultActor } from "../adapters/final-result-actor.mjs";
 import { createFinalResultReader } from "../adapters/final-result-reader.mjs";
@@ -314,23 +317,27 @@ export async function runFinalResultReadinessCommand(
         releaseRunId,
         publishPlanHash,
         code,
+        ...safePublicationDatabaseDetails(error),
         failedAt: new Date().toISOString(),
         publicationAuthorized: false,
       }).catch(() => {});
     const safe = new Error(
-      "Readiness did not complete; preserve the attempt, check the reported setting or condition, then retry in a new directory",
+      code === "final_publication_database_tls_failed"
+        ? "Database TLS verification failed; configure RELEASE_DATABASE_CA_FILE or CONN sslrootcert before a new readiness attempt"
+        : "Readiness did not complete; preserve the attempt, check the reported setting or condition, then retry in a new directory",
     );
     safe.code = code;
     safe.details = {
       ...(action === "verify" ? { verificationId } : {}),
       attemptCreated: created,
+      ...safePublicationDatabaseDetails(error),
       ...(created ? { attemptDirectory: outDir } : {}),
       ...(error.details?.setting ? { setting: error.details.setting } : {}),
       ...(error.details?.missingEnvironment
         ? { missingEnvironment: error.details.missingEnvironment }
         : {}),
     };
-    safe.nextActions = nextActions;
+    safe.nextActions = code.startsWith("final_publication_") ? [] : nextActions;
     throw safe;
   } finally {
     try {

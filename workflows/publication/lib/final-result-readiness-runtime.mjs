@@ -1,21 +1,20 @@
 import path from "node:path";
-import { readFile, stat } from "node:fs/promises";
-import { parseEnv, promisify } from "node:util";
+import { promisify } from "node:util";
 import { execFile } from "node:child_process";
-import { X509Certificate } from "node:crypto";
 import { resolveActorAccessToken } from "./actor-session.mjs";
 import { fail } from "./common.mjs";
 
+import {
+  preparePublicationEnvironment,
+  readPublicationConfigFile as boundedFile,
+  PUBLICATION_STORAGE_SETTINGS,
+  PUBLICATION_STORAGE_CREDENTIALS,
+} from "./publication-environment.mjs";
+
 const execute = promisify(execFile);
 const SETTINGS = [
-  "CONN",
-  "S3_ENDPOINT",
-  "S3_REGION",
-  "S3_BUCKET",
-  "S3_PREFIX",
-  "S3_ACCESS_KEY_ID",
-  "S3_SECRET_ACCESS_KEY",
-  "S3_SESSION_TOKEN",
+  ...PUBLICATION_STORAGE_SETTINGS,
+  ...PUBLICATION_STORAGE_CREDENTIALS,
   "TIANGONG_LCA_API_BASE_URL",
   "TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY",
   "TIANGONG_LCA_ACCESS_TOKEN",
@@ -24,25 +23,11 @@ const SETTINGS = [
   "RESULT_QUERY_SERVICE_SECRET_FILE",
   "RESULT_QUERY_SERVICE_SECRET_SSH_HOST",
   "RESULT_QUERY_SERVICE_SECRET_SSH_ENV_FILE",
-  "RELEASE_DATABASE_CA_FILE",
-  // Existing archive readers can require this local executable override.
-  "RELEASE_7ZIP_BIN",
 ];
 const failConfig = (code, setting) =>
   fail(code, "Readiness configuration is invalid; check the named setting", {
     setting,
   });
-async function boundedFile(filename, maximum, setting) {
-  try {
-    const info = await stat(filename);
-    if (!info.isFile() || info.size > maximum) throw new Error();
-    const data = await readFile(filename);
-    if (data.length > maximum) throw new Error();
-    return new TextDecoder("utf-8", { fatal: true }).decode(data);
-  } catch {
-    failConfig("final_readiness_config_file_invalid", setting);
-  }
-}
 const quote = (value) => `'${value.replaceAll("'", `'"'"'`)}'`;
 
 // One fixed remote read. The operator explicitly chooses the host and env file;
@@ -113,7 +98,7 @@ sys.stdout.write(values[0])`;
   }
 }
 
-// Explicit opt-in runtime preparation, scoped to result-readiness only. It never
+// Readiness-specific reader/session preparation follows shared config loading. It never
 // mutates process.env or writes tokens, credentials, remote config or evidence.
 export async function prepareFinalResultReadinessEnvironment(
   options,
@@ -128,29 +113,8 @@ export async function prepareFinalResultReadinessEnvironment(
     ...SETTINGS,
     ...(options["bootstrap-session"] ? ["TIANGONG_LCA_API_KEY"] : []),
   ];
-  const result = Object.fromEntries(
-    settings
-      .filter((k) => typeof env[k] === "string" && env[k].trim())
-      .map((k) => [k, env[k]]),
-  );
-  let directory = cwd;
-  if (options["config-env"]) {
-    const filename = path.resolve(cwd, options["config-env"]);
-    directory = path.dirname(filename);
-    let parsed;
-    try {
-      parsed = parseEnv(await boundedFile(filename, 65536, "config-env"));
-    } catch (e) {
-      if (e.code?.startsWith("final_readiness_")) throw e;
-      failConfig("final_readiness_config_file_invalid", "config-env");
-    }
-    for (const key of settings) {
-      if (!parsed[key]?.trim()) continue;
-      if (result[key]?.trim() && result[key] !== parsed[key])
-        failConfig("final_readiness_environment_conflict", key);
-      result[key] = parsed[key];
-    }
-  }
+  const { environment: result, directory } =
+    await preparePublicationEnvironment(options, { env, cwd, settings });
   if (result.TIANGONG_LCA_API_BASE_URL) {
     try {
       const url = new URL(result.TIANGONG_LCA_API_BASE_URL.trim());
@@ -167,31 +131,6 @@ export async function prepareFinalResultReadinessEnvironment(
       failConfig(
         "final_readiness_api_origin_invalid",
         "TIANGONG_LCA_API_BASE_URL",
-      );
-    }
-  }
-  if (result.RELEASE_DATABASE_CA_FILE) {
-    const filename = path.resolve(directory, result.RELEASE_DATABASE_CA_FILE);
-    const cert = await boundedFile(
-      filename,
-      131072,
-      "RELEASE_DATABASE_CA_FILE",
-    );
-    try {
-      new X509Certificate(cert);
-      const conn = new URL(result.CONN);
-      if (
-        conn.searchParams.has("sslrootcert") &&
-        path.resolve(cwd, conn.searchParams.get("sslrootcert")) !== filename
-      )
-        throw new Error();
-      conn.searchParams.set("sslmode", "verify-full");
-      conn.searchParams.set("sslrootcert", filename);
-      result.CONN = conn.href;
-    } catch {
-      failConfig(
-        "final_readiness_database_ca_invalid",
-        "RELEASE_DATABASE_CA_FILE",
       );
     }
   }

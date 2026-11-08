@@ -1,8 +1,8 @@
 version: 1
 layout: repo
 lastReviewedAt: "2026-11-08"
-lastReviewedCommit: "4f532e4507a3e860e875a276ecddf2c7f145a422"
-lastReviewedNote: "Release #131: reviewed explicit readiness configuration, read-only inspection, protected secret sources and unchanged approval/activation boundaries."
+lastReviewedCommit: "e29a2bfa11f307cbbbe0ad429e91aeae57cbcf03"
+lastReviewedNote: "Release #133: reviewed shared Publication configuration/CA preparation, read-only storage preflight, safe database diagnostics and unchanged upload/registration/approval authority."
 
 catalog:
   repos:
