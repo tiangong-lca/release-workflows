@@ -26,8 +26,8 @@ checkPaths:
   - .node-version
   - .github/workflows/ci.yml
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: df7d513a37111f16a1ea11afd4bbc6aebf80d6a3
-lastReviewedNote: "Release #135: reviewed Environment workflow ownership, shared scoped configuration, diagnostic/local setup boundaries and unchanged business artifact/authorization semantics."
+lastReviewedCommit: 32aef3cfc64140e5ec54476fd54d705b419c6772
+lastReviewedNote: "Release #135: reviewed explicit pnpm run doctor invocation against the pinned package manager, shared configuration ownership and unchanged diagnostic/business boundaries."
 related:
   - README.md
   - .docpact/config.yaml
@@ -60,7 +60,7 @@ related:
 
 ## 环境与配置
 
-Environment 拥有项目级 `pnpm doctor`、配置引导、本地模板/同步和共享配置加载；业务
+Environment 拥有项目级 `pnpm run doctor`、配置引导、本地模板/同步和共享配置加载；业务
 Workflow 保留执行前检查及权限。默认配置固定为仓库 `.env`，`--config-env` 显式覆盖，
 各命令只加载自身白名单并拒绝非空来源冲突；入口和完整语义见 `workflows/environment/`。
 核验默认本地，远程检查必须显式只读；环境通过不授予业务执行或发布权限。

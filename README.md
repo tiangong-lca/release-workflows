@@ -20,8 +20,8 @@ checkPaths:
   - workflows/**
   - .docpact/config.yaml
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: df7d513a37111f16a1ea11afd4bbc6aebf80d6a3
-lastReviewedNote: "Release #135: reviewed Environment workflow ownership, shared scoped configuration, diagnostic/local setup boundaries and unchanged business artifact/authorization semantics."
+lastReviewedCommit: 32aef3cfc64140e5ec54476fd54d705b419c6772
+lastReviewedNote: "Release #135: reviewed explicit pnpm run doctor invocation against the pinned package manager, shared configuration ownership and unchanged diagnostic/business boundaries."
 related:
   - AGENTS.md
   - docs/architecture.md
@@ -36,7 +36,7 @@ related:
 
 | Workflow                                                             | 当前职责与入口                                                                 |
 | -------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| [Environment](workflows/environment/README.md)                       | 配置引导、共享加载、本地环境及显式只读连接核验；项目入口 `pnpm doctor`         |
+| [Environment](workflows/environment/README.md)                       | 配置引导、共享加载、本地环境及显式只读连接核验；项目入口 `pnpm run doctor`     |
 | [Calculation](workflows/calculation/README.md)                       | ResultSet、Closure、计算任务、Calculation Bundle 下载与完整性验证              |
 | [Result Materialization](workflows/result-materialization/README.md) | 从已验证 Bundle 生成 Result/Model，或验证并冻结加工后的 Derived Result         |
 | [Release Candidate](workflows/release-candidate/README.md)           | 闭合输入、Result 7z/HDF5 配对或旧四包、失败影响分析与不可变 Candidate          |
@@ -62,8 +62,8 @@ Materialization 的 `materialize derived` 接收精确 Derived Result handoff；
 
 ## 环境准备
 
-在根目录运行 `pnpm doctor`；出包用 `pnpm doctor --for candidate`，存储连接用
-`pnpm doctor --for storage --remote`。所有 CLI 使用同一配置规则：固定仓库 `.env`
+在根目录运行 `pnpm run doctor`；出包用 `pnpm run doctor --for candidate`，存储连接用
+`pnpm run doctor --for storage --remote`。所有 CLI 使用同一配置规则：固定仓库 `.env`
 或显式 `--config-env`，按动作读取白名单。初次配置、缺失项及引导见 Environment。
 只读核验不启动计算、上传、登记或发布，业务动作仍执行自己的必要检查。
 

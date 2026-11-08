@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/environment/**
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: df7d513a37111f16a1ea11afd4bbc6aebf80d6a3
-lastReviewedNote: "Release #135: reviewed shared configuration, capability-scoped checks and explicit local initialization/sync without business mutations."
+lastReviewedCommit: 32aef3cfc64140e5ec54476fd54d705b419c6772
+lastReviewedNote: "Release #135: reviewed explicit pnpm run doctor invocation against the pinned package manager, shared configuration ownership and unchanged diagnostic/business boundaries."
 related:
   - AGENTS.md
   - ../../.env.example
@@ -31,12 +31,12 @@ Calculation、Materialization、Candidate、Transformation、Publication 继续�
 在仓库根运行项目入口：
 
 ```bash
-pnpm doctor
-pnpm --silent doctor --for candidate --json
-pnpm --silent doctor --for storage --remote --json
+pnpm run doctor
+pnpm --silent run doctor --for candidate --json
+pnpm --silent run doctor --for storage --remote --json
 ```
 
-`pnpm doctor` 默认检查本地运行环境。需要机器解析时使用 silent 模式，避免包管理器
+`pnpm run doctor` 默认检查本地运行环境；必须保留 `run`，避免调用 pnpm 自带的 doctor。需要机器解析时使用 silent 模式，避免包管理器
 脚本标题混入 JSON。可从任意目录使用 workflow-local CLI 的绝对路径；CLI 返回的
 `nextActions[].argv/command` 均为可复制的绝对入口。
 

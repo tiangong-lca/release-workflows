@@ -21,7 +21,8 @@ import {
   configureReleaseCli,
   attachReleaseConfiguration,
 } from "../lib/cli-configuration.mjs";
-import { settingsForCommand } from "../lib/settings.mjs";
+import { resolvePnpmInvocation } from "../lib/pnpm-invocation.mjs";
+import { settingsForCommand, RELEASE_ROOT } from "../lib/settings.mjs";
 import { checkEnvironment } from "../lib/check.mjs";
 import { runEnvironmentCli } from "../cli.mjs";
 import {
@@ -661,4 +662,26 @@ test("human Calculation continuations retain the explicit configuration without 
       return true;
     },
   );
+});
+
+test("the project doctor script bypasses pnpm builtin doctor and forwards scope flags as clean JSON", async () => {
+  const invocation = resolvePnpmInvocation(process.env.npm_execpath ?? "pnpm");
+  const result = await exec(
+    invocation.command,
+    [
+      ...invocation.prefixArgs,
+      "--silent",
+      "run",
+      "doctor",
+      "--for",
+      "local",
+      "--json",
+    ],
+    { cwd: RELEASE_ROOT },
+  );
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.command, "environment check");
+  assert.equal(report.profile, "local");
+  assert.equal(report.ok, true);
+  assert.equal(result.stderr, "");
 });
