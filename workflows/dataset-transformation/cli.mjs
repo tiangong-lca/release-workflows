@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+import {
+  configureReleaseCli,
+  attachReleaseConfiguration,
+} from "../environment/lib/cli-configuration.mjs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { analyzeTransformation } from "./lib/analysis.mjs";
@@ -20,6 +24,8 @@ const BOOLEAN_OPTIONS = new Set(["json", "help"]);
 const HELP = `release-transform <command> [options]
 
 Candidate-bound Dataset Transformation weighted aggregation.
+
+Common configuration: --config-env <path> (default: repository .env if present).
 
 Commands:
   dsl inspect        Analyze exact inputs and emit structured decision requests
@@ -48,8 +54,13 @@ status=needs_decision and a conflict-report artifact. Errors are reserved for
 malformed contracts, input drift, runtime faults, or invalid generated output.
 `;
 
+let CLI_CONFIGURATION;
 async function main() {
-  const [command, action, ...tokens] = process.argv.slice(2);
+  CLI_CONFIGURATION = await configureReleaseCli(
+    "dataset-transformation",
+    process.argv.slice(2),
+  );
+  const [command, action, ...tokens] = CLI_CONFIGURATION.argv;
   if (!command || command === "--help" || command === "-h") {
     process.stdout.write(HELP);
     return;
@@ -282,6 +293,7 @@ function success(command, outcome, payload) {
 }
 
 function respond(options, payload) {
+  attachReleaseConfiguration(payload, CLI_CONFIGURATION);
   if (options.json) process.stdout.write(`${JSON.stringify(payload)}\n`);
   else process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
 }
@@ -309,6 +321,7 @@ main().catch((error) => {
     },
     replyTemplate: replyTemplateFor("error", { ok: false }),
   };
+  attachReleaseConfiguration(payload, CLI_CONFIGURATION);
   process.stderr.write(`${JSON.stringify(payload)}\n`);
   process.exitCode = 1;
 });

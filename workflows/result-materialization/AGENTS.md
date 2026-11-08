@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 recipe、identity/version、metadata、reference、validation 或输出契约变化时
 checkPaths:
   - workflows/result-materialization/**
-lastReviewedAt: 2026-11-03
-lastReviewedCommit: 1a1ca5860f08acaba578030a5a8428a71396a8f6
-lastReviewedNote: "Release #106: copy-only historical Process compatibility preserves empty text and source comments; recipe v2 prevents stale materialization reuse without changing calculation or publication authority."
+lastReviewedAt: 2026-11-08
+lastReviewedCommit: df7d513a37111f16a1ea11afd4bbc6aebf80d6a3
+lastReviewedNote: "Release #135: reviewed Environment workflow ownership, shared scoped configuration, diagnostic/local setup boundaries and unchanged business artifact/authorization semantics."
 related:
   - README.md
   - design/result-process-and-lifecycle-model.md
@@ -155,3 +155,7 @@ Agent 提议不能替代用户对模型结构、重要 metadata 和首次 lineag
 ## 完成条件
 
 完成的 materialization 必须产生冻结的 selection、Result Catalog、canonical dataset collection、独立 `canonical-dataset-index.v1`、materialization manifest 和验证报告；Manifest 必须绑定 Index hash。每个输出都能追溯到精确输入、recipe、direct edge、identity/version 决策和 validator evidence；每个 one-hop Model 必须在冻结容差内重构对应 Result Process。
+
+## 环境与配置
+
+配置准备及核验由 [Environment](../environment/README.md) 拥有。CLI 默认读取固定仓库 `.env`，可用 `--config-env` 选择其他文件；按当前动作白名单加载并拒绝来源冲突。离线操作不消费数据库/用户凭据，环境通过不代替本 Workflow 的输入资格、确认或执行前检查。

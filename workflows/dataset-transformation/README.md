@@ -13,9 +13,9 @@ whenToUpdate:
   - 当支持的加工机制、DSL、冲突策略、验证或返回路径变化时
 checkPaths:
   - workflows/dataset-transformation/**
-lastReviewedAt: 2026-11-01
-lastReviewedCommit: b972a085d013ebb24b72a44b9ece549b782d46f5
-lastReviewedNote: "Release #128: reviewed final Result 7z packaging, complete readback and safe 413 diagnostics; offline generation and publication authority stay separate."
+lastReviewedAt: 2026-11-08
+lastReviewedCommit: df7d513a37111f16a1ea11afd4bbc6aebf80d6a3
+lastReviewedNote: "Release #135: reviewed Environment workflow ownership, shared scoped configuration, diagnostic/local setup boundaries and unchanged business artifact/authorization semantics."
 related:
   - AGENTS.md
   - dsl-v0.md
@@ -143,3 +143,7 @@ node workflows/dataset-transformation/cli.mjs transform execute \
 这些能力需要新的 operation/version 和对应真实证据，不能通过扩大 v0 隐式语义加入。
 
 配对 v3 的 Result 包为 7z。读取前完整验证 Candidate，按调用一次解压到独立临时目录并在结束时清理；不能为每个 Process 重复解压固实块。legacy Unit/Result 四包继续按 ZIP 读取。
+
+## 环境与配置
+
+配置准备及核验由 [Environment](../environment/README.md) 拥有。CLI 默认读取固定仓库 `.env`，可用 `--config-env` 选择其他文件；按当前动作白名单加载并拒绝来源冲突。离线操作不消费数据库/用户凭据，环境通过不代替本 Workflow 的输入资格、确认或执行前检查。

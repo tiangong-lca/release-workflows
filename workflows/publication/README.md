@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: e29a2bfa11f307cbbbe0ad429e91aeae57cbcf03
-lastReviewedNote: "Release #133: reviewed shared Publication configuration/CA preparation, read-only storage preflight, safe database diagnostics and unchanged upload/registration/approval authority."
+lastReviewedCommit: df7d513a37111f16a1ea11afd4bbc6aebf80d6a3
+lastReviewedNote: "Release #135: reviewed Environment workflow ownership, shared scoped configuration, diagnostic/local setup boundaries and unchanged business artifact/authorization semantics."
 related:
   - AGENTS.md
   - ../release-candidate/README.md
@@ -57,12 +57,12 @@ hash 确认，并重新验证 Candidate。CLI 为 `result-storage inspect/prefli
 可选 `S3_PREFIX`。inspect 只解析目标并校验本地 Candidate，不联网、不读取
 S3 secret。preflight 额外执行只读数据库检查，同样不需要 S3 secret。
 execute 还要求 `S3_ACCESS_KEY_ID`、`S3_SECRET_ACCESS_KEY`，可选
-`S3_SESSION_TOKEN`；不会隐式读取 `.env` 或其他 AWS credential provider。
+`S3_SESSION_TOKEN`；配置来源遵循 Environment，不使用 AWS credential provider 自动发现。
 目标必须是已经治理的非公开存储，CLI 不改变 bucket policy。
 
-storage 与 readiness 共用 Publication 配置加载器和同一个数据库连接适配器。
-显式传入 `--config-env /absolute/path/.env`，只读取该命令需要的白名单；非空进程值
-与文件值冲突时失败，不修改 `process.env`。共享加载阶段不触发用户登录或读取 reader
+storage 与 readiness 共用 Environment 配置加载器和同一个数据库连接适配器。
+CLI 默认固定仓库 `.env`，可显式传入 `--config-env /absolute/path/.env`，只读取该命令需要的白名单；非空进程值
+与文件值冲突时失败。纯加载器不修改调用者，CLI 只应用有效值到自身进程。共享加载阶段不触发用户登录或读取 reader
 密钥文件；readiness 后续仍按自身显式配置准备 reader 和可选用户会话。
 `RELEASE_DATABASE_CA_FILE` 在这两类入口中统一加入 `CONN` 并强制 `verify-full`；
 CA 和 `CONN` 中的 TLS 文件路径相对显式配置文件目录解析，没有配置文件时相对 cwd。
@@ -667,13 +667,14 @@ Candidate 文件及全部选中 artifact 文件，按每个 artifact 的首末�
 
 #### 显式配置和凭据
 
-`--config-env` 只读取指定文件，无默认文件发现，也不执行 shell 或插值。支持 Node 24
-的 dotenv 语法；同一文件的重复 key 按 Node 规则使用最后一项。只加载 readiness 白名单，
-忽略其他 Workflow 和 Node 启动配置。非空 process 值与文件内同名非空值不一致时，
-以 `final_publication_environment_conflict` 及 setting 名失败，不静默选一个环境。
-没有 `--config-env` 时继续只使用显式进程环境，且不修改 `process.env`。
-此选项由 storage/readiness 共用，不能传给 approve/activate 等 actor Publication 命令。
-不要用 Node 启动选项 `--env-file` 替代这个受控加载入口。
+所有 Publication CLI 遵循 [Environment](../environment/README.md) 的共享加载规则：
+默认固定仓库 `.env`，可用 `--config-env` 显式覆盖，不扫描父目录或用户配置。支持 Node
+的 dotenv 语法；重复 key 按 Node 规则使用最后一项。不执行 shell 或插值，不加载 Node
+启动配置。非空进程值与文件不一致时报 `final_environment_conflict` 和安全 setting 名。
+纯加载器返回独立配置；独立 CLI 只应用当前动作白名单到自身进程，不改变父 shell。
+actor-only 命令也可选择同一文件，但只消费用户配置，不读取数据库/S3/reader 密钥。
+`--bootstrap-session` 仍只由 readiness 显式启用；配置加载本身不登录。
+不要用 Node 启动选项 `--env-file` 替代受控加载入口。
 
 必需目标配置是 `CONN`、`S3_ENDPOINT`、`S3_REGION`、`S3_BUCKET`（可选 `S3_PREFIX`）。
 `verify` 还要求 `S3_ACCESS_KEY_ID`、`S3_SECRET_ACCESS_KEY`（可选 `S3_SESSION_TOKEN`）；
@@ -747,7 +748,7 @@ RESULT_QUERY_SERVICE_SECRET_SSH_ENV_FILE=/etc/<service>/reader.env
 ### 最终 Result 发布选择与状态
 
 `result-publication` 使用用户 API origin、publishable key 和 actor JWT，
-不读取 `CONN`、S3、Worker 服务密钥或 API key，不加载 `.env`、自动登录或刷新会话。
+不读取 `CONN`、S3、Worker 服务密钥或 API key；只按共享规则加载用户白名单，不自动登录或刷新会话。
 先在已登记的精确存储目标上冻结选择：
 
 ```bash

@@ -1,4 +1,5 @@
 packages:
+  - workflows/environment
   - workflows/calculation
   - workflows/result-materialization
   - workflows/release-candidate

@@ -49,16 +49,16 @@ test("explicit file uses Node dotenv syntax, whitelists keys and rejects conflic
       { "config-env": "config.env" },
       { ...f, env: { RESULT_QUERY_SERVICE_SECRET: "other-secret" } },
     ),
-    safe("final_publication_environment_conflict"),
+    safe("final_environment_conflict"),
   );
   await assert.rejects(
     prepare({ "config-env": "missing" }, f),
-    safe("final_publication_config_file_invalid"),
+    safe("final_environment_config_file_invalid"),
   );
   await writeFile(path.join(f.cwd, "large"), "x".repeat(65537));
   await assert.rejects(
     prepare({ "config-env": "large" }, f),
-    safe("final_publication_config_file_invalid"),
+    safe("final_environment_config_file_invalid"),
   );
 });
 test("only the exact project API base is normalized; ambiguous paths and embedded credentials are refused", async () => {
@@ -106,7 +106,7 @@ test("configured CA resolves relative to the config file and keeps database targ
   await writeFile(path.join(f.cwd, "ca.pem"), "invalid certificate");
   await assert.rejects(
     prepare({ "config-env": "config.env" }, f),
-    safe("final_publication_database_ca_invalid"),
+    safe("final_environment_database_ca_invalid"),
   );
 });
 test("secret file is bounded, resolves relative to config, and never expands a shell", async (t) => {

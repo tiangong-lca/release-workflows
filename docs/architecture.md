@@ -18,8 +18,8 @@ checkPaths:
   - .docpact/config.yaml
   - workflows/**
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: e29a2bfa11f307cbbbe0ad429e91aeae57cbcf03
-lastReviewedNote: "Release #133: reviewed shared Publication configuration/CA preparation, read-only storage preflight, safe database diagnostics and unchanged upload/registration/approval authority."
+lastReviewedCommit: df7d513a37111f16a1ea11afd4bbc6aebf80d6a3
+lastReviewedNote: "Release #135: reviewed Environment workflow ownership, shared scoped configuration, diagnostic/local setup boundaries and unchanged business artifact/authorization semantics."
 related:
   - ../AGENTS.md
   - ../README.md
@@ -40,6 +40,8 @@ Calculation -> verified Calculation Bundle
        +-> Dataset Transformation -> validated Unit/Result output + handoff
 ```
 
+Environment 是并列的本机准备 Workflow，拥有共享配置、能力诊断与引导，可在任一业务入口前使用；它不创建业务 stage 或授权。
+
 Calculation 内部包含完整性验证；Result/Model 是 Materialization recipe；packaging/qualification 属于 Candidate。它们不是新增顶层 Workflow。Publication 内的 Portal LCIA recipe 从 ready V3 package / prepared projection 开始，与 Candidate dataset recipe 独立。
 
 Transformation handoff 表达目标：Unit 返回计算，Result 返回物化，最终形成新 Candidate。Materialization 通过 `materialize derived` 验证加工后字节；Candidate 的 `result` 命令族接通 Result-only Intake、结构化父血缘、离线冻结和 v3 两包/HDF5 配对。本地文件构建只消费冻结输入。Publication 的 `result-storage inspect/preflight/execute` 接通 v3 的存储 adapter：共享 Publication 配置和数据库连接准备、本地精确计划、上传前只读预检、条件创建非公开对象、完整 GET、精确行/包登记及丢失回执恢复；`result-readiness inspect/verify` 拥有显式本机配置与只读连接预检，并以独立用户准入、完整 GET、实测 reader 和不可变磁盘证据连接 Database seal，仍不取得 actor 发布权限；`result-publication plan/prepare/status` 提供版本化选择与状态观察，批准/激活 CLI 分别确认精确意图并独立回读数据库状态，公开查询的发布后验证待接通。不得把 producer 输出、接口字段或设计箭头当作消费者实现证据。补齐路线需要各 owner 的明确契约与真实跨节点验证。
@@ -58,6 +60,14 @@ Transformation handoff 表达目标：Unit 返回计算，Result 返回物化，
 | 当次范围、TODO、验证、交付与集成状态 | Issue / PR / Project                                                  |
 
 文档解释原因和边界，不能替代当前外部状态；代码现状也不能自行赋予操作权限。发现来源冲突时先核对与修正，不能择取更宽松的一条。
+
+## 环境准备与业务执行
+
+`workflows/environment/` 拥有共享加载器、项目级 doctor 和本地配置准备。各业务 CLI
+使用同一来源/冲突/路径规则及动作白名单；核验入口只编排本地工具握手和显式只读探测。
+纯加载函数保持无全局副作用，独立 CLI 将有效值应用到自身进程。Database/S3 探测复用
+Publication 受控适配器，工具能力核验复用 Candidate 契约；业务实现不迁入根目录。
+环境成功只证明当时、所选能力的观察，不能取代执行前检查、数值验证或发布授权。
 
 ## 控制面与数据面
 

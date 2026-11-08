@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 materialization recipe、身份版本、数据集关系、验证或输出变化时
 checkPaths:
   - workflows/result-materialization/**
-lastReviewedAt: 2026-11-03
-lastReviewedCommit: 1a1ca5860f08acaba578030a5a8428a71396a8f6
-lastReviewedNote: "Release #106: copy-only historical Process compatibility preserves empty text and source comments; recipe v2 prevents stale materialization reuse without changing calculation or publication authority."
+lastReviewedAt: 2026-11-08
+lastReviewedCommit: df7d513a37111f16a1ea11afd4bbc6aebf80d6a3
+lastReviewedNote: "Release #135: reviewed Environment workflow ownership, shared scoped configuration, diagnostic/local setup boundaries and unchanged business artifact/authorization semantics."
 related:
   - AGENTS.md
   - design/result-process-and-lifecycle-model.md
@@ -309,3 +309,7 @@ ZIP/分发包构建属于 Release Candidate Workflow；人工发布审批和远�
 2. 根据真实 replay 继续验证 LCI-only 与 LCI + LCIA 的 lineage/version policy。
 3. 增加 metadata completion decision artifact，而不是对无法继承的字段做隐式猜测。
 4. 把完成的 `materialization-manifest.json` 接入 Release Candidate Workflow 的候选构建入口。
+
+## 环境与配置
+
+配置准备及核验由 [Environment](../environment/README.md) 拥有。CLI 默认读取固定仓库 `.env`，可用 `--config-env` 选择其他文件；按当前动作白名单加载并拒绝来源冲突。离线操作不消费数据库/用户凭据，环境通过不代替本 Workflow 的输入资格、确认或执行前检查。

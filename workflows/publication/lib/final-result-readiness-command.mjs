@@ -337,7 +337,11 @@ export async function runFinalResultReadinessCommand(
         ? { missingEnvironment: error.details.missingEnvironment }
         : {}),
     };
-    safe.nextActions = code.startsWith("final_publication_") ? [] : nextActions;
+    safe.nextActions =
+      code.startsWith("final_publication_") ||
+      code.startsWith("final_environment_")
+        ? []
+        : nextActions;
     throw safe;
   } finally {
     try {

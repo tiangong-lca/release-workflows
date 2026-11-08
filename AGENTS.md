@@ -26,8 +26,8 @@ checkPaths:
   - .node-version
   - .github/workflows/ci.yml
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: e29a2bfa11f307cbbbe0ad429e91aeae57cbcf03
-lastReviewedNote: "Release #133: reviewed shared Publication configuration/CA preparation, read-only storage preflight, safe database diagnostics and unchanged upload/registration/approval authority."
+lastReviewedCommit: df7d513a37111f16a1ea11afd4bbc6aebf80d6a3
+lastReviewedNote: "Release #135: reviewed Environment workflow ownership, shared scoped configuration, diagnostic/local setup boundaries and unchanged business artifact/authorization semantics."
 related:
   - README.md
   - .docpact/config.yaml
@@ -41,7 +41,7 @@ related:
 
 ## 入口与加载
 
-- `workflows/README.md`：选择 Calculation、Result Materialization、Release Candidate、Dataset Transformation 或 Publication。
+- `workflows/README.md`：选择 Environment、Calculation、Result Materialization、Release Candidate、Dataset Transformation 或 Publication。
 - 进入目标 Workflow 时，读取 `workflows/AGENTS.md`、该目录 `AGENTS.md` 和与当前动作相关的 README 章节；按其指针读取专门契约。
 - 编码或 Review 前核对相关源码、schema 和测试；文档描述的路线不等于接收端已实现。
 - 工作区内使用根 `scripts/docpact route --root <本仓库绝对路径> --paths <目标路径> --format json`，读取返回的必要文档。治理配置交给工具解析，调整治理规则时才直接读取 `.docpact/config.yaml`。
@@ -58,10 +58,17 @@ related:
 - 凭据不得进入源码、stdout、命令参数或恢复产物；用户凭据不得打印或持久化，不得把解码 claims 当作权限依据，signed URL 只可存于当前进程。ignored `.env` 的数据库/S3 配置只能由所属 Workflow 的受控 adapter 使用；SQL 参数化、有界并声明模式，canonical 写入需要契约及明确授权。
 - 大型产物保存为文件或对象；stdout 只返回有界摘要及引用。本地运行产物默认放在 gitignored `.release/`。
 
+## 环境与配置
+
+Environment 拥有项目级 `pnpm doctor`、配置引导、本地模板/同步和共享配置加载；业务
+Workflow 保留执行前检查及权限。默认配置固定为仓库 `.env`，`--config-env` 显式覆盖，
+各命令只加载自身白名单并拒绝非空来源冲突；入口和完整语义见 `workflows/environment/`。
+核验默认本地，远程检查必须显式只读；环境通过不授予业务执行或发布权限。
+
 ## 开发与验证
 
 - Workflow 编排使用 JavaScript/MJS，不为工具链对齐引入 TypeScript/compiler/codegen。Candidate 拥有独立 Rust HDF5 数值编码器，源码及 Cargo lockfile 位于 `workflows/release-candidate/native/`；它不解析业务规则或调用 solver。
-- 本地、五个 Workflow 与 CI 使用 `.node-version` 指定的同一精确 Node LTS 版本，各 package 的 `engines.node` 必须一致；package manager 读根 `package.json`，workspace 策略读 `pnpm-workspace.yaml`，JavaScript 全仓只维护一个 pnpm lockfile；原生工具使用所属 Cargo lockfile。
+- 本地、六个 Workflow 与 CI 使用 `.node-version` 指定的同一精确 Node LTS 版本，各 package 的 `engines.node` 必须一致；package manager 读根 `package.json`，workspace 策略读 `pnpm-workspace.yaml`，JavaScript 全仓只维护一个 pnpm lockfile；原生工具使用所属 Cargo lockfile。
 - 仅在仓库根安装：`pnpm install --frozen-lockfile`。
 - 仓库验证门：`pnpm run prepush:gate`，包含原生格式/Clippy/构建和所有 Workflow 测试；原生构建需要 Rust（MSRV 见 Cargo manifest）和 CMake。HDF5/zlib 静态链接；支持 Linux x64、Windows x64、macOS ARM64，不支持 macOS Intel。局部测试入口读目标 package 的 `scripts.test`。
 - 依赖包的 `engines` 声明只作为安装提示，不以 `engineStrict` 阻断安装或据此降级仓库 Node；兼容性由当前锁定 Node 上的 frozen install 与完整验证门确认。

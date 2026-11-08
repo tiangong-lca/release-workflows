@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 intake、包的语义、候选构建、scope refinement 或 Candidate 后继路径变化时
 checkPaths:
   - workflows/release-candidate/**
-lastReviewedAt: 2026-11-05
-lastReviewedCommit: 009e3df54b4cde0eaac2b80f8ce99cf3b3229e54
-lastReviewedNote: "Release #128: reviewed final Result 7z packaging, complete readback and safe 413 diagnostics; offline generation and publication authority stay separate."
+lastReviewedAt: 2026-11-08
+lastReviewedCommit: df7d513a37111f16a1ea11afd4bbc6aebf80d6a3
+lastReviewedNote: "Release #135: reviewed Environment workflow ownership, shared scoped configuration, diagnostic/local setup boundaries and unchanged business artifact/authorization semantics."
 related:
   - AGENTS.md
   - ../../README.md
@@ -405,3 +405,7 @@ node workflows/release-candidate/cli.mjs result verify --candidate <candidate-di
 省略 build 的 release version 会返回两包文件名和版本确认，且不启动构建。失败保留成功文件和不完整目标，资格标记最后提交。
 
 CLI 返回有界状态、产物路径、input hash 和下一步命令，不输出 provider 错误正文、连接串或服务 secret。`result verify` 证明本地资格；上传、readiness、审批与原子生效由后继版本化 Publication 流程负责。
+
+## 环境与配置
+
+配置准备及核验由 [Environment](../environment/README.md) 拥有。CLI 默认读取固定仓库 `.env`，可用 `--config-env` 选择其他文件；按当前动作白名单加载并拒绝来源冲突。离线操作不消费数据库/用户凭据，环境通过不代替本 Workflow 的输入资格、确认或执行前检查。

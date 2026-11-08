@@ -1,7 +1,10 @@
 #!/usr/bin/env node
+import {
+  configureReleaseCli,
+  isDirectEntry,
+  attachReleaseConfiguration,
+} from "../environment/lib/cli-configuration.mjs";
 
-import { existsSync } from "node:fs";
-import { loadEnvFile } from "node:process";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -70,6 +73,8 @@ Usage:
   ${COMMAND} calculation-bundle download --package-id <uuid> [--out-dir <path>] [--concurrency 8] [--include-products] [--format human|json]
   ${COMMAND} environment sync [--workspace-env <path>] --confirm-sync [--format human|json]
   ${COMMAND} worker logs --job-id <uuid> [--environment <name>] [--since <journal-time>]
+
+Common configuration: --config-env <path> (default: repository .env if present).
 
 Behavior:
   list    Returns a bounded recent list; the remote contract has no cursor.
@@ -351,6 +356,7 @@ export async function runCli(
     fetchImpl = globalThis.fetch,
     contextRoot = REPOSITORY_CONTEXT,
     now = () => new Date(),
+    cliConfiguration,
     bundleStoreFactory = createCalculationBundleStore,
     bundleDownloader = downloadCalculationBundle,
     environmentSynchronizer = syncDataPlaneEnvironment,
@@ -395,6 +401,7 @@ export async function runCli(
           : [`${COMMAND} calculation-bundle list --limit 20`],
       };
       result.replyTemplate = replyTemplateFor(command, { ok: true });
+      attachReleaseConfiguration(result, cliConfiguration);
       stdout.write(
         format === "json"
           ? `${JSON.stringify(result)}\n`
@@ -426,6 +433,7 @@ export async function runCli(
         nextActions: [instruction],
       };
       result.replyTemplate = replyTemplateFor(command, { ok: true });
+      attachReleaseConfiguration(result, cliConfiguration);
       stdout.write(
         format === "json"
           ? `${JSON.stringify(result)}\n`
@@ -474,6 +482,7 @@ export async function runCli(
         nextActions,
       };
       result.replyTemplate = replyTemplateFor(command, { ok: true });
+      attachReleaseConfiguration(result, cliConfiguration);
       stdout.write(
         format === "json"
           ? `${JSON.stringify(result)}\n`
@@ -558,6 +567,7 @@ export async function runCli(
           ],
         };
         result.replyTemplate = replyTemplateFor(command, { ok: true });
+        attachReleaseConfiguration(result, cliConfiguration);
         stdout.write(
           format === "json"
             ? `${JSON.stringify(result)}\n`
@@ -598,6 +608,7 @@ export async function runCli(
                 ],
       };
       result.replyTemplate = replyTemplateFor(command, { ok: true });
+      attachReleaseConfiguration(result, cliConfiguration);
       stdout.write(
         format === "json"
           ? `${JSON.stringify(result)}\n`
@@ -654,6 +665,7 @@ export async function runCli(
         nextActions,
       };
       result.replyTemplate = replyTemplateFor(command, { ok: true });
+      attachReleaseConfiguration(result, cliConfiguration);
       stdout.write(
         format === "json"
           ? `${JSON.stringify(result)}\n`
@@ -780,6 +792,7 @@ export async function runCli(
         ],
       };
       result.replyTemplate = replyTemplateFor(command, { ok: true });
+      attachReleaseConfiguration(result, cliConfiguration);
       stdout.write(
         format === "json"
           ? `${JSON.stringify(result)}\n`
@@ -847,6 +860,7 @@ export async function runCli(
               confirmed: flags.confirmCreate,
             });
     const result = success(command, operationResult);
+    attachReleaseConfiguration(result, cliConfiguration);
     stdout.write(
       format === "json" ? `${JSON.stringify(result)}\n` : humanSuccess(result),
     );
@@ -867,6 +881,7 @@ export async function runCli(
       !(error instanceof ResultSetContractError) &&
       !(error instanceof CalculationBundleStoreError) &&
       !(error instanceof EnvironmentBootstrapError) &&
+      !String(error?.code).startsWith("final_environment_") &&
       error?.name !== "ActorSessionError"
     ) {
       normalized = new ResultSetOperationError(
@@ -876,6 +891,7 @@ export async function runCli(
       );
     }
     const result = failure(command, normalized, argv);
+    attachReleaseConfiguration(result, cliConfiguration);
     const rendered =
       format === "json" ? `${JSON.stringify(result)}\n` : humanFailure(result);
     (format === "json" ? stdout : stderr).write(rendered);
@@ -883,7 +899,38 @@ export async function runCli(
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  if (existsSync(REPOSITORY_ENV)) loadEnvFile(REPOSITORY_ENV);
-  process.exitCode = await runCli(process.argv.slice(2));
+if (isDirectEntry(import.meta.url)) {
+  try {
+    const cliConfiguration = await configureReleaseCli(
+      "calculation",
+      process.argv.slice(2),
+    );
+    process.exitCode = await runCli(cliConfiguration.argv, {
+      cliConfiguration,
+    });
+  } catch (error) {
+    const safe = Object.assign(
+      new Error(
+        "Release configuration could not be loaded; run Environment check with the same selected file",
+      ),
+      {
+        code: String(error.code).startsWith("final_environment_")
+          ? error.code
+          : "final_environment_config_invalid",
+        ...(String(error.code).startsWith("final_environment_")
+          ? { details: error.details }
+          : {}),
+      },
+    );
+    const result = failure("environment.configuration", safe);
+    result.nextActions = [
+      `node ${shellQuote(fileURLToPath(new URL("../environment/cli.mjs", import.meta.url)))} guide --help`,
+    ];
+    const jsonIndex = process.argv.indexOf("--format");
+    const json = jsonIndex >= 0 && process.argv[jsonIndex + 1] === "json";
+    (json ? process.stdout : process.stderr).write(
+      json ? JSON.stringify(result) + "\n" : humanFailure(result),
+    );
+    process.exitCode = 1;
+  }
 }

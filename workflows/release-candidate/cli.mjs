@@ -1,7 +1,9 @@
 #!/usr/bin/env node
-import { existsSync } from "node:fs";
+import {
+  configureReleaseCli,
+  attachReleaseConfiguration,
+} from "../environment/lib/cli-configuration.mjs";
 import path from "node:path";
-import { loadEnvFile } from "node:process";
 import { fileURLToPath } from "node:url";
 import {
   buildPackageCandidate,
@@ -38,7 +40,6 @@ const MATERIALIZATION_CLI_PATH = fileURLToPath(
   new URL("../result-materialization/cli.mjs", import.meta.url),
 );
 const MATERIALIZATION_COMMAND = `node ${shellQuote(MATERIALIZATION_CLI_PATH)}`;
-const REPOSITORY_ENV = fileURLToPath(new URL("../../.env", import.meta.url));
 const REPOSITORY_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const DEFAULT_FLOW_CACHE_DIR = path.join(REPOSITORY_ROOT, DEFAULT_FLOW_CACHE);
 const VALUE_OPTIONS = new Set([
@@ -78,6 +79,8 @@ const BOOLEAN_OPTIONS = new Set(["json", "help"]);
 const HELP = `release-package <command> [options]
 
 Release Candidate workflow-local CLI. It prepares and validates immutable local Candidates; it does not publish them.
+
+Common configuration: --config-env <path> (default: repository .env if present).
 
 Commands:
   cache status        Check whether the shared Elementary Flow cache is usable
@@ -178,8 +181,13 @@ JSON results include outcome, completeness, artifact paths, nextActions, and a w
 Successful Candidate builds include nextDecision with Publication planning and Dataset Transformation choices.
 `;
 
+let CLI_CONFIGURATION;
 async function main() {
-  const [command, action, ...tokens] = process.argv.slice(2);
+  CLI_CONFIGURATION = await configureReleaseCli(
+    "release-candidate",
+    process.argv.slice(2),
+  );
+  const [command, action, ...tokens] = CLI_CONFIGURATION.argv;
   if (!command || command === "--help" || command === "-h") {
     process.stdout.write(HELP);
     return;
@@ -406,6 +414,7 @@ function respondCache(options, action, result, cacheDir) {
         ],
     replyTemplate: replyTemplateFor(`cache ${action}`, { ok: true }),
   };
+  attachReleaseConfiguration(payload, CLI_CONFIGURATION);
   if (options.json) process.stdout.write(`${JSON.stringify(payload)}\n`);
   else
     process.stdout.write(
@@ -462,6 +471,7 @@ function respondVersionConfirmation(options) {
       outcome: "release_version_confirmation_required",
     }),
   };
+  attachReleaseConfiguration(payload, CLI_CONFIGURATION);
   if (options.json) process.stdout.write(`${JSON.stringify(payload)}\n`);
   else {
     process.stdout.write(`Release version confirmation required\n\nSummary:\n`);
@@ -504,6 +514,7 @@ function respondIntake(options, result) {
     ...continuation,
     replyTemplate: replyTemplateFor("intake prepare", { ok: true }),
   };
+  attachReleaseConfiguration(payload, CLI_CONFIGURATION);
   if (options.json) process.stdout.write(`${JSON.stringify(payload)}\n`);
   else
     process.stdout.write(
@@ -684,6 +695,7 @@ function respondDecision(options, result) {
 }
 
 function respondGeneric(options, payload, title) {
+  attachReleaseConfiguration(payload, CLI_CONFIGURATION);
   if (options.json) process.stdout.write(`${JSON.stringify(payload)}\n`);
   else {
     process.stdout.write(`${title}\n\nSummary:\n`);
@@ -785,6 +797,7 @@ function requireOptions(options, names) {
 }
 
 function respond(options, value) {
+  attachReleaseConfiguration(value, CLI_CONFIGURATION);
   if (options.json) process.stdout.write(`${JSON.stringify(value)}\n`);
   else {
     process.stdout.write(`Release Candidate built\n\nSummary:\n`);
@@ -1000,8 +1013,6 @@ function failureNextActions(error) {
   ];
 }
 
-if (existsSync(REPOSITORY_ENV)) loadEnvFile(REPOSITORY_ENV);
-
 main().catch((error) => {
   const command = process.argv.slice(2, 4).join(" ") || COMMAND;
   if (process.argv[2] === "result") error = finalResultFailure(error);
@@ -1040,6 +1051,7 @@ main().catch((error) => {
       retainedBuild: Boolean(retainedBuild),
     }),
   };
+  attachReleaseConfiguration(payload, CLI_CONFIGURATION);
   if (process.argv.includes("--json"))
     process.stderr.write(`${JSON.stringify(payload)}\n`);
   else {

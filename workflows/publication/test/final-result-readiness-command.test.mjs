@@ -389,7 +389,7 @@ test("inspection creates no object store or readiness seal and returns a verify 
   const saved = await readFile(result.artifacts.inspection, "utf8");
   assert.doesNotMatch(saved, /never-print|postgresql:/);
 });
-test("real CLI reports a missing explicit config safely and does not extend configuration loading to approval", async (t) => {
+test("real CLI reports missing shared configuration safely for readiness and actor approval", async (t) => {
   const f = await fixture(t),
     exec = promisify(execFile);
   for (const command of [
@@ -412,12 +412,7 @@ test("real CLI reports a missing explicit config safely and does not extend conf
       (e) => {
         const reply = JSON.parse(e.stderr);
         assert.equal(reply.ok, false);
-        assert.equal(
-          reply.error.code,
-          command[0] === "result-readiness"
-            ? "final_publication_config_file_invalid"
-            : "invalid_arguments",
-        );
+        assert.equal(reply.error.code, "final_environment_config_file_invalid");
         assert.doesNotMatch(e.stderr, /never-print/);
         return true;
       },
