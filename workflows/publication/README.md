@@ -13,9 +13,9 @@ whenToUpdate:
   - 当发布选择、目标差异、状态转换、写入、审批、恢复或回读规则变化时
 checkPaths:
   - workflows/publication/**
-lastReviewedAt: 2026-11-05
-lastReviewedCommit: 009e3df54b4cde0eaac2b80f8ce99cf3b3229e54
-lastReviewedNote: "Release #128: reviewed final Result 7z packaging, complete readback and safe 413 diagnostics; offline generation and publication authority stay separate."
+lastReviewedAt: 2026-11-08
+lastReviewedCommit: 4f532e4507a3e860e875a276ecddf2c7f145a422
+lastReviewedNote: "Release #131: reviewed explicit readiness configuration, read-only inspection, protected secret sources and unchanged approval/activation boundaries."
 related:
   - AGENTS.md
   - ../release-candidate/README.md
@@ -600,34 +600,120 @@ LCI 分页和 LCIA。测试还验证 runtime pin、源数据及 7z 权限拒绝�
 
 ### 整体就绪验证命令
 
-在已经登记 Candidate、封存发布选择且配置 reader runtime 的目标上运行：
+Publication 自带 `result-readiness inspect/verify` 和配置加载器，不需要 `.release/`
+中的脚本。`.release/` 只保存本机私有文件和运行证据，不是工作流实现的来源。
+两条命令均绑定已登记 Candidate、封存的选择、精确 run/plan 与已配置的 reader runtime；
+不会上传或修复文件、批准或激活发布。先准备本机配置，再检查连接：
+
+```bash
+node workflows/publication/cli.mjs result-readiness inspect \
+  --config-env /absolute/path/to/operator.env --bootstrap-session \
+  --candidate /absolute/path/to/candidate-v3 \
+  --final-input /absolute/path/to/frozen-final-input \
+  --run-id <release-run-uuid> --publish-plan-hash <exact-plan-sha256> \
+  --out-dir /absolute/path/to/new-inspection --json
+```
+
+`inspect` 在本地验证 Candidate，并通过只读 Database/actor adapter 检查存储登记、
+全部选中 artifact/成员数量、target hash 和当前 runtime。每个选中 artifact 读一次
+私有 reader overview，以核对服务签名、实际二进制 hash、scope 和 Result 绑定；
+请求前后重新核对 live manager 权限，最后再次读取 runtime/选择上下文。
+冷缓存可能准备文件。它**不登记 readiness**，不完整 GET 全部远端文件、不进行冻结数值
+比对，也不是“5741 个 Result 逐一查询通过”之类的证明。
+成功写出 `readiness-inspection.json` 并返回带同一配置参数、独立新目录的 verify 命令。
 
 ```bash
 node workflows/publication/cli.mjs result-readiness verify \
+  --config-env /absolute/path/to/operator.env --bootstrap-session \
   --candidate /absolute/path/to/candidate-v3 \
   --final-input /absolute/path/to/frozen-final-input \
   --run-id <release-run-uuid> --publish-plan-hash <exact-plan-sha256> \
   --out-dir /absolute/path/to/new-readiness-attempt --json
 ```
 
-显式环境要求 `CONN`、`S3_ENDPOINT`、`S3_REGION`、`S3_BUCKET`（可选 `S3_PREFIX`）、
-`S3_ACCESS_KEY_ID`、`S3_SECRET_ACCESS_KEY`（可选 `S3_SESSION_TOKEN`），以及
-`TIANGONG_LCA_API_BASE_URL`、`TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY`、
-`TIANGONG_LCA_ACCESS_TOKEN` 用户 JWT、`RESULT_QUERY_ENDPOINT` 和
-`RESULT_QUERY_SERVICE_SECRET`。凭据只放进进程环境；不放命令参数，命令不加载 `.env`，
-不使用 API key 自动登录。服务密钥只用于私有 reader，用户令牌只用于 probe 准入。
+`verify` 不以旧 inspection 作为授权或缓存；每轮重新读取当前准入、完整 GET 核验四个
+Candidate 文件及全部选中 artifact 文件，按每个 artifact 的首末选中 Result 运行
+冻结数值 probe（完整 LCI 分页和声明的 LCIA），再登记并独立 describe 数据库回执。
+因此这是完整选择范围的文件/绑定验证加 reader 数值抽样，不是逐个 Result 的数值验证。
 
-输出目录必须在冻结 Candidate 和 final input 外，且尚不存在。命令先写
-`command-attempt.json`，之后依次保留 `readiness-attempt.json`、`readiness-header.json`、
-`proofs/<artifact-uuid>.json` 和独立 describe 确认后的 `readiness-receipt.json`。
-文件以独占创建、`0600` 和 `flush` 写入，目录为 `0700`（实际权限语义取决于系统）；
-这些设置不替代主机自身的持久化与访问控制。成功摘要包含有效期和精确 verification UUID，
-仍 `publicationAuthorized=false`，不表示已批准、激活或已完成 Platform 查询验证。
+#### 显式配置和凭据
 
-失败保留已有文件与不含远端原始错误的 `failure.json`，按返回的 `nextActions` 解决原因后
-在新目录重新验证。不会上传/修复缺失文件，也不会覆盖旧证据或续期旧回执。若数据库已经
-封存但最后落盘失败，历史记录仍保留，新尝试必须使用新 UUID 和新观察。
-上述 opt-in 数据库联调同时运行真实子进程 CLI，并核对磁盘回执与数据库原记录相同。
+`--config-env` 只读取指定文件，无默认文件发现，也不执行 shell 或插值。支持 Node 24
+的 dotenv 语法；同一文件的重复 key 按 Node 规则使用最后一项。只加载 readiness 白名单，
+忽略其他 Workflow 和 Node 启动配置。非空 process 值与文件内同名非空值不一致时，
+以 `final_readiness_environment_conflict` 及 setting 名失败，不静默选一个环境。
+没有 `--config-env` 时继续只使用显式进程环境，且不修改 `process.env`。
+此选项专用于 readiness，不能传给 approve/activate 等其他 Publication 命令。
+不要用 Node 启动选项 `--env-file` 替代这个受控加载入口。
+
+必需目标配置是 `CONN`、`S3_ENDPOINT`、`S3_REGION`、`S3_BUCKET`（可选 `S3_PREFIX`）。
+`verify` 还要求 `S3_ACCESS_KEY_ID`、`S3_SECRET_ACCESS_KEY`（可选 `S3_SESSION_TOKEN`）；
+`inspect` 不构造 object-store 客户端，也不要求这组访问凭据。
+
+用户配置为 `TIANGONG_LCA_API_BASE_URL`、`TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY`
+和用户 `TIANGONG_LCA_ACCESS_TOKEN`。API base 接受项目 origin 或精确 `/functions/v1`
+base，运行时统一成 origin；拒绝其他 path、内嵌凭据、query 和 fragment。
+只有显式传入 `--bootstrap-session`，且未提供 access token，才使用已有
+`TIANGONG_LCA_API_KEY` 通过仓库现有 session helper 换取短期用户 JWT；不隐式刷新、
+不保存返回的 access/refresh token，也不把解码 claims 当作权限证明。
+
+`RELEASE_DATABASE_CA_FILE` 可指定从数据库服务方可信渠道取得的 CA 证书。
+相对路径以配置文件所在目录为基准（无配置文件时为 cwd）；连接强制 `sslmode=verify-full`
+并使用该 CA，不改变 CONN 的 host/port/database/user 或其 target hash。
+已有不同 `sslrootcert` 不能被静默替换。Supabase 的证书从 Dashboard 的数据库 SSL 设置
+下载，连接方式参见其 [PSQL SSL 文档](https://supabase.com/docs/guides/database/psql)。
+不要通过关闭证书校验解决本地信任配置问题。
+
+`RESULT_QUERY_ENDPOINT` 是 Worker 查询服务经过部署资格验证的私有 HTTPS **origin**，
+不是 Supabase hosted Edge URL；transport 固定请求 `/internal/results/query-v2`。
+不需要为每批修改 reader 配置，服务按精确 artifact 描述加载同一目标中的文件。
+reader 密钥与 actor session 分开，以下来源只选一个：
+
+| 配置                                                                                | 读取方式                                                                         |
+| ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `RESULT_QUERY_SERVICE_SECRET`                                                       | 现有受保护进程环境或显式私有配置中的值                                           |
+| `RESULT_QUERY_SERVICE_SECRET_FILE`                                                  | 读取本机私有 UTF-8 文件；相对路径以配置文件目录为基准                            |
+| `RESULT_QUERY_SERVICE_SECRET_SSH_HOST` + `RESULT_QUERY_SERVICE_SECRET_SSH_ENV_FILE` | 用本机 OpenSSH 对已知主机执行固定的只读提取命令，按需从远端 env 文件读取单个 key |
+
+SSH 来源是显式 opt-in，要求已有 SSH alias/known-host、非交互认证、`sudo -n` 和远端
+Python 3。代码不含环境、主机、路径或批次默认值，不接受任意 shell 命令；SSH timeout
+20 秒、输出上限 8 KiB，进程只收到所需的 SSH 环境，原始 stderr 和 secret 不进入回执。
+该读取不会修改远端配置或复制整个 env 文件。endpoint 对应的服务必须使用同一密钥；
+实际签名请求及数据库登记的 reader hash 验证连接，而不是凭“配置存在”就判定可用。
+
+本机配置示例（这里只展示配置名和公开占位值，实际凭据由操作者注入）：
+
+```dotenv
+TIANGONG_LCA_API_BASE_URL=https://<project-ref>.supabase.co/functions/v1
+TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY=<project-publishable-key>
+# 使用 --bootstrap-session 时沿用已有私有 TIANGONG_LCA_API_KEY；否则注入用户 JWT。
+RELEASE_DATABASE_CA_FILE=certs/database-ca.pem
+RESULT_QUERY_ENDPOINT=https://<qualified-reader-host>
+RESULT_QUERY_SERVICE_SECRET_SSH_HOST=<configured-ssh-alias>
+RESULT_QUERY_SERVICE_SECRET_SSH_ENV_FILE=/etc/<service>/reader.env
+# 同一文件还需配置既有 CONN/S3 目标；verify 另外需要 S3 读凭据。
+```
+
+目标和凭据只放私有文件/进程环境，不能放命令参数或提交到 Git；文件建议仅操作者可读。
+文件来源的密钥接受末尾换行，实际密钥要求 32–4096 UTF-8 字节且不含换行/NUL。
+空值不算来源；同时指定多个非空来源会报错，不按优先级偷偷选取。
+
+#### 证据、失败和有效期
+
+输出目录必须在冻结 Candidate 和 final input 外且尚不存在。运行在取得凭据前检查
+这个边界，防止对旧目录重跑。配置错误返回 setting 名；不输出配置内容、连接 URI、
+私有 endpoint、provider 原始错误或 token。失败命令返回保留配置选项的新目录重试命令。
+
+`verify` 先写 `command-attempt.json`，之后依次保留 `readiness-attempt.json`、
+`readiness-header.json`、`proofs/<artifact-uuid>.json` 和独立 describe 确认后的
+`readiness-receipt.json`。文件独占创建、`0600` 和 `flush`，目录为 `0700`
+（权限语义取决于系统）；这些设置不替代主机访问控制。失败保留已有文件及脱敏
+`failure.json`，不会上传修复、覆盖旧证据或续期旧回执。
+
+成功摘要包含 verification UUID、数量和 expiresAt，始终 `publicationAuthorized=false`；
+不能称为已批准、已激活或 Platform 已验证。readiness 过期、runtime/选择/权限变化后，
+后继发布必须用新目录和新 UUID 重新实际验证，不得修改历史时间戳。即使数据库已经
+封存但最后落盘失败，历史事实仍保留，新尝试也使用新 UUID 和新观察。
 
 ### 最终 Result 发布选择与状态
 
