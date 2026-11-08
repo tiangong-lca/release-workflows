@@ -12,9 +12,9 @@ whenToUpdate:
   - 当所有 Workflow 共享的证据、权限、恢复或文档规则变化时
 checkPaths:
   - workflows/**
-lastReviewedAt: 2026-11-06
-lastReviewedCommit: c725220b1aee3012d0d0c82fd8125c87f0ad34d0
-lastReviewedNote: "Release #128: reviewed final Result 7z packaging, complete readback and safe 413 diagnostics; offline generation and publication authority stay separate."
+lastReviewedAt: 2026-11-08
+lastReviewedCommit: 4f532e4507a3e860e875a276ecddf2c7f145a422
+lastReviewedNote: "Release #131: reviewed explicit readiness configuration, read-only inspection, protected secret sources and unchanged approval/activation boundaries."
 related:
   - ../AGENTS.md
   - ../README.md
@@ -66,3 +66,7 @@ Publication 的独立数据面 adapter；它只消费冻结 Candidate，不移�
 最终 Result 的私有 reader 验证由 Publication 消费冻结 final input 和 Candidate，
 与存储登记、后继数据库 readiness seal/actor approval 分开。单个 Result probe 成功
 不等于发布范围全部合格，也不自动授权激活；精确调用边界见 Publication 契约。
+
+Publication 的 readiness 可显式加载本机配置并执行只读 `inspect`，再由 `verify` 登记
+完整文件与 reader 数值证据；这两个入口拥有配置/会话 opt-in，不扩展其他 Workflow 或
+发布批准的凭据契约。通用运行代码纳入 Publication，`.release/` 只保留本机文件和证据。

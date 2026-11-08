@@ -28,6 +28,7 @@ import { replyTemplateFor } from "./reply-template-registry.mjs";
 const CLI_PATH = fileURLToPath(new URL("./cli.mjs", import.meta.url));
 const COMMAND = `node ${shellQuote(CLI_PATH)}`;
 const VALUE_OPTIONS = new Set([
+  "config-env",
   "candidate",
   "target-hash",
   "readiness-receipt",
@@ -63,7 +64,7 @@ const VALUE_OPTIONS = new Set([
   "out-dir",
 ]);
 const REPEATABLE_OPTIONS = new Set(["include", "exclude"]);
-const BOOLEAN_OPTIONS = new Set(["json", "help"]);
+const BOOLEAN_OPTIONS = new Set(["json", "help", "bootstrap-session"]);
 
 const HELP = `release-publication <command> [options]
 
@@ -83,6 +84,7 @@ Commands:
   result-publication approve          Confirm intent and independently read the approval
   result-publication activation-plan  Inspect exact activation intent for confirmation
   result-publication activate         Confirm intent, activate and independently read authority
+  result-readiness inspect Inspect exact configuration/selection and private reader without remote writes
   result-readiness verify  Verify all selected files and reader probes; register readiness only
   result-storage inspect  Locally verify a final Result v3 Candidate and freeze its storage plan
   result-storage execute  Confirm that plan, store/read back files and register immutable evidence
@@ -215,12 +217,21 @@ result-publication approve / activate:
   Activation observation does not prove public Edge/Platform readback. A new session requires
   a new unexecuted activation intent; existing execution history remains recoverable.
 
-result-readiness verify:
+result-readiness inspect / verify:
   --candidate <v3-directory> --final-input <frozen-input-directory>
   --run-id <uuid> --publish-plan-hash <sha256> --out-dir <new-attempt-directory>
   Requires explicit storage CONN/S3 settings above, TIANGONG_LCA_API_BASE_URL,
   TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY, TIANGONG_LCA_ACCESS_TOKEN (actor JWT),
-  RESULT_QUERY_ENDPOINT and RESULT_QUERY_SERVICE_SECRET. No implicit login or .env.
+  RESULT_QUERY_ENDPOINT and RESULT_QUERY_SERVICE_SECRET (or its _FILE / _SSH_HOST source).
+  Optional --config-env <path> explicitly loads readiness settings; conflicting process values fail.
+  Optional --bootstrap-session explicitly exchanges the configured user API key when no JWT is provided.
+  RELEASE_DATABASE_CA_FILE enables verify-full with a trusted CA file (relative to --config-env).
+  API base may be a project origin or its exact /functions/v1 base; reader endpoint must be an origin.
+  Inspect checks registered Candidate/selection/runtime plus one overview per artifact without
+  storage writes or readiness registration; it is not numerical readiness or publication approval.
+  Verify requires S3 read credentials and records readiness evidence. Neither command approves/activates.
+  Without --config-env or --bootstrap-session there is no file discovery or implicit login.
+  See workflows/publication/README.md for setup, secret sources, expiry and recovery.
   Full GET and reader checks only: no missing-file repair, approval or activation.
   File evidence is flushed before registration. Failed attempts remain; use a new directory.
 
@@ -254,6 +265,8 @@ async function main() {
       runFinalResultPublicationCommand("readback", options),
     "result-publication status": (options) =>
       runFinalResultPublicationCommand("status", options),
+    "result-readiness inspect": (options) =>
+      runFinalResultReadinessCommand("inspect", options),
     "result-readiness verify": (options) =>
       runFinalResultReadinessCommand("verify", options),
     "result-storage inspect": (options) =>
@@ -283,6 +296,14 @@ async function main() {
     process.stdout.write(HELP);
     return;
   }
+  if (
+    !commandName.startsWith("result-readiness ") &&
+    (options["config-env"] || options["bootstrap-session"])
+  )
+    throw coded(
+      "invalid_arguments",
+      "Readiness configuration options are accepted only by result-readiness inspect/verify",
+    );
   const payload = await handlers[commandName](options);
   payload.replyTemplate = replyTemplateFor(commandName, { ok: true });
   respond(options, payload);

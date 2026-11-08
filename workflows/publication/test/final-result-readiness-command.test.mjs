@@ -1,6 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, stat, rm, symlink } from "node:fs/promises";
+import {
+  mkdtemp,
+  mkdir,
+  readFile,
+  writeFile,
+  stat,
+  rm,
+  symlink,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { execFile } from "node:child_process";
@@ -8,6 +16,7 @@ import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { runFinalResultReadinessCommand as run } from "../lib/final-result-readiness-command.mjs";
 import { replyTemplateFor } from "../reply-template-registry.mjs";
+import { finalResultStorageEnvironment } from "../lib/final-result-storage-command.mjs";
 const id = "00000000-0000-0000-0000-000000000001",
   hash = "a".repeat(64);
 const cli = fileURLToPath(new URL("../cli.mjs", import.meta.url));
@@ -22,7 +31,7 @@ const env = {
   TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY: "synthetic-key",
   TIANGONG_LCA_ACCESS_TOKEN: "never-print-actor",
   RESULT_QUERY_ENDPOINT: "http://127.0.0.1:60003",
-  RESULT_QUERY_SERVICE_SECRET: "never-print-service-secret",
+  RESULT_QUERY_SERVICE_SECRET: "never-print-service-secret-at-least-32-bytes",
 };
 async function fixture(t) {
   const root = await mkdtemp(path.join(tmpdir(), "readiness-command-"));
@@ -122,7 +131,7 @@ test("successful command persists private immutable evidence before returning bo
   }
   if (process.platform !== "win32")
     assert.equal((await stat(f.options["out-dir"])).mode & 0o777, 0o700);
-  assert.deepEqual(f.calls, ["s3", "db", "db-close", "s3-close"]);
+  assert.deepEqual(f.calls, ["db", "s3", "db-close", "s3-close"]);
   assert.doesNotMatch(JSON.stringify(result), /never-print|127\.0\.0\.1/);
   const template = replyTemplateFor(result.command, { ok: true });
   for (const key of template.requiredFacts)
@@ -275,7 +284,7 @@ test("client construction failure retains attempt, cleans owned clients and hide
       e.code === "final_readiness_command_failed" &&
       !e.message.includes("never-print"),
   );
-  assert.deepEqual(f.calls, ["s3", "s3-close"]);
+  assert.deepEqual(f.calls, []);
   assert.ok(
     JSON.parse(await readFile(path.join(f.options["out-dir"], "failure.json"))),
   );
@@ -300,4 +309,118 @@ test("actual CLI help and missing arguments have stable machine-readable respons
       return true;
     },
   );
+});
+
+test("explicit env file drives verify without mutating caller environment and recovery retains configuration switches", async (t) => {
+  const f = await fixture(t),
+    file = path.join(f.root, "settings.env");
+  await writeFile(
+    file,
+    Object.entries({
+      ...env,
+      TIANGONG_LCA_API_BASE_URL: "http://127.0.0.1:60002/functions/v1",
+    })
+      .map(([k, v]) => `${k}=${v}`)
+      .join("\n"),
+  );
+  f.deps.env = {};
+  f.deps.createActor = (config) => {
+    assert.equal(config.endpoint, "http://127.0.0.1:60002");
+    return { actorId: id };
+  };
+  const options = {
+    ...f.options,
+    "config-env": file,
+    "bootstrap-session": true,
+  };
+  const result = await run("verify", options, f.deps);
+  assert.equal(result.ok, true);
+  assert.deepEqual(f.deps.env, {});
+  options["out-dir"] += "-retry";
+  await assert.rejects(
+    run("verify", options, {
+      ...f.deps,
+      verify: async () => {
+        throw new Error("private upstream");
+      },
+    }),
+    (e) => {
+      assert.ok(e.nextActions[0].argv.includes(file));
+      assert.ok(e.nextActions[0].argv.includes("--bootstrap-session"));
+      return true;
+    },
+  );
+});
+test("inspection creates no object store or readiness seal and returns a verify continuation", async (t) => {
+  const f = await fixture(t),
+    settings = { ...env };
+  delete settings.S3_ACCESS_KEY_ID;
+  delete settings.S3_SECRET_ACCESS_KEY;
+  const result = await run("inspect", f.options, {
+    ...f.deps,
+    env: settings,
+    createObjectStore: () => assert.fail("no object store on inspect"),
+    verify: () => assert.fail("no readiness verification"),
+    inspect: async () => ({
+      releaseRunId: id,
+      publishPlanHash: hash,
+      candidateHash: hash,
+      targetHash: finalResultStorageEnvironment(env).targetHash,
+      selectionCount: 2,
+      artifactCount: 1,
+      readerProbeCount: 1,
+      runtimeRevision: id,
+      readinessVerified: false,
+      publicationAuthorized: false,
+    }),
+  });
+  assert.equal(result.command, "result-readiness inspect");
+  assert.equal(result.readinessVerified, false);
+  assert.equal(result.verificationId, undefined);
+  assert.equal(result.nextActions[0].argv[3], "verify");
+  assert.ok(
+    result.nextActions[0].argv.includes(f.options["out-dir"] + "-verification"),
+  );
+  assert.deepEqual(f.calls, ["db", "db-close"]);
+  await assert.rejects(
+    stat(path.join(f.options["out-dir"], "readiness-receipt.json")),
+    { code: "ENOENT" },
+  );
+  const saved = await readFile(result.artifacts.inspection, "utf8");
+  assert.doesNotMatch(saved, /never-print|postgresql:/);
+});
+test("real CLI reports a missing explicit config safely and does not extend configuration loading to approval", async (t) => {
+  const f = await fixture(t),
+    exec = promisify(execFile);
+  for (const command of [
+    ["result-readiness", "inspect"],
+    ["result-publication", "approve"],
+  ]) {
+    const args = [
+      cli,
+      ...command,
+      "--config-env",
+      path.join(f.root, "missing.env"),
+      "--json",
+    ];
+    if (command[0] === "result-readiness")
+      args.push(
+        ...Object.entries(f.options).flatMap(([k, v]) => [`--${k}`, v]),
+      );
+    await assert.rejects(
+      exec(process.execPath, args, { env: { PATH: process.env.PATH } }),
+      (e) => {
+        const reply = JSON.parse(e.stderr);
+        assert.equal(reply.ok, false);
+        assert.equal(
+          reply.error.code,
+          command[0] === "result-readiness"
+            ? "final_readiness_config_file_invalid"
+            : "invalid_arguments",
+        );
+        assert.doesNotMatch(e.stderr, /never-print/);
+        return true;
+      },
+    );
+  }
 });

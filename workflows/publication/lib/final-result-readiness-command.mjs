@@ -1,4 +1,6 @@
 import path from "node:path";
+import { prepareFinalResultReadinessEnvironment } from "./final-result-readiness-runtime.mjs";
+import { inspectFinalResultReadiness } from "./final-result-readiness-inspection.mjs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -41,15 +43,19 @@ export async function runFinalResultReadinessCommand(
   {
     env = process.env,
     verify = verifyFinalResultReadiness,
+    inspect = inspectFinalResultReadiness,
+    prepareEnvironment = prepareFinalResultReadinessEnvironment,
     createRegistry = createFinalResultRegistry,
     createObjectStore = createFinalResultObjectStore,
     createActor = createFinalResultActor,
     createReader = createFinalResultReader,
   } = {},
 ) {
-  if (action !== "verify")
+  if (!["verify", "inspect"].includes(action))
     fail("unknown_command", "Unknown final Result readiness action");
   const allowed = [
+    "config-env",
+    "bootstrap-session",
     "candidate",
     "final-input",
     "run-id",
@@ -62,7 +68,7 @@ export async function runFinalResultReadinessCommand(
     if (!allowed.includes(name))
       fail(
         "invalid_arguments",
-        `Option --${name} is not accepted by result-readiness verify`,
+        `Option --${name} is not accepted by result-readiness ${action}`,
       );
   for (const key of [
     "candidate",
@@ -89,7 +95,11 @@ export async function runFinalResultReadinessCommand(
     "node",
     CLI,
     "result-readiness",
-    "verify",
+    action,
+    ...(options["config-env"]
+      ? ["--config-env", path.resolve(options["config-env"])]
+      : []),
+    ...(options["bootstrap-session"] ? ["--bootstrap-session"] : []),
     "--candidate",
     candidateDir,
     "--final-input",
@@ -104,7 +114,10 @@ export async function runFinalResultReadinessCommand(
   ];
   const nextActions = [
     {
-      kind: "verify_final_result_readiness_again",
+      kind:
+        action === "verify"
+          ? "verify_final_result_readiness_again"
+          : "inspect_final_result_readiness_again",
       argv: retryArgs,
       command: retryArgs.map(quote).join(" "),
     },
@@ -116,14 +129,21 @@ export async function runFinalResultReadinessCommand(
       flush: true,
     });
   try {
-    const { target } = finalResultStorageEnvironment(env);
-    const credentials = {
-      accessKeyId: envValue(env, "S3_ACCESS_KEY_ID"),
-      secretAccessKey: envValue(env, "S3_SECRET_ACCESS_KEY"),
-      ...(env.S3_SESSION_TOKEN?.trim()
-        ? { sessionToken: env.S3_SESSION_TOKEN.trim() }
-        : {}),
-    };
+    await assertFinalResultExternalOutput(candidateDir, outDir);
+    await assertFinalResultExternalOutput(inputDir, outDir);
+    await assertAbsent(outDir);
+    env = await prepareEnvironment(options, { env });
+    const { target, targetHash } = finalResultStorageEnvironment(env);
+    const credentials =
+      action === "verify"
+        ? {
+            accessKeyId: envValue(env, "S3_ACCESS_KEY_ID"),
+            secretAccessKey: envValue(env, "S3_SECRET_ACCESS_KEY"),
+            ...(env.S3_SESSION_TOKEN?.trim()
+              ? { sessionToken: env.S3_SESSION_TOKEN.trim() }
+              : {}),
+          }
+        : null;
     const actorConfig = {
       endpoint: envValue(env, "TIANGONG_LCA_API_BASE_URL"),
       publishableKey: envValue(env, "TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY"),
@@ -133,9 +153,6 @@ export async function runFinalResultReadinessCommand(
       endpoint: envValue(env, "RESULT_QUERY_ENDPOINT"),
       secret: envValue(env, "RESULT_QUERY_SERVICE_SECRET"),
     };
-    await assertFinalResultExternalOutput(candidateDir, outDir);
-    await assertFinalResultExternalOutput(inputDir, outDir);
-    await assertAbsent(outDir);
     // Constructors validate explicit settings but do not contact remote services.
     const actor = createActor(actorConfig),
       reader = createReader(readerConfig);
@@ -144,8 +161,11 @@ export async function runFinalResultReadinessCommand(
     created = true;
     await mkdir(path.join(outDir, "proofs"), { mode: 0o700 });
     await write("command-attempt.json", {
-      schemaVersion: "tiangong.final-result-readiness-command.v1",
-      verificationId,
+      schemaVersion:
+        action === "verify"
+          ? "tiangong.final-result-readiness-command.v1"
+          : "tiangong.final-result-readiness-inspection-command.v1",
+      ...(action === "verify" ? { verificationId } : {}),
       releaseRunId,
       publishPlanHash,
       candidateDir,
@@ -154,8 +174,56 @@ export async function runFinalResultReadinessCommand(
       startedAt: new Date().toISOString(),
       publicationAuthorized: false,
     });
-    objectStore = createObjectStore({ target, credentials });
     registry = createRegistry({ connectionString: envValue(env, "CONN") });
+    if (action === "inspect") {
+      const observation = await inspect({
+        candidateDir,
+        releaseRunId,
+        publishPlanHash,
+        targetHash,
+        registry,
+        actor,
+        reader,
+      });
+      required(
+        observation.releaseRunId === releaseRunId &&
+          observation.publishPlanHash === publishPlanHash &&
+          observation.targetHash === targetHash &&
+          observation.publicationAuthorized === false &&
+          observation.readinessVerified === false,
+      );
+      await write("readiness-inspection.json", observation);
+      const argv = [...retryArgs];
+      argv[3] = "verify";
+      argv[argv.indexOf("--out-dir") + 1] = `${outDir}-verification`;
+      return {
+        ok: true,
+        command: "result-readiness inspect",
+        outcome: "final_result_readiness_inspected",
+        completeness: "configuration_inspected_verification_pending",
+        releaseRunId,
+        publishPlanHash,
+        candidateHash: observation.candidateHash,
+        targetHash,
+        selectionCount: observation.selectionCount,
+        artifactCount: observation.artifactCount,
+        readerProbeCount: observation.readerProbeCount,
+        runtimeRevision: observation.runtimeRevision,
+        readinessVerified: false,
+        publicationAuthorized: false,
+        artifacts: {
+          inspection: path.join(outDir, "readiness-inspection.json"),
+        },
+        nextActions: [
+          {
+            kind: "verify_final_result_readiness",
+            argv,
+            command: argv.map(quote).join(" "),
+          },
+        ],
+      };
+    }
+    objectStore = createObjectStore({ target, credentials });
     const receipt = await verify({
       candidateDir,
       inputDir,
@@ -238,8 +306,11 @@ export async function runFinalResultReadinessCommand(
         : "final_readiness_command_failed";
     if (created)
       await write("failure.json", {
-        schemaVersion: "tiangong.final-result-readiness-failure.v1",
-        verificationId,
+        schemaVersion:
+          action === "verify"
+            ? "tiangong.final-result-readiness-failure.v1"
+            : "tiangong.final-result-readiness-inspection-failure.v1",
+        ...(action === "verify" ? { verificationId } : {}),
         releaseRunId,
         publishPlanHash,
         code,
@@ -247,13 +318,14 @@ export async function runFinalResultReadinessCommand(
         publicationAuthorized: false,
       }).catch(() => {});
     const safe = new Error(
-      "Readiness verification did not complete; preserve the attempt and resolve the reported condition before a fresh verification",
+      "Readiness did not complete; preserve the attempt, check the reported setting or condition, then retry in a new directory",
     );
     safe.code = code;
     safe.details = {
-      verificationId,
+      ...(action === "verify" ? { verificationId } : {}),
       attemptCreated: created,
       ...(created ? { attemptDirectory: outDir } : {}),
+      ...(error.details?.setting ? { setting: error.details.setting } : {}),
       ...(error.details?.missingEnvironment
         ? { missingEnvironment: error.details.missingEnvironment }
         : {}),

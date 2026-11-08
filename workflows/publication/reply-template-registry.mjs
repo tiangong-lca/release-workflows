@@ -40,6 +40,7 @@ const templates = Object.freeze({
   "result-publication prepare": finalPublication,
   "result-publication status": finalPublication,
   "result-publication readback": finalPublication,
+  "result-readiness inspect": finalPublication,
   "result-readiness verify": [
     "final-result-readiness",
     "final-result-readiness.md",

@@ -19,9 +19,9 @@ checkPaths:
   - docs/architecture.md
   - workflows/**
   - .docpact/config.yaml
-lastReviewedAt: 2026-11-06
-lastReviewedCommit: c725220b1aee3012d0d0c82fd8125c87f0ad34d0
-lastReviewedNote: "Release #128: reviewed 7z/HDF5 workflow routing and complete archive readback; legacy four-ZIP ownership unchanged."
+lastReviewedAt: 2026-11-08
+lastReviewedCommit: 4f532e4507a3e860e875a276ecddf2c7f145a422
+lastReviewedNote: "Release #131: reviewed explicit readiness configuration, read-only inspection, protected secret sources and unchanged approval/activation boundaries."
 related:
   - AGENTS.md
   - docs/architecture.md
@@ -57,7 +57,7 @@ Candidate 构建不构成发布授权。Publication 可选择引用完整的子�
 
 Transformation 的 inspect、freeze、execute 已实现；其 `completed` 只证明本节点产物和 handoff 已生成。Unit 聚合使旧 Result evidence 失效，需要新的计算；Result 聚合产生 Derived Result，不重新求解或补造 LifecycleModel。
 
-Materialization 的 `materialize derived` 接收精确 Derived Result handoff；Candidate 的 `result intake/inspect/freeze/build/verify` 接通结构化来源及离线 Result-only 两包/HDF5 Candidate。`package build` 继续提供 legacy 四包路线。Publication 的 `result-storage inspect/execute` 接通 v3 存储计划、条件上传、完整 GET 和 Database v2 登记；`result-readiness verify` 已连接完整文件/reader 核验、不可变磁盘证据与 Database seal；`result-publication plan/prepare/status` 接通选择确认与状态观察；独立批准/激活意图确认入口已接通，`result-publication readback` 已接通公开数值/7z 回读与不可变凭证，不能交给旧四包发布入口。进入后继 Workflow 前应核对其真实输入契约；不能通过重命名产物、复用旧证据或补造 Model 绕过限制。具体节点和限制由各 Workflow 文档维护。
+Materialization 的 `materialize derived` 接收精确 Derived Result handoff；Candidate 的 `result intake/inspect/freeze/build/verify` 接通结构化来源及离线 Result-only 两包/HDF5 Candidate。`package build` 继续提供 legacy 四包路线。Publication 的 `result-storage inspect/execute` 接通 v3 存储计划、条件上传、完整 GET 和 Database v2 登记；`result-readiness inspect/verify` 提供显式本机配置加载、只读连接/绑定检查和完整文件/reader 核验、不可变磁盘证据与 Database seal；`result-publication plan/prepare/status` 接通选择确认与状态观察；独立批准/激活意图确认入口已接通，`result-publication readback` 已接通公开数值/7z 回读与不可变凭证，不能交给旧四包发布入口。进入后继 Workflow 前应核对其真实输入契约；不能通过重命名产物、复用旧证据或补造 Model 绕过限制。具体节点和限制由各 Workflow 文档维护。
 
 ## 开发与阅读
 

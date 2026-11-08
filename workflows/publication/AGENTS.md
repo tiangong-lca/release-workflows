@@ -13,9 +13,9 @@ whenToUpdate:
   - 当 Publication 的范围、状态、授权、写入、恢复或回读规则变化时
 checkPaths:
   - workflows/publication/**
-lastReviewedAt: 2026-11-06
-lastReviewedCommit: 009e3df54b4cde0eaac2b80f8ce99cf3b3229e54
-lastReviewedNote: "Release #128: reviewed final Result 7z packaging, complete readback and safe 413 diagnostics; offline generation and publication authority stay separate."
+lastReviewedAt: 2026-11-08
+lastReviewedCommit: 4f532e4507a3e860e875a276ecddf2c7f145a422
+lastReviewedNote: "Release #131: reviewed explicit readiness configuration, read-only inspection, protected secret sources and unchanged approval/activation boundaries."
 related:
   - README.md
   - ../AGENTS.md
@@ -162,7 +162,7 @@ Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认
   只读回读不能使用 `ensure*` 的缺失补传行为。
 - `tiangong.final-result-reader-probe.v1` 是单个精确 Result 的实测证据，不是发布范围
   全覆盖、数据库 readiness seal 或批准。整体 verifier 按下述契约枚举选中范围并登记证据；Database 在激活时仍须独立核对。
-  `result-readiness verify` 提供整体验证入口；不能把验证回执当成发布完成状态。
+  `result-readiness inspect/verify` 提供配置预检与整体验证入口；不能把验证回执当成发布完成状态。
 
 ## 最终 Result 整体就绪验证
 
@@ -189,8 +189,18 @@ Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认
   HTTP facade 只接收固定合成 token 并执行真实 actor SQL；不将其描述为 hosted JWT、
   Edge 或 Platform 的端到端证明。
 
-- `result-readiness verify` 仅从显式环境读取三组独立凭据，不加载 `.env`、自动登录
-  或刷新会话。命令在 Candidate/final input 外创建新的私有目录；证据使用独占创建、
+- `result-readiness inspect/verify` 默认只读取显式进程环境；只有 `--config-env` 才
+  加载指定文件中的 readiness 白名单，拒绝与非空进程值冲突，不修改 `process.env`。
+  只有 `--bootstrap-session` 且缺少 JWT 时才调用现有用户 session helper 换取短期
+  会话，返回 token 不持久化、不自动刷新。其他 Publication 命令不接受这两个选项。
+- Runtime preparation 统一项目 origin/精确 `/functions/v1` base，显式 CA 文件只增强为
+  verify-full，保持数据库 target identity；reader 密钥只能来自一个显式环境/file/SSH
+  来源。SSH 仅执行固定、有界、非交互的只读 key 提取，不接受任意命令、不传其他凭据，
+  不复制整个远端配置，不写远端或持久化用户 token/reader secret。
+- `inspect` 只检查本地 Candidate、已登记存储/完整选择/runtime 及每个 artifact 的
+  实际 reader overview，前后重查 live actor。它不构造 object-store、不登记 readiness、
+  不证明完整远端文件或冻结数值；成功只返回独立新目录的 verify continuation。
+- `verify` 在 Candidate/final input 外创建新的私有目录；证据使用独占创建、
   文件模式 `0600` 与 Node `flush` 落盘，再登记远端证据。失败保留 attempt/proof，
   新验证用新目录与 UUID；不复用历史时间戳、不修复远端文件、不批准或激活。
 
