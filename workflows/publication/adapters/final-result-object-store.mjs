@@ -3,6 +3,7 @@ import { open } from "node:fs/promises";
 import {
   S3Client,
   GetObjectCommand,
+  HeadBucketCommand,
   PutObjectCommand,
   CreateMultipartUploadCommand,
   UploadPartCommand,
@@ -412,6 +413,31 @@ export function createFinalResultObjectStore({
   return {
     targetHash,
     databaseTargetHash: target.databaseTargetHash,
+    async checkConnection() {
+      try {
+        await timed((signal) =>
+          client.send(new HeadBucketCommand({ Bucket: target.bucket }), {
+            abortSignal: signal,
+          }),
+        );
+        return {
+          reachable: true,
+          operation: "HeadBucket",
+          writePermissionVerified: false,
+          objectSizeLimitVerified: false,
+        };
+      } catch (error) {
+        fail(
+          "final_environment_storage_probe_failed",
+          "Read-only bucket HEAD failed; check the storage target, credentials and HEAD/list permission",
+          {
+            ...(Number.isInteger(error?.$metadata?.httpStatusCode)
+              ? { httpStatus: error.$metadata.httpStatusCode }
+              : {}),
+          },
+        );
+      }
+    },
     async verifyQuery(artifact, file) {
       reference(artifact);
       fileDescriptor(file, QUERY_NAMES);

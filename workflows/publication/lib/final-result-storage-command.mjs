@@ -361,7 +361,8 @@ export async function runFinalResultStorageCommand(
       new Error(
         code === "final_publication_database_tls_failed"
           ? "Database TLS verification failed; configure RELEASE_DATABASE_CA_FILE or CONN sslrootcert and run result-storage preflight before retrying"
-          : code.startsWith("final_publication_")
+          : code.startsWith("final_publication_") ||
+              code.startsWith("final_environment_")
             ? "Publication configuration or database check failed; inspect the safe setting, stage and code, then run result-storage preflight"
             : code === "final_storage_object_too_large"
               ? "Storage rejected the object size. Verify the effective upload limit or build a smaller archive in a new Candidate; do not retry unchanged. Preserve attempt and cleanup evidence."
@@ -372,7 +373,10 @@ export async function runFinalResultStorageCommand(
     if (
       attemptCreated &&
       action === "execute" &&
-      !code.startsWith("final_publication_") &&
+      !(
+        code.startsWith("final_publication_") ||
+        code.startsWith("final_environment_")
+      ) &&
       error?.details?.phase !== "database_preflight" &&
       code !== "final_storage_object_too_large"
     )

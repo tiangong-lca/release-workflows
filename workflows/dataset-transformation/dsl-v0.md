@@ -16,9 +16,9 @@ checkPaths:
   - workflows/dataset-transformation/lib/**
   - workflows/dataset-transformation/cli.mjs
   - workflows/dataset-transformation/test/**
-lastReviewedAt: 2026-11-06
-lastReviewedCommit: c725220b1aee3012d0d0c82fd8125c87f0ad34d0
-lastReviewedNote: "Release #128: reviewed final Result 7z packaging, complete readback and safe 413 diagnostics; offline generation and publication authority stay separate."
+lastReviewedAt: 2026-11-08
+lastReviewedCommit: df7d513a37111f16a1ea11afd4bbc6aebf80d6a3
+lastReviewedNote: "Release #135: reviewed Environment workflow ownership, shared scoped configuration, diagnostic/local setup boundaries and unchanged business artifact/authorization semantics."
 related:
   - README.md
   - contracts/dataset-transformation-dsl.v0.schema.json

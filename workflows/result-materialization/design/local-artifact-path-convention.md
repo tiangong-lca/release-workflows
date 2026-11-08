@@ -16,9 +16,9 @@ whenToUpdate:
 checkPaths:
   - workflows/calculation/**
   - workflows/result-materialization/**
-lastReviewedAt: 2026-11-05
-lastReviewedCommit: aa89f18f91ea58953150a61d9c587691479ca467
-lastReviewedNote: "Release #106: reviewed copy-only historical metadata compatibility and comment preservation; recipe v2 and metadata policy v2 isolate regenerated artifacts without changing identity or numerical reconstruction."
+lastReviewedAt: 2026-11-08
+lastReviewedCommit: df7d513a37111f16a1ea11afd4bbc6aebf80d6a3
+lastReviewedNote: "Release #135: reviewed Environment workflow ownership, shared scoped configuration, diagnostic/local setup boundaries and unchanged business artifact/authorization semantics."
 related:
   - ../README.md
   - ../AGENTS.md

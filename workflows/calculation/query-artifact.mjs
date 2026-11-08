@@ -1,7 +1,11 @@
 #!/usr/bin/env node
+import {
+  configureReleaseCli,
+  isDirectEntry,
+  attachReleaseConfiguration,
+} from "../environment/lib/cli-configuration.mjs";
 import { parseArgs } from "node:util";
 import { fileURLToPath } from "node:url";
-import path from "node:path";
 import { registerQueryArtifact } from "./adapters/query-artifact-store.mjs";
 
 export async function runQueryArtifactCli(
@@ -23,11 +27,11 @@ export async function runQueryArtifactCli(
   });
   if (values.help)
     return {
-      usage: `${fileURLToPath(import.meta.url)} --artifact-dir PATH --builder ABSOLUTE_WORKER_CLI --package-id UUID --release-run-id UUID --confirm-manifest SHA256`,
+      usage: `${fileURLToPath(import.meta.url)} --artifact-dir PATH [--config-env FILE] --builder ABSOLUTE_WORKER_CLI --package-id UUID --release-run-id UUID --confirm-manifest SHA256`,
       action:
         "Upload verified Worker artifacts, independently read back, register and bind. Does not approve or publish.",
       environment:
-        "CONN and S3_* must be explicitly supplied by the operator; no secret CLI arguments.",
+        "Uses the common Release configuration loader; no secret CLI arguments.",
     };
   if (
     !values["artifact-dir"] ||
@@ -45,21 +49,32 @@ export async function runQueryArtifactCli(
     confirmManifest: values["confirm-manifest"],
   });
 }
-if (
-  process.argv[1] &&
-  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-) {
+if (isDirectEntry(import.meta.url)) {
   try {
-    console.log(
-      JSON.stringify(await runQueryArtifactCli(process.argv.slice(2))),
+    const context = await configureReleaseCli(
+      "query-artifact",
+      process.argv.slice(2),
     );
-  } catch {
+    console.log(
+      JSON.stringify(
+        attachReleaseConfiguration(
+          await runQueryArtifactCli(
+            context.argv.includes("--help") ? ["--help"] : context.argv,
+          ),
+          context,
+        ),
+      ),
+    );
+  } catch (error) {
     console.log(
       JSON.stringify({
         ok: false,
-        code: "query_artifact_registration_failed",
-        recovery:
-          "Inspect the exact artifact, package and release identities. A remote outcome may be partial or unknown. Retry only the same immutable inputs; never rebuild or publish automatically.",
+        code: String(error.code).startsWith("final_environment_")
+          ? error.code
+          : "query_artifact_registration_failed",
+        recovery: String(error.code).startsWith("final_environment_")
+          ? "Correct shared Release configuration and run Environment check before any upload or registration."
+          : "Inspect the exact artifact, package and release identities. A remote outcome may be partial or unknown. Retry only the same immutable inputs; never rebuild or publish automatically.",
       }),
     );
     process.exitCode = 1;

@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 intake、package、candidate qualification、scope refinement 或 Candidate 后继路径变化时
 checkPaths:
   - workflows/release-candidate/**
-lastReviewedAt: 2026-11-05
-lastReviewedCommit: 009e3df54b4cde0eaac2b80f8ce99cf3b3229e54
-lastReviewedNote: "Release #128: reviewed final Result 7z packaging, complete readback and safe 413 diagnostics; offline generation and publication authority stay separate."
+lastReviewedAt: 2026-11-08
+lastReviewedCommit: df7d513a37111f16a1ea11afd4bbc6aebf80d6a3
+lastReviewedNote: "Release #135: reviewed Environment workflow ownership, shared scoped configuration, diagnostic/local setup boundaries and unchanged business artifact/authorization semantics."
 related:
   - README.md
   - ../AGENTS.md
@@ -152,3 +152,7 @@ HDF5 manifest 的数值文件只输出 name/sha256/byteSize；plainByteSize 仅�
 与 Database v2 stage 的严格字段数以及 Worker optional field 解码保持一致。
 
 完整引用图仅是 Release 本地构建校验的临时数据，不落盘或上传。Database 只接收精简成员做批次/Result 覆盖和实时下载权限检查；旧配对候选全图格式不兼容读取。7z 列表须全流验证并计数，不得从诊断 stdout 尾部推断包范围。
+
+## 环境与配置
+
+配置准备及核验由 [Environment](../environment/README.md) 拥有。CLI 默认读取固定仓库 `.env`，可用 `--config-env` 选择其他文件；按当前动作白名单加载并拒绝来源冲突。离线操作不消费数据库/用户凭据，环境通过不代替本 Workflow 的输入资格、确认或执行前检查。

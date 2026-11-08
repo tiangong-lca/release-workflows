@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/**
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: e29a2bfa11f307cbbbe0ad429e91aeae57cbcf03
-lastReviewedNote: "Release #133: reviewed shared Publication configuration/CA preparation, read-only storage preflight, safe database diagnostics and unchanged upload/registration/approval authority."
+lastReviewedCommit: 32aef3cfc64140e5ec54476fd54d705b419c6772
+lastReviewedNote: "Release #135: reviewed explicit pnpm run doctor invocation against the pinned package manager, shared configuration ownership and unchanged diagnostic/business boundaries."
 related:
   - ../AGENTS.md
   - ../README.md
@@ -54,6 +54,14 @@ Candidate 成功冻结后不可原地修改。Publication 可规划引用完整�
 
 每个 Workflow 的 AGENTS 维护执行红线及触发式阅读入口，README 维护当前操作与限制。源码、schema、配置和测试解释当前可执行行为；文档与实现冲突时应显式修正，不能擅自改变授权或业务语义。任务进度、历史验收和临时 workaround 不累计为常驻规则。
 
+## 共享环境准备
+
+Environment 拥有配置加载、能力检查和配置引导。独立 CLI 默认读取固定仓库 `.env`，
+`--config-env` 可覆盖；纯加载器不修改输入，CLI 仅应用当前动作白名单到自身进程。
+非空进程值与文件冲突拒绝，配置路径随后继命令传递；不扫描其他目录或自动发现凭据。
+离线处理不消费数据库/用户配置；actor-only 不消费数据面配置。只读核验不运行登录、
+业务计算或发布动作，执行时的动态权限和输入检查继续由所属 Workflow 实施。
+
 ## 最终结果查询编码
 
 Candidate 内的最终 Result 投影和原生 HDF5 编码器拥有生成逻辑，Worker 查询服务继续拥有读取。编码只消费冻结标准内容及精确依赖，不从父 Bundle 替换加工后数值；本地 encoding receipt 不等于配对 Candidate 或发布批准。既有 Calculation v1 bridge 在消费者迁移前保留其原契约。
@@ -67,8 +75,8 @@ Publication 的独立数据面 adapter；它只消费冻结 Candidate，不移�
 与存储登记、后继数据库 readiness seal/actor approval 分开。单个 Result probe 成功
 不等于发布范围全部合格，也不自动授权激活；精确调用边界见 Publication 契约。
 
-Publication 的 storage/readiness 共用显式配置加载和数据库连接准备。storage 的
+Publication 的 storage/readiness 复用 Environment 共享配置加载和数据库连接准备。storage 的
 `preflight` 只读检查数据库，`execute` 在上传/登记前自动执行同样预检；readiness
 继续由 `inspect` 只读观察、`verify` 登记完整文件与 reader 数值证据。
-配置文件必须显式选择；会话 bootstrap 仍仅由 readiness 显式启用，不扩展 actor
+默认配置和显式覆盖遵循 Environment；会话 bootstrap 仍仅由 readiness 显式启用，不扩展 actor
 批准/激活的凭据契约。通用运行代码纳入 Publication，`.release/` 只保留本机文件和证据。

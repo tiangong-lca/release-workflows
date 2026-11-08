@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 Calculation 的入口、用户决定、远程能力或产物变化时
 checkPaths:
   - workflows/calculation/**
-lastReviewedAt: 2026-10-30
-lastReviewedCommit: 8a9aa0bbb273d630247264318201f84e6b72b9ba
-lastReviewedNote: "Release #97: Calculation owns the opt-in Worker query-artifact upload/readback and parameterized metadata registration adapter. Numeric generation, ZIP recipes, actor Publication authorization and source provenance remain with their existing owners."
+lastReviewedAt: 2026-11-08
+lastReviewedCommit: df7d513a37111f16a1ea11afd4bbc6aebf80d6a3
+lastReviewedNote: "Release #135: reviewed Environment workflow ownership, shared scoped configuration, diagnostic/local setup boundaries and unchanged business artifact/authorization semantics."
 related:
   - AGENTS.md
   - ../../README.md
@@ -115,7 +115,7 @@ Workflow 不依赖某个固定的外部 `schemaVersion`，也不要求 provider 
 `TIANGONG_LCA_API_BASE_URL` 定位 `app_data_product_commands`，并需要
 `TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY`。认证优先采用显式 actor-scoped
 `TIANGONG_LCA_ACCESS_TOKEN`；未提供时，使用已有 `TIANGONG_LCA_API_KEY` 用户 bootstrap
-交换短期 session。CLI 启动时读取本地 ignored `.env`，token 只存在于当前进程内存，不写入
+交换短期 session。CLI 启动时按 [Environment](../environment/README.md) 规则加载固定仓库 `.env` 或显式 `--config-env`；来源冲突拒绝，CA/TLS 统一准备。token 只存在于当前进程内存，不写入
 stdout、命令参数、session cache 或恢复文件。
 
 Closure 和 Calculation 的 `start` 也使用同一个 actor-scoped endpoint，且必须显式传入
@@ -178,7 +178,7 @@ Bundle metadata 查询；不会退回 ResultSet。日志不覆盖数据库任务
 
 Calculation Bundle 使用本地数据面，不再让 Edge 为大量 artifact 串行生成 signed URL：
 
-- `environment sync --confirm-sync` 只把 workspace 根 ignored `.env` 中缺失的 `CONN`、
+- `environment sync --confirm-sync` 委托 Environment 的相同同步实现，保留原 workspace 来源入口，复制缺失的 `CONN`、
   `S3_ACCESS_KEY_ID`、`S3_SECRET_ACCESS_KEY`、`S3_ENDPOINT`、`S3_REGION`、`S3_BUCKET`
   复制到 Release ignored `.env`；已有值不覆盖，变量值不进入 stdout；
 - `calculation-bundle list` 对 `private.lcia_result_packages` 执行参数化、read-only、有界 SQL，默认 20、
@@ -262,3 +262,7 @@ node workflows/calculation/query-artifact.mjs --artifact-dir /absolute/path/quer
 返回 `result.query.registration.v1` 仅表示查询关联登记，不是批准、发布、readback_verified 或 public visibility。缺失文件、hash 不同、source axis 不完整、错误 package/Bundle/release 均拒绝。部分远端成功或响应丢失时保留文件，重复同一输入会重新验证并依赖 Database 幂等约束恢复；没有自动重新计算、重新构建、更新 publication 或切换 latest 的行为。改变源或编码时分配新 artifact 身份，不能覆盖已绑定 release。
 
 离线 `test/query-artifact.test.mjs` 验证 SDK adapter 编排、真实公共子进程参数、hash/路径/边界、读回失败、批量登记和未知结果停止。合成 HDF5 文件不会作为格式正确性的证据；格式与数值验证由 Worker 测试及真实 Worker CLI 承担。生产 S3 / DB 运行仍需独立环境资格和操作授权。
+
+## 环境与配置
+
+配置准备及核验由 [Environment](../environment/README.md) 拥有。CLI 默认读取固定仓库 `.env`，可用 `--config-env` 选择其他文件；按当前动作白名单加载并拒绝来源冲突。离线操作不消费数据库/用户凭据，环境通过不代替本 Workflow 的输入资格、确认或执行前检查。

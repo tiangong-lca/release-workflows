@@ -110,7 +110,7 @@ test("environment sync copies only missing allowlisted keys without exposing val
   assert.deepEqual(result.preservedKeys, ["CONN"]);
   assert.equal(result.valuesExposed, false);
   assert.match(text, /CONN=postgres:\/\/preserved/);
-  assert.match(text, /S3_BUCKET=lca_results/);
+  assert.match(text, /S3_BUCKET="?lca_results"?/);
   assert.doesNotMatch(text, /UNRELATED_SECRET|do-not-copy/);
 });
 

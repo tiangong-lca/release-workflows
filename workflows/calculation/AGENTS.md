@@ -12,9 +12,9 @@ whenToUpdate:
   - 当入口解析、远程命令、证据绑定、恢复或确认规则变化时
 checkPaths:
   - workflows/calculation/**
-lastReviewedAt: 2026-10-30
-lastReviewedCommit: 8a9aa0bbb273d630247264318201f84e6b72b9ba
-lastReviewedNote: "Release #97: Calculation owns the opt-in Worker query-artifact upload/readback and parameterized metadata registration adapter. Numeric generation, ZIP recipes, actor Publication authorization and source provenance remain with their existing owners."
+lastReviewedAt: 2026-11-08
+lastReviewedCommit: df7d513a37111f16a1ea11afd4bbc6aebf80d6a3
+lastReviewedNote: "Release #135: reviewed Environment workflow ownership, shared scoped configuration, diagnostic/local setup boundaries and unchanged business artifact/authorization semantics."
 related:
   - README.md
   - ../AGENTS.md
@@ -103,3 +103,7 @@ related:
 `query-artifact.mjs` 是独立的 opt-in 数据面入口，消费 Worker 公共 CLI 生成的查询产物，要求精确 manifest SHA-256 确认。它委托 Worker `result_artifact_builder upload` 校验 HDF5 结构/数值及上传，然后独立流式回读所有对象并验证 size/hash，最后调用 Database 的有界 `svc_result_query_stage/seal/bind_release`。只允许该封闭参数化 RPC 集合的 metadata 写入，使用显式 operator `CONN`；不引入 actor API 的 service-role secret，不读取其他表，不 approve/publish release。
 
 此入口不生成数值、Result Process 或 ZIP，也不重新计算。登记成功不证明发布完成；数据库仍检查 exact Bundle/package/release 及完整源轴，查询入口仍检查 current publication 和 actor 权限。CLI 失败后可能已有对象或 metadata 批次，必须沿用同一 artifact/package/release 重试完整验证，不能切换身份或覆盖冻结输入。
+
+## 环境与配置
+
+配置准备及核验由 [Environment](../environment/README.md) 拥有。CLI 默认读取固定仓库 `.env`，可用 `--config-env` 选择其他文件；按当前动作白名单加载并拒绝来源冲突。离线操作不消费数据库/用户凭据，环境通过不代替本 Workflow 的输入资格、确认或执行前检查。

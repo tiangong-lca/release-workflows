@@ -16,7 +16,8 @@
     "test": "pnpm run test:contracts && pnpm run test:workflows",
     "prepush:gate": "pnpm run native:check && pnpm run native:build && pnpm run format:check && pnpm run test",
     "native:build": "cargo build --locked --manifest-path workflows/release-candidate/native/Cargo.toml",
-    "native:check": "cargo fmt --manifest-path workflows/release-candidate/native/Cargo.toml --check && cargo clippy --locked --manifest-path workflows/release-candidate/native/Cargo.toml -- -D warnings"
+    "native:check": "cargo fmt --manifest-path workflows/release-candidate/native/Cargo.toml --check && cargo clippy --locked --manifest-path workflows/release-candidate/native/Cargo.toml -- -D warnings",
+    "doctor": "node workflows/environment/cli.mjs check"
   },
   "devDependencies": {
     "prettier": "3.9.6"

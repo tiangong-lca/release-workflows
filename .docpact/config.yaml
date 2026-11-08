@@ -1,8 +1,8 @@
 version: 1
 layout: repo
-lastReviewedAt: "2026-11-08"
-lastReviewedCommit: "e29a2bfa11f307cbbbe0ad429e91aeae57cbcf03"
-lastReviewedNote: "Release #133: reviewed shared Publication configuration/CA preparation, read-only storage preflight, safe database diagnostics and unchanged upload/registration/approval authority."
+lastReviewedAt: 2026-11-08
+lastReviewedCommit: 32aef3cfc64140e5ec54476fd54d705b419c6772
+lastReviewedNote: "Release #135: reviewed explicit pnpm run doctor invocation against the pinned package manager, shared configuration ownership and unchanged diagnostic/business boundaries."
 
 catalog:
   repos:
@@ -41,6 +41,11 @@ ownership:
         include:
           - workflows/README.md
           - workflows/AGENTS.md
+      ownerRepo: release
+    - id: environment-workflow
+      paths:
+        include:
+          - workflows/environment/**
       ownerRepo: release
     - id: calculation-workflow
       paths:
@@ -103,6 +108,9 @@ routing:
         - .github/dependabot.yml
         - docs/dependency-updates.md
         - pnpm-lock.yaml
+    environment-workflow:
+      paths:
+        - workflows/environment/**
     calculation-workflow:
       paths:
         - workflows/calculation/**
@@ -247,6 +255,20 @@ rules:
       - path: .docpact/config.yaml
         mode: review_or_update
     reason: Shared workflow navigation and Agent rules must remain aligned with the repository contract and architecture.
+  - id: environment-workflow-contract
+    scope: repo
+    repo: release
+    triggers:
+      - path: workflows/environment/**
+        kind: environment-workflow
+    requiredDocs:
+      - path: workflows/environment/AGENTS.md
+        mode: review_or_update
+      - path: workflows/environment/README.md
+        mode: review_or_update
+      - path: workflows/AGENTS.md
+        mode: review_or_update
+    reason: Shared configuration, local preparation, capability diagnostics and read-only boundaries must remain coherent.
   - id: calculation-workflow-contract
     scope: repo
     repo: release

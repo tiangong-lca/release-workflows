@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+import {
+  configureReleaseCli,
+  attachReleaseConfiguration,
+} from "../environment/lib/cli-configuration.mjs";
 import path from "node:path";
 import { createIntake } from "./lib/intake.mjs";
 import {
@@ -16,6 +20,8 @@ import {
 } from "./runtime/cli-command.mjs";
 
 const HELP = `release-result-materialization <command> [options]
+
+Common configuration: --config-env <path> (default: repository .env if present).
 
 Commands:
   intake              Verify a local Calculation Bundle v2 ZIP/directory and freeze an intake
@@ -64,8 +70,13 @@ const ACTION_HELP = {
   "job cancel": `release-result-materialization job cancel --job-id <uuid> [--artifact-root <path>] [--json]\n\nRequest cancellation after verifying the exact runner identity.\n`,
 };
 
+let CLI_CONFIGURATION;
 async function main() {
-  const [command, ...initialTokens] = process.argv.slice(2);
+  CLI_CONFIGURATION = await configureReleaseCli(
+    "result-materialization",
+    process.argv.slice(2),
+  );
+  const [command, ...initialTokens] = CLI_CONFIGURATION.argv;
   if (!command || command === "--help" || command === "-h") {
     process.stdout.write(HELP);
     return;
@@ -416,6 +427,7 @@ function requireOptions(options, names) {
 }
 
 function respond(options, value) {
+  attachReleaseConfiguration(value, CLI_CONFIGURATION);
   if (options.json) process.stdout.write(`${JSON.stringify(value)}\n`);
   else {
     process.stdout.write(`✅ ${value.outcome}\n`);
@@ -441,7 +453,7 @@ function releaseIntakeCommand(result, sourceIntake) {
 }
 
 main().catch((error) => {
-  const [command, action] = process.argv.slice(2);
+  const [command, action] = CLI_CONFIGURATION?.argv ?? process.argv.slice(2);
   const route = [command, action]
     .filter((value) => value && !value.startsWith("--"))
     .join(" ");
@@ -461,6 +473,8 @@ main().catch((error) => {
       },
     ],
   };
-  process.stderr.write(`${JSON.stringify(payload)}\n`);
+  process.stderr.write(
+    `${JSON.stringify(attachReleaseConfiguration(payload, CLI_CONFIGURATION))}\n`,
+  );
   process.exitCode = 1;
 });

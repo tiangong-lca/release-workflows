@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+import {
+  configureReleaseCli,
+  attachReleaseConfiguration,
+} from "../environment/lib/cli-configuration.mjs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createPublicationApproval } from "./lib/approval.mjs";
@@ -74,6 +78,8 @@ Dataset publication target state follows the dataset role, per operation: Result
 datasets target state 120 through the manager-attested Database command, and ordinary Unit
 Process, LifecycleModel and support datasets keep the existing state 100 platform commands.
 A plan is therefore mixed-state, not a single global state.
+
+Common configuration: --config-env <path> (default: repository .env if present).
 
 Commands:
   result-publication plan     Freeze exact Result selection and current-publication precondition
@@ -245,8 +251,13 @@ Actor remote environment:
   TIANGONG_LCA_ACCESS_TOKEN or TIANGONG_LCA_API_KEY
 `;
 
+let CLI_CONFIGURATION;
 async function main() {
-  const [command, actionName, ...tokens] = process.argv.slice(2);
+  CLI_CONFIGURATION = await configureReleaseCli(
+    "publication",
+    process.argv.slice(2),
+  );
+  const [command, actionName, ...tokens] = CLI_CONFIGURATION.argv;
   if (!command || command === "--help" || command === "-h") {
     process.stdout.write(HELP);
     return;
@@ -303,15 +314,12 @@ async function main() {
     return;
   }
   if (
-    (options["config-env"] &&
-      !commandName.startsWith("result-readiness ") &&
-      !commandName.startsWith("result-storage ")) ||
-    (options["bootstrap-session"] &&
-      !commandName.startsWith("result-readiness "))
+    options["bootstrap-session"] &&
+    !commandName.startsWith("result-readiness ")
   )
     throw coded(
       "invalid_arguments",
-      "--config-env is supported by storage/readiness; --bootstrap-session is supported only by readiness",
+      "--bootstrap-session is supported only by readiness",
     );
   const payload = await handlers[commandName](options);
   payload.replyTemplate = replyTemplateFor(commandName, { ok: true });
@@ -982,6 +990,7 @@ function nextAction(kind, args) {
 }
 
 function respond(options, payload) {
+  attachReleaseConfiguration(payload, CLI_CONFIGURATION);
   if (options.json) {
     process.stdout.write(`${JSON.stringify(payload)}\n`);
     return;
@@ -1045,6 +1054,7 @@ main().catch((error) => {
           ],
     replyTemplate: replyTemplateFor(commandName, { ok: false }),
   };
+  attachReleaseConfiguration(payload, CLI_CONFIGURATION);
   if (process.argv.includes("--json"))
     process.stderr.write(`${JSON.stringify(payload)}\n`);
   else

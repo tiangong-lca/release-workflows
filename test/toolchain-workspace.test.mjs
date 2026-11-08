@@ -8,6 +8,7 @@ import { resolvePnpmInvocation } from "./pnpm-invocation.mjs";
 
 const REPOSITORY_ROOT = fileURLToPath(new URL("../", import.meta.url));
 const WORKSPACE_PACKAGES = [
+  "workflows/environment",
   "workflows/calculation",
   "workflows/result-materialization",
   "workflows/release-candidate",
@@ -58,7 +59,7 @@ test("the repository pins one exact Node and pnpm toolchain", () => {
   assert.equal(existsSync(new URL("../.npmrc", import.meta.url)), false);
 });
 
-test("the six install trees are one pnpm workspace with one lockfile", () => {
+test("the seven install trees are one pnpm workspace with one lockfile", () => {
   const workspace = readText("pnpm-workspace.yaml");
   for (const packagePath of WORKSPACE_PACKAGES) {
     assert.match(workspace, new RegExp(escapeRegex(packagePath)));

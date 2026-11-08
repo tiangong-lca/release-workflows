@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-08
-lastReviewedCommit: e29a2bfa11f307cbbbe0ad429e91aeae57cbcf03
-lastReviewedNote: "Release #133: reviewed shared Publication configuration/CA preparation, read-only storage preflight, safe database diagnostics and unchanged upload/registration/approval authority."
+lastReviewedCommit: df7d513a37111f16a1ea11afd4bbc6aebf80d6a3
+lastReviewedNote: "Release #135: reviewed Environment workflow ownership, shared scoped configuration, diagnostic/local setup boundaries and unchanged business artifact/authorization semantics."
 related:
   - README.md
   - ../AGENTS.md
@@ -138,13 +138,13 @@ Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认
 最终完整包固定为 `result.tidas.7z` 和 `result.ilcd.7z`，与 Candidate 中实际归档的 hash/bytes 绑定；不能把旧 ZIP 仅改扩展名。已知 413/EntityTooLarge 在完整 GET 未恢复匹配对象时报告 `final_storage_object_too_large`，保留固定文件名、字节数、上传阶段、HTTP 状态和 multipart 清理状态。不得返回 provider 原文，也不得建议原样重试。丢失响应仍先完整 GET 调和，只中止本次已知 multipart。
 
 - `lib/final-result-storage.mjs` 只消费重新验证的配对 Candidate v3。inspect 在本地绑定 Candidate/目标/完整文件集/行映射；execute 必须确认完全相同的 storage plan hash。`result-storage inspect/execute` 是独立 opt-in CLI；它不替代后继发布选择、reader readiness、actor approval 或 activation。inspect 不打开远程客户端，不要求 S3 写凭据；execute 在确认及新输出目录检查之后才构造受控 adapter。
-- `adapters/final-result-object-store.mjs` 使用显式数据面 S3/IAM 凭据；`adapters/final-result-registry.mjs` 使用受保护 CONN、单客户端参数化事务与服务角色，仅调用五个 Database-owned v2 query/Candidate 存储 RPC 与四个 readiness begin/artifacts/seal/describe RPC。不读取 actor token，不接受任意 SQL，不写 canonical/state 120，不调用批准/激活接口。
+- `adapters/final-result-object-store.mjs` 使用显式数据面 S3/IAM 凭据；`adapters/final-result-registry.mjs` 使用受保护 CONN、单客户端参数化事务与服务角色，除 Environment 的固定只读连接探测 SQL 外，仅调用五个 Database-owned v2 query/Candidate 存储 RPC 与四个 readiness begin/artifacts/seal/describe RPC。不读取 actor token，不接受任意 SQL，不写 canonical/state 120，不调用批准/激活接口。
 - 对象键只从 artifact UUID/manifest hash、Candidate byte hash 和固定文件名派生。PUT 和 multipart complete 使用 `If-None-Match: *`，不覆盖已有文件；只可中止本次已知 multipart upload，不能 DeleteObject。每次执行与重试都完整 GET 校验 bytes/hash，不把 ETag 或原数据库 seal 当成当前文件可用性的证明。
 - 最终 Result 的 publication-catalog 仅接收精简 v2 成员；完整图只由 Release 构建验证，不上传或交给 Database 遍历。实时支持数据权限与批次绑定保持。
 - 本地已验证的索引/7z 与远端 GET 字节摘要相同后才按产物登记实际 Result 轴和完整包范围，行使用内容指纹与 Candidate 根关联。行按 500 条且 JSONB logical size 不超过 1 MiB 分批，映射摘要必须与 Database 的 ASCII 500-row block contract 一致。
 - 超时、响应丢失与并发同键写入必须先精确回读。query/Candidate seal 响应不明时用 service-only describe 恢复原回执；不能换 artifact、Candidate、Result 版本或覆盖原回执。中止分片无法确认或创建分片响应丢失时明确 `multipartCleanupRequired`，不得声称清理完成。
 - 目标 fingerprint 绑定数据库连接身份（不含密码）、规范化存储 endpoint/region/bucket/prefix。根 endpoint 的身份不变；Supabase 精确 `/storage/v1/s3` base path 必须同时保留在哈希与 SDK 请求中，不能退化为 origin。配置必须指向已经治理的非公开存储；adapter 不改变 bucket policy，也不能以文件核验代替非公开环境准入。原 actor recipes 与 Portal projection 的 secret/locator 禁止仍保持。
-- storage/readiness 通过同一 Publication 加载器读取显式进程值及可选 `--config-env` 文件；各命令只读取自己的白名单，不隐式发现 `.env` 或 AWS credential provider，不修改进程环境。CA/TLS 文件统一解析并在提供 CA 时强制 verify-full，不改变数据库目标身份。storage 的只读 inspect/preflight 不读取 S3/actor/reader secrets；actor-only 命令不接入数据面凭据或会话 bootstrap。
+- storage/readiness 通过 Environment 加载器读取进程值及固定仓库 `.env`/显式 `--config-env` 文件；各命令只读取自己的白名单，不扫描其他目录或 AWS credential provider；纯加载器不修改调用者，独立 CLI 只应用自身白名单。CA/TLS 文件统一解析并在提供 CA 时强制 verify-full，不改变数据库目标身份。storage 的只读 inspect/preflight 不读取 S3/actor/reader secrets；actor-only 命令只加载用户白名单，不接入数据面凭据或会话 bootstrap。
 - storage `preflight` 只校验本地 Candidate 与数据库 describe 状态；`execute` 必须在第一笔对象上传/登记前执行同样检查。已知连接/TLS/认证失败与只读查询失败不归为写入不明；真正已派发写入后的不明结果继续精确回读恢复。错误只保留白名单 code、阶段和 SQLSTATE，不输出原始异常、连接串或凭据。
 - 证据输出必须位于冻结 Candidate 外部，含符号链接解析。每次 execute/preflight 使用新的输出目录：先写 attempt、成功后写相应 receipt/report；失败保留 attempt/failure。配置错误须先修配置，不能推荐原样重试上传；恢复仍用同一 Candidate/target/hash，不能删除记录伪造完成。
 - 该阶段只产生不可变存储登记证据，始终 `publicationAuthorized=false`。普通用户访问、完整 7z 授权及原子 current 切换由版本化 Database/Edge/Platform 接入另行完成。
@@ -192,10 +192,10 @@ Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认
   Edge 或 Platform 的端到端证明。
 
 - `result-storage inspect/preflight/execute` 与 `result-readiness inspect/verify`
-  默认只读取显式进程环境；只有 `--config-env` 才由共享加载器读取指定文件的命令白名单，
-  拒绝与非空进程值冲突，不修改 `process.env`。
+  统一使用 Environment 的固定仓库 `.env` 或 `--config-env`，按命令白名单读取，
+  拒绝与非空进程值冲突；纯加载器无全局副作用，独立 CLI 只应用自身有效值。
   只有 readiness 显式传入 `--bootstrap-session` 且缺少 JWT 时才调用现有用户 session
-  helper 换取短期会话，返回 token 不持久化、不自动刷新。actor-only 命令不接受这两个选项。
+  helper 换取短期会话，返回 token 不持久化、不自动刷新。actor-only 命令接受 `--config-env` 用户白名单，但不接受 bootstrap。
 - Runtime preparation 统一项目 origin/精确 `/functions/v1` base，显式 CA 文件只增强为
   verify-full，保持数据库 target identity；reader 密钥只能来自一个显式环境/file/SSH
   来源。SSH 仅执行固定、有界、非交互的只读 key 提取，不接受任意命令、不传其他凭据，
