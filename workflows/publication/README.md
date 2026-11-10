@@ -13,9 +13,9 @@ whenToUpdate:
   - 当发布选择、目标差异、状态转换、写入、审批、恢复或回读规则变化时
 checkPaths:
   - workflows/publication/**
-lastReviewedAt: 2026-11-08
-lastReviewedCommit: df7d513a37111f16a1ea11afd4bbc6aebf80d6a3
-lastReviewedNote: "Release #135: reviewed Environment workflow ownership, shared scoped configuration, diagnostic/local setup boundaries and unchanged business artifact/authorization semantics."
+lastReviewedAt: 2026-11-10
+lastReviewedCommit: 26d26485ca0ae10832418e06c6c6f4f43256fbe1
+lastReviewedNote: "Release #140: reviewed explicit shared user-session acquisition, Publication prerequisites and same-actor renewal; tokens remain memory-only and business confirmation/server authorization stay mandatory."
 related:
   - AGENTS.md
   - ../release-candidate/README.md
@@ -612,7 +612,7 @@ UUID 开始一轮实际验证。回执不等于批准或发布，仍需后继 ac
 
 `createFinalResultActor` 使用显式 origin、publishable key 和 actor JWT；只调用固定
 probe API，不接受服务凭据、不调用批准/激活。每次由数据库验证 live manager 资格。
-它不自动登录或刷新会话。用户凭据、Worker HMAC 与数据面 CONN/S3 凭据分别保管。
+它不隐式登录或刷新会话。用户凭据、Worker HMAC 与数据面 CONN/S3 凭据分别保管。
 
 除上述真实文件/Worker 验证外，可在 owner-reset 的任务专用合成数据库使用
 `RELEASE_READINESS_TEST_CONN` 运行 `final-result-readiness-database.test.mjs`。
@@ -673,7 +673,7 @@ Candidate 文件及全部选中 artifact 文件，按每个 artifact 的首末�
 启动配置。非空进程值与文件不一致时报 `final_environment_conflict` 和安全 setting 名。
 纯加载器返回独立配置；独立 CLI 只应用当前动作白名单到自身进程，不改变父 shell。
 actor-only 命令也可选择同一文件，但只消费用户配置，不读取数据库/S3/reader 密钥。
-`--bootstrap-session` 仍只由 readiness 显式启用；配置加载本身不登录。
+`--bootstrap-session` 由最终 `result-publication` / `result-readiness` 显式启用；配置加载本身不登录。
 不要用 Node 启动选项 `--env-file` 替代受控加载入口。
 
 必需目标配置是 `CONN`、`S3_ENDPOINT`、`S3_REGION`、`S3_BUCKET`（可选 `S3_PREFIX`）。
@@ -747,8 +747,20 @@ RESULT_QUERY_SERVICE_SECRET_SSH_ENV_FILE=/etc/<service>/reader.env
 
 ### 最终 Result 发布选择与状态
 
+进入最终发布前先核验用户会话和前置条件，无需手工复制 JWT：
+
+```bash
+pnpm --silent run doctor --for publication --remote --bootstrap-session --json
+```
+
+该入口只换取进程内用户会话，读取服务器用户/manager 权限；可附加 `--candidate` 验证
+本地资格及已有存储登记，不创建发布 run/选择。随后 `result-publication plan/prepare/status`
+及审批/激活动作均可传 `--bootstrap-session`，使用同一个共享登录机制；命令之间不保存
+token，每个命令按需登录。`--config-env` 和 bootstrap 参数随后继命令保留。批准/激活仍
+要求其原来的精确意图确认，登录和环境检查不构成发布授权。
+
 `result-publication` 使用用户 API origin、publishable key 和 actor JWT，
-不读取 `CONN`、S3、Worker 服务密钥或 API key；只按共享规则加载用户白名单，不自动登录或刷新会话。
+不读取 `CONN`、S3、Worker 服务密钥或 API key；只按共享规则加载用户白名单，不隐式登录或刷新会话。
 先在已登记的精确存储目标上冻结选择：
 
 ```bash
@@ -864,3 +876,7 @@ Platform 浏览器验收、真实 hosted JWT 资格或持续可用性监控。
 ### Result 7z 存储诊断
 
 最终 Result 包使用 `result.tidas.7z` / `result.ilcd.7z`；Database、Edge 和 Platform 的对应版本须一起采用，部署与激活仍需独立授权。HDF5 查询格式不变。S3 协议本身不提供统一的 bucket/global 有效大小上限查询；工具不猜测限额、不引入管理凭据，也不修改配置。`final_storage_object_too_large` 表示服务端明确拒绝大小且完整 GET 未恢复匹配对象：核对有效限额或在新 Candidate 中生成更小归档，保留失败 attempt，不原样重试。若 `multipartCleanupRequired=true`，仍须先调和清理状态。
+
+激活意图的会话指纹是创建意图时的审计记录，不要求执行时复用相同 JWT 字节。
+同一 actor 重新登录后可执行已确认意图；intent hash、actor/API target、实时审批、readiness
+和 current-publication 检查继续执行。不会以登录续期为由重写原意图或改变幂等身份。

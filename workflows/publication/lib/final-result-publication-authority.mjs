@@ -448,10 +448,9 @@ export async function activateFinalResultPublication({
   let snapshot = await actor.run(plan.releaseRunId);
   assertFinalResultPublicationSnapshot(snapshot, plan, local);
   if (!snapshot.publication) {
-    required(
-      actor.credentialFingerprint === intent.credentialFingerprint,
-      "final_authority_session_changed",
-    );
+    // The confirmed fingerprint audits the intent's originating session.
+    // A fresh session for the same bound actor may execute it; live manager,
+    // readiness, approval, target and current-publication checks still apply.
     fresh(intent.readiness);
     const approval = await actor.approval({
       releaseRunId: plan.releaseRunId,

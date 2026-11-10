@@ -23,6 +23,16 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+const FIXTURE_TOKEN =
+  "header." +
+  Buffer.from(
+    JSON.stringify({
+      sub: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      role: "authenticated",
+      exp: Math.floor(Date.now() / 1000) + 600,
+    }),
+  ).toString("base64url") +
+  ".signature";
 const MANAGER = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const FIXTURE = "55555555-5555-4555-8555-555555555555";
 // The dedicated task-instance port, not a shared/default one.
@@ -31,7 +41,7 @@ const BASE_ENV = {
   TIANGONG_RELEASE_LIVE_ACCEPTANCE: "1",
   TIANGONG_LCA_API_BASE_URL: DEDICATED,
   TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY: "publishable",
-  TIANGONG_LCA_ACCESS_TOKEN: "header.payload.signature",
+  TIANGONG_LCA_ACCESS_TOKEN: FIXTURE_TOKEN,
   TIANGONG_RELEASE_LIVE_FIXTURE_UUID: FIXTURE,
   TIANGONG_RELEASE_LIVE_INSTANCE: "task-instance-a",
   TIANGONG_RELEASE_LIVE_EXPECTED_ENDPOINT: DEDICATED,
@@ -225,7 +235,7 @@ test("the live runner refuses a secret key, a malformed fixture and a bad timeou
 });
 
 test("the live runner reports no secret material", () => {
-  const token = "header.payload.signature";
+  const token = FIXTURE_TOKEN;
   const key = "publishable-key-material";
   const message = `failed with ${token} and ${key} in a body`;
   const redacted = redact(message, [token, key]);
@@ -366,7 +376,13 @@ test("the live fixture satisfies the real payload loader and prepare chain", asy
     TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY: "publishable",
     TIANGONG_LCA_ACCESS_TOKEN: [
       Buffer.from(JSON.stringify({ alg: "none" })).toString("base64url"),
-      Buffer.from(JSON.stringify({ sub: MANAGER })).toString("base64url"),
+      Buffer.from(
+        JSON.stringify({
+          sub: MANAGER,
+          role: "authenticated",
+          exp: Math.floor(Date.now() / 1000) + 600,
+        }),
+      ).toString("base64url"),
       "signature",
     ].join("."),
   };
@@ -424,7 +440,13 @@ test("the whole live chain completes against the wire-only mock", async (t) => {
     publishableKey: "publishable",
     accessToken: [
       Buffer.from(JSON.stringify({ alg: "none" })).toString("base64url"),
-      Buffer.from(JSON.stringify({ sub: MANAGER })).toString("base64url"),
+      Buffer.from(
+        JSON.stringify({
+          sub: MANAGER,
+          role: "authenticated",
+          exp: Math.floor(Date.now() / 1000) + 600,
+        }),
+      ).toString("base64url"),
       "signature",
     ].join("."),
     fixtureUuid: "651ce01d-1023-4f39-b51d-7a87eae90653",
@@ -518,7 +540,7 @@ function liveRuntime() {
   return {
     projectBaseUrl: "http://127.0.0.1:54321",
     publishableKey: "publishable",
-    accessToken: "header.payload.signature",
+    accessToken: FIXTURE_TOKEN,
     actorUserId: MANAGER,
     targetEndpointFingerprint: hashJson({
       projectBaseUrl: "http://127.0.0.1:54321",

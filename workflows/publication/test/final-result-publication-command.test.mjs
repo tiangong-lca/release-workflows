@@ -149,6 +149,98 @@ test("actor-only selection commands never access DB, S3, Worker or bootstrap cre
   assert.equal(status.outcome, "final_result_release_not_found");
   assert.equal(status.currentPublicationId, null);
 });
+
+test("explicit user bootstrap supplies Publication actor and keeps the session out of disk evidence", async (t) => {
+  const f = await fixture(t);
+  let logins = 0;
+  const token = "session-token-canary";
+  const env = {
+    TIANGONG_LCA_API_BASE_URL: "https://example.invalid/functions/v1",
+    TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY: "public",
+    TIANGONG_LCA_API_KEY: "configured-user-bootstrap",
+  };
+  for (const key of [
+    "CONN",
+    "S3_SECRET_ACCESS_KEY",
+    "RESULT_QUERY_SERVICE_SECRET",
+  ])
+    Object.defineProperty(env, key, {
+      get() {
+        assert.fail("actor bootstrap must not read data-plane credentials");
+      },
+    });
+  const options = {
+    "run-id": id,
+    "out-dir": path.join(f.root, "status-bootstrap"),
+    "bootstrap-session": true,
+  };
+  const result = await run("status", options, {
+    ...f.deps,
+    env,
+    resolveSession: async ({ env: input, allowBootstrap }) => {
+      logins++;
+      assert.equal(input, env);
+      assert.equal(allowBootstrap, true);
+      return token;
+    },
+    createActor: (config) => {
+      assert.equal(config.endpoint, "https://example.invalid");
+      assert.equal(config.accessToken, token);
+      return f.actor;
+    },
+  });
+  assert.equal(logins, 1);
+  assert.deepEqual(f.calls, ["run"]);
+  assert.equal(result.publicationAuthorized, false);
+  const evidence = await readFile(result.artifacts.observation, "utf8");
+  assert.doesNotMatch(
+    evidence + JSON.stringify(result),
+    /session-token-canary|configured-user-bootstrap/,
+  );
+  await assert.rejects(
+    run(
+      "status",
+      {
+        ...options,
+        "bootstrap-session": false,
+        "out-dir": path.join(f.root, "no-bootstrap"),
+      },
+      {
+        ...f.deps,
+        env,
+        resolveSession: async () => {
+          assert.fail("not opted in");
+        },
+      },
+    ),
+    { code: "final_publication_environment_required" },
+  );
+  await assert.rejects(stat(path.join(f.root, "no-bootstrap")), {
+    code: "ENOENT",
+  });
+  await assert.rejects(
+    run(
+      "status",
+      { ...options, "out-dir": path.join(f.root, "bad-login") },
+      {
+        ...f.deps,
+        env,
+        resolveSession: async () => {
+          throw Object.assign(new Error("private-login-error"), {
+            name: "ActorSessionError",
+            code: "auth_required",
+          });
+        },
+      },
+    ),
+    (error) =>
+      error.code === "final_publication_session_unavailable" &&
+      !JSON.stringify(error).includes("private-login-error"),
+  );
+  await assert.rejects(stat(path.join(f.root, "bad-login")), {
+    code: "ENOENT",
+  });
+});
 test("wrong confirmation, actor drift and unknown options cannot reach remote writes", async (t) => {
   for (const mode of ["confirmation", "actor", "unknown"]) {
     const f = await fixture(t);

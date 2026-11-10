@@ -372,8 +372,8 @@ test("different executor may activate approver evidence; lost ACK recovers origi
   assert.equal(f.calls.filter((k) => k === "activate").length, 1);
   assert.equal(f.calls.at(-1), "run");
 });
-test("new activation rejects stale readiness, changed session and replaced approval", async () => {
-  for (const mode of ["session", "approval", "expiry"]) {
+test("new activation rejects stale readiness, changed actor and replaced approval", async () => {
+  for (const mode of ["actor", "approval", "expiry"]) {
     const f = fixture(),
       a = await approved(f),
       actor = f.actorFor(3),
@@ -387,7 +387,7 @@ test("new activation rejects stale readiness, changed session and replaced appro
     });
     f.calls.length = 0;
     const original = Date.now;
-    if (mode === "session") actor.credentialFingerprint = h(9);
+    if (mode === "actor") actor.actorId = id(99);
     if (mode === "approval")
       f.snapshot.activeApproval = { approvalId: id(99), approvalHash: h(9) };
     if (mode === "expiry") Date.now = () => original() + 700000;
@@ -521,4 +521,32 @@ test("failed evidence persistence prevents authority mutation", async () => {
     /disk-full/,
   );
   assert.deepEqual(f.calls, []);
+});
+
+test("same actor can execute a confirmed intent after user login renewal while origin fingerprint remains immutable", async () => {
+  const f = fixture(),
+    a = await approved(f),
+    actor = f.actorFor(3),
+    probeActor = f.probeFor(3);
+  const b = await buildFinalResultActivationIntent({
+    local: f.local,
+    readiness: f.readiness,
+    approvalId: a.receipt.approval.approvalId,
+    actor,
+    probeActor,
+  });
+  const original = b.intent.credentialFingerprint;
+  actor.credentialFingerprint = h(9);
+  const result = await activateFinalResultPublication({
+    local: f.local,
+    intent: b.intent,
+    confirmIntentHash: b.intentHash,
+    actor,
+    probeActor,
+    record: f.record,
+  });
+  assert.ok(f.calls.includes("activate"));
+  assert.ok(f.calls.includes("probe"));
+  assert.equal(b.intent.credentialFingerprint, original);
+  assert.ok(!JSON.stringify(result).includes("access_token"));
 });

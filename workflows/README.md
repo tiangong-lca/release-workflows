@@ -12,9 +12,9 @@ whenToUpdate:
   - 当顶层 Workflow 新增、删除、重命名或重新划分时
 checkPaths:
   - workflows/**
-lastReviewedAt: 2026-11-08
-lastReviewedCommit: 32aef3cfc64140e5ec54476fd54d705b419c6772
-lastReviewedNote: "Release #135: reviewed explicit pnpm run doctor invocation against the pinned package manager, shared configuration ownership and unchanged diagnostic/business boundaries."
+lastReviewedAt: 2026-11-10
+lastReviewedCommit: 26d26485ca0ae10832418e06c6c6f4f43256fbe1
+lastReviewedNote: "Release #140: reviewed explicit shared user-session acquisition, Publication prerequisites and same-actor renewal; tokens remain memory-only and business confirmation/server authorization stay mandatory."
 related:
   - ../README.md
   - AGENTS.md
@@ -40,3 +40,5 @@ related:
 Publication 的最终 Result v3 `result-storage inspect/preflight/execute` 消费冻结 Candidate，与 readiness 共用配置和数据库连接准备，负责精确计划确认、上传前只读预检、不可覆盖上传、完整 GET 和 Database v2 存储登记；`result-readiness inspect/verify` 接通显式配置、私有 reader 预检和 readiness 登记；用户发布选择、批准和激活通过独立意图确认入口执行，`result-publication readback` 已接通公开数值/7z 回读与不可变凭证，详见其 README 的 recipe 边界。
 
 首次使用、代码更新或切换机器时先运行 `pnpm run doctor`，再选择 `--for` 核验所需能力。共享配置规则由 [Environment](environment/README.md) 维护；本机准备不改变业务 Workflow 的顺序或授权。
+
+最终发布前使用 `pnpm run doctor --for publication --remote --bootstrap-session` 核验用户会话、manager 权限和可选 Candidate 存储绑定，无需手工填写 JWT；该动作不创建发布计划、不批准或激活。

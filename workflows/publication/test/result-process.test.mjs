@@ -52,7 +52,13 @@ const IDS = {
 function actorToken(subject) {
   return [
     Buffer.from(JSON.stringify({ alg: "none" })).toString("base64url"),
-    Buffer.from(JSON.stringify({ sub: subject })).toString("base64url"),
+    Buffer.from(
+      JSON.stringify({
+        sub: subject,
+        role: "authenticated",
+        exp: Math.floor(Date.now() / 1000) + 600,
+      }),
+    ).toString("base64url"),
     "signature",
   ].join(".");
 }

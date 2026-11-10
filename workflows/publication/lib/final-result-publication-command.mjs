@@ -1,3 +1,7 @@
+import {
+  resolveActorAccessToken,
+  userSessionOrigin,
+} from "../../environment/lib/user-session.mjs";
 import path from "node:path";
 import { mkdir, writeFile, open } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -106,12 +110,19 @@ export async function runFinalResultPublicationCommand(
     readback = verifyFinalResultPublicReadback,
     build = buildFinalResultPublicationPlan,
     prepare = prepareFinalResultPublication,
+    resolveSession = resolveActorAccessToken,
   } = {},
 ) {
   required(Object.hasOwn(allowed, action));
   for (const k of Object.keys(options))
     required(
-      [...allowed[action], "out-dir", "json", "help"].includes(k),
+      [
+        ...allowed[action],
+        "out-dir",
+        "json",
+        "help",
+        "bootstrap-session",
+      ].includes(k),
       "invalid_arguments",
     );
   const needed = {
@@ -137,10 +148,13 @@ export async function runFinalResultPublicationCommand(
       flush: true,
     });
   try {
+    const accessToken = options["bootstrap-session"]
+      ? await resolveSession({ env, allowBootstrap: true })
+      : value(env, "TIANGONG_LCA_ACCESS_TOKEN");
     const actorConfig = {
-      endpoint: value(env, "TIANGONG_LCA_API_BASE_URL"),
+      endpoint: userSessionOrigin(value(env, "TIANGONG_LCA_API_BASE_URL")),
       publishableKey: value(env, "TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY"),
-      accessToken: value(env, "TIANGONG_LCA_ACCESS_TOKEN"),
+      accessToken,
     };
     const actor = createActor(actorConfig);
     await assertAbsent(outDir);
@@ -495,7 +509,9 @@ export async function runFinalResultPublicationCommand(
       error.details?.semanticCode === "final_result_dataset_version_conflict";
     const reportedCode = versionConflict
       ? "final_result_dataset_version_conflict"
-      : error.code;
+      : error?.name === "ActorSessionError"
+        ? "final_publication_session_unavailable"
+        : error.code;
     const code =
       typeof reportedCode === "string" &&
       /^(?:final_[a-z0-9_]+|output_exists|invalid_arguments)$/u.test(
@@ -512,9 +528,11 @@ export async function runFinalResultPublicationCommand(
         publicationAuthorized: false,
       }).catch(() => {});
     const safe = new Error(
-      versionConflict
-        ? "A published Result already uses this dataset version for different content. Version the Result upstream and rebuild the paired Candidate."
-        : "Final Result publication command did not complete; preserve evidence and inspect the exact run before another attempt",
+      code === "final_publication_session_unavailable"
+        ? "User session unavailable; use --bootstrap-session with the existing user configuration; no manual JWT copying is required"
+        : versionConflict
+          ? "A published Result already uses this dataset version for different content. Version the Result upstream and rebuild the paired Candidate."
+          : "Final Result publication command did not complete; preserve evidence and inspect the exact run before another attempt",
     );
     safe.code = code;
     safe.details = {

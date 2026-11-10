@@ -13,9 +13,9 @@ whenToUpdate:
   - 当 Publication 的范围、状态、授权、写入、恢复或回读规则变化时
 checkPaths:
   - workflows/publication/**
-lastReviewedAt: 2026-11-08
-lastReviewedCommit: df7d513a37111f16a1ea11afd4bbc6aebf80d6a3
-lastReviewedNote: "Release #135: reviewed Environment workflow ownership, shared scoped configuration, diagnostic/local setup boundaries and unchanged business artifact/authorization semantics."
+lastReviewedAt: 2026-11-10
+lastReviewedCommit: 26d26485ca0ae10832418e06c6c6f4f43256fbe1
+lastReviewedNote: "Release #140: reviewed explicit shared user-session acquisition, Publication prerequisites and same-actor renewal; tokens remain memory-only and business confirmation/server authorization stay mandatory."
 related:
   - README.md
   - ../AGENTS.md
@@ -144,7 +144,7 @@ Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认
 - 本地已验证的索引/7z 与远端 GET 字节摘要相同后才按产物登记实际 Result 轴和完整包范围，行使用内容指纹与 Candidate 根关联。行按 500 条且 JSONB logical size 不超过 1 MiB 分批，映射摘要必须与 Database 的 ASCII 500-row block contract 一致。
 - 超时、响应丢失与并发同键写入必须先精确回读。query/Candidate seal 响应不明时用 service-only describe 恢复原回执；不能换 artifact、Candidate、Result 版本或覆盖原回执。中止分片无法确认或创建分片响应丢失时明确 `multipartCleanupRequired`，不得声称清理完成。
 - 目标 fingerprint 绑定数据库连接身份（不含密码）、规范化存储 endpoint/region/bucket/prefix。根 endpoint 的身份不变；Supabase 精确 `/storage/v1/s3` base path 必须同时保留在哈希与 SDK 请求中，不能退化为 origin。配置必须指向已经治理的非公开存储；adapter 不改变 bucket policy，也不能以文件核验代替非公开环境准入。原 actor recipes 与 Portal projection 的 secret/locator 禁止仍保持。
-- storage/readiness 通过 Environment 加载器读取进程值及固定仓库 `.env`/显式 `--config-env` 文件；各命令只读取自己的白名单，不扫描其他目录或 AWS credential provider；纯加载器不修改调用者，独立 CLI 只应用自身白名单。CA/TLS 文件统一解析并在提供 CA 时强制 verify-full，不改变数据库目标身份。storage 的只读 inspect/preflight 不读取 S3/actor/reader secrets；actor-only 命令只加载用户白名单，不接入数据面凭据或会话 bootstrap。
+- storage/readiness 通过 Environment 加载器读取进程值及固定仓库 `.env`/显式 `--config-env` 文件；各命令只读取自己的白名单，不扫描其他目录或 AWS credential provider；纯加载器不修改调用者，独立 CLI 只应用自身白名单。CA/TLS 文件统一解析并在提供 CA 时强制 verify-full，不改变数据库目标身份。storage 的只读 inspect/preflight 不读取 S3/actor/reader secrets；actor-only 命令只加载用户白名单，不接入数据面凭据；仅显式 `--bootstrap-session` 可使用共享用户登录机制。
 - storage `preflight` 只校验本地 Candidate 与数据库 describe 状态；`execute` 必须在第一笔对象上传/登记前执行同样检查。已知连接/TLS/认证失败与只读查询失败不归为写入不明；真正已派发写入后的不明结果继续精确回读恢复。错误只保留白名单 code、阶段和 SQLSTATE，不输出原始异常、连接串或凭据。
 - 证据输出必须位于冻结 Candidate 外部，含符号链接解析。每次 execute/preflight 使用新的输出目录：先写 attempt、成功后写相应 receipt/report；失败保留 attempt/failure。配置错误须先修配置，不能推荐原样重试上传；恢复仍用同一 Candidate/target/hash，不能删除记录伪造完成。
 - 该阶段只产生不可变存储登记证据，始终 `publicationAuthorized=false`。普通用户访问、完整 7z 授权及原子 current 切换由版本化 Database/Edge/Platform 接入另行完成。
@@ -194,8 +194,8 @@ Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认
 - `result-storage inspect/preflight/execute` 与 `result-readiness inspect/verify`
   统一使用 Environment 的固定仓库 `.env` 或 `--config-env`，按命令白名单读取，
   拒绝与非空进程值冲突；纯加载器无全局副作用，独立 CLI 只应用自身有效值。
-  只有 readiness 显式传入 `--bootstrap-session` 且缺少 JWT 时才调用现有用户 session
-  helper 换取短期会话，返回 token 不持久化、不自动刷新。actor-only 命令接受 `--config-env` 用户白名单，但不接受 bootstrap。
+  最终 Publication/readiness 显式传入 `--bootstrap-session` 且缺少 JWT 时才调用共享用户 session
+  helper 换取短期会话，返回 token 不持久化、不自动刷新。最终 actor-only 命令接受 `--config-env` 用户白名单和显式 bootstrap，不读取数据面凭据。
 - Runtime preparation 统一项目 origin/精确 `/functions/v1` base，显式 CA 文件只增强为
   verify-full，保持数据库 target identity；reader 密钥只能来自一个显式环境/file/SSH
   来源。SSH 仅执行固定、有界、非交互的只读 key 提取，不接受任意命令、不传其他凭据，
@@ -210,7 +210,7 @@ Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认
 ## 最终 Result 用户发布控制面
 
 - `result-publication plan/prepare/status` 只使用显式用户 JWT 与公开客户端 key，
-  不读取数据面凭据、不自动登录。probe adapter 仍只读；共享 HTTP 实现只允许固定
+  不读取数据面凭据；只有显式 `--bootstrap-session` 才获取内存会话，不自动登录。probe adapter 仍只读；共享 HTTP 实现只允许固定
   v2 routine，响应受期限/大小约束，写调用不明结果必须独立精确回读。
 - 本地计划是 F4 envelope：绑定 actor、API origin hash、冻结 Candidate 本地路径、
   exact members 与数据库计划原始文本。`localPlanHash` 确认本地 envelope，
@@ -255,3 +255,16 @@ Database 重新检查 current、选择、reader、实时角色/7z 权限和新�
 先恢复同一 run 记录，禁止换新内容覆盖凭证。`readback_verified` 是发布后的审计状态，
 不能作为首次公开可见性的额外门槛；失败不隐式撤回、回滚或再次激活。历史凭证不
 承诺当前持续可用，也不冒充浏览器交互或 hosted JWT 验收。
+
+## 统一用户会话
+
+最终 `result-publication` 全部动作与 `result-readiness` 共用 Environment 的用户会话获取，
+显式 `--bootstrap-session` 使用已有用户登录来源，无需手工填写 JWT；token 只留内存，
+不写配置/报告/缓存，不持久化 refresh token。登录 opt-in 不代替任何业务确认或权限。
+进入 plan/prepare 前用 `doctor --for publication --remote --bootstrap-session` 核验当前用户
+和 manager-only head；不为检查而创建 run、选择或 readiness seal。
+
+激活意图中的 `credentialFingerprint` 记录创建意图时的会话指纹，保持原值和 hash 不变，
+不作为权限凭据。同一 actor 的新登录可以执行同一确认意图，但仍必须核验 actor/API target、
+intent hash、当前 manager、readiness、approval 和 current-publication 上下文；其他用户或
+失效权限/审批继续拒绝。已消费意图的精确历史回读/幂等恢复边界不变。

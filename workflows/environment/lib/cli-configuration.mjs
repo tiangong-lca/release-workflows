@@ -56,7 +56,11 @@ export async function configureReleaseCli(
     defaultFile,
   });
   Object.assign(env, loaded.environment);
-  return { argv: tokens, configuration: loaded.configuration };
+  return {
+    argv: tokens,
+    configuration: loaded.configuration,
+    bootstrapSession: tokens.includes("--bootstrap-session"),
+  };
 }
 
 // Every generated Release continuation carries an explicitly selected file.
@@ -83,6 +87,18 @@ export function attachReleaseConfiguration(payload, context) {
       !value.command.includes("--config-env")
     )
       value.command += ` --config-env ${quote(filename)}`;
+    if (
+      context.bootstrapSession &&
+      Array.isArray(value.argv) &&
+      value.argv[0] === "node" &&
+      CLI_PATHS.includes(value.argv[1]) &&
+      ["result-publication", "result-readiness"].includes(value.argv[2]) &&
+      !value.argv.includes("--bootstrap-session")
+    ) {
+      value.argv.push("--bootstrap-session");
+      if (typeof value.command === "string")
+        value.command = value.argv.map(quote).join(" ");
+    }
     for (const [key, child] of Object.entries(value)) {
       if (key === "nextActions" && Array.isArray(child)) {
         for (let i = 0; i < child.length; i++)

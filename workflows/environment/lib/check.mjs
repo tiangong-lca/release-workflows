@@ -1,3 +1,8 @@
+import {
+  resolveActorAccessToken,
+  authenticateUserSession,
+  userTokenClaims,
+} from "./user-session.mjs";
 import path from "node:path";
 import os from "node:os";
 import { access, stat, statfs, readFile } from "node:fs/promises";
@@ -171,22 +176,42 @@ export async function checkEnvironment(
     fetchImpl = globalThis.fetch,
     createRegistry,
     createObjectStore,
+    resolveSession = resolveActorAccessToken,
+    authenticateSession = authenticateUserSession,
+    createPublicationActor,
   } = {},
 ) {
   const profile = options.for ?? "local";
   if (!Object.hasOwn(PROFILES, profile))
     throw Object.assign(
       new Error(
-        "--for must be local, materialization, candidate, calculation, download, storage or readiness",
+        "--for must be local, materialization, candidate, calculation, download, storage, publication or readiness",
       ),
       { code: "final_environment_profile_invalid" },
     );
-  if (options.candidate && !["storage", "readiness"].includes(profile))
+  if (
+    options.candidate &&
+    !["storage", "readiness", "publication"].includes(profile)
+  )
     throw Object.assign(
-      new Error("--candidate is supported only for storage/readiness checks"),
+      new Error(
+        "--candidate is supported only for storage/publication/readiness checks",
+      ),
+      { code: "final_environment_arguments_invalid" },
+    );
+  if (
+    options["bootstrap-session"] &&
+    (!options.remote ||
+      !["calculation", "publication", "readiness"].includes(profile))
+  )
+    throw Object.assign(
+      new Error("--bootstrap-session requires --remote and an actor profile"),
       { code: "final_environment_arguments_invalid" },
     );
   const checks = [];
+  let sessionAvailable = false,
+    authenticationVerified = false,
+    publicationAccessVerified = false;
   const registryModule = () =>
     import("../../publication/adapters/final-result-registry.mjs");
   const storageModule = () =>
@@ -213,7 +238,10 @@ export async function checkEnvironment(
           "blocked",
           "Check failed; follow the named setting or safe code and rerun Environment check",
           {
-            code: safeCode(error),
+            code:
+              error?.name === "ActorSessionError"
+                ? "final_environment_user_session_failed"
+                : safeCode(error),
             ...safePublicationDatabaseDetails(error),
             ...(NETWORK_CODES.includes(error.details?.networkCode)
               ? { networkCode: error.details.networkCode }
@@ -235,7 +263,17 @@ export async function checkEnvironment(
     loaded = await loadReleaseEnvironment(options, {
       env,
       defaultFile,
-      settings: PROFILES[profile],
+      settings: [
+        ...PROFILES[profile],
+        ...(profile === "publication" && options.candidate
+          ? DATA_PLANE_SETTINGS.filter(
+              (key) =>
+                !key.startsWith("S3_ACCESS") &&
+                !key.startsWith("S3_SECRET") &&
+                key !== "S3_SESSION_TOKEN",
+            )
+          : []),
+      ],
     });
     return row(
       "configuration",
@@ -304,6 +342,7 @@ export async function checkEnvironment(
       download: ["pg", "@aws-sdk/client-s3"],
       storage: ["pg", "@aws-sdk/client-s3"],
       readiness: ["pg", "@aws-sdk/client-s3"],
+      publication: ["canonicalize"],
     };
     const owner = {
       materialization: "result-materialization",
@@ -312,6 +351,7 @@ export async function checkEnvironment(
       download: "calculation",
       storage: "publication",
       readiness: "publication",
+      publication: "publication",
     }[profile];
     if (!owner)
       return row(
@@ -352,7 +392,7 @@ export async function checkEnvironment(
     ),
   );
   const required = [];
-  if (["calculation", "readiness"].includes(profile))
+  if (["calculation", "readiness", "publication"].includes(profile))
     required.push(
       "TIANGONG_LCA_API_BASE_URL",
       "TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY",
@@ -367,6 +407,8 @@ export async function checkEnvironment(
       "S3_SECRET_ACCESS_KEY",
     );
   if (profile === "readiness") required.push("RESULT_QUERY_ENDPOINT");
+  if (profile === "publication" && options.candidate)
+    required.push("CONN", "S3_ENDPOINT", "S3_REGION", "S3_BUCKET");
   for (const key of required)
     checks.push(
       row(
@@ -378,20 +420,55 @@ export async function checkEnvironment(
         { setting: key },
       ),
     );
-  if (["calculation", "readiness"].includes(profile)) {
-    const configured =
-      has(environment, "TIANGONG_LCA_ACCESS_TOKEN") ||
-      has(environment, "TIANGONG_LCA_API_KEY");
+  if (["calculation", "readiness", "publication"].includes(profile)) {
+    const explicit = has(environment, "TIANGONG_LCA_ACCESS_TOKEN"),
+      bootstrap = has(environment, "TIANGONG_LCA_API_KEY");
     checks.push(
       row(
-        "actor_session",
-        configured ? "passed" : "blocked",
-        configured
-          ? "Credential source configured; authentication has not been proved"
-          : "Configure an actor JWT or existing user bootstrap; check never logs in",
-        { authenticationVerified: false },
+        "credential_source",
+        explicit || bootstrap ? "passed" : "blocked",
+        explicit
+          ? "Existing user token configured"
+          : bootstrap
+            ? "User login source configured; no session acquired yet"
+            : "Configure the existing user login source TIANGONG_LCA_API_KEY; no manual JWT is required",
+        {
+          setting: explicit
+            ? "TIANGONG_LCA_ACCESS_TOKEN"
+            : "TIANGONG_LCA_API_KEY",
+          sessionAvailable: false,
+        },
       ),
     );
+    await perform("actor_session", async () => {
+      if (explicit) {
+        userTokenClaims(environment.TIANGONG_LCA_ACCESS_TOKEN);
+        sessionAvailable = true;
+      } else if (options["bootstrap-session"]) {
+        environment.TIANGONG_LCA_ACCESS_TOKEN = await resolveSession({
+          env: environment,
+          fetchImpl,
+          allowBootstrap: true,
+        });
+        userTokenClaims(environment.TIANGONG_LCA_ACCESS_TOKEN);
+        sessionAvailable = true;
+      }
+      return row(
+        "actor_session",
+        sessionAvailable
+          ? "passed"
+          : profile === "publication" || profile === "readiness"
+            ? "blocked"
+            : "not_checked",
+        sessionAvailable
+          ? "User session available in process memory only"
+          : "No current session; rerun check with --remote --bootstrap-session to use the existing user login source",
+        {
+          sessionAvailable,
+          sessionAcquisitionRequested: options["bootstrap-session"] === true,
+        },
+      );
+    });
     if (has(environment, "TIANGONG_LCA_API_BASE_URL"))
       await perform("api_origin", () => {
         serviceOrigin(environment.TIANGONG_LCA_API_BASE_URL);
@@ -440,7 +517,8 @@ export async function checkEnvironment(
       (await registryModule()).finalResultDatabaseTargetHash(environment.CONN);
     });
   if (
-    ["download", "storage", "readiness"].includes(profile) &&
+    (["download", "storage", "readiness"].includes(profile) ||
+      (profile === "publication" && options.candidate)) &&
     required
       .filter((k) => DATA_PLANE_SETTINGS.includes(k))
       .every((k) => has(environment, k))
@@ -579,36 +657,53 @@ export async function checkEnvironment(
   );
   await remoteCheck(
     "actor_authentication",
-    ["calculation", "readiness"].includes(profile),
+    ["calculation", "readiness", "publication"].includes(profile),
     async () => {
-      if (!has(environment, "TIANGONG_LCA_ACCESS_TOKEN"))
+      if (!sessionAvailable)
         return row(
           "actor_authentication",
           "not_checked",
-          "No current JWT; check does not create a session from the configured bootstrap",
+          "No current user session; run an explicit bootstrap check",
         );
-      const { createFinalResultActorTransport } =
-        await import("../../publication/adapters/final-result-actor-transport.mjs");
-      const actorTransport = createFinalResultActorTransport({
+      await authenticateSession({
+        env: environment,
+        accessToken: environment.TIANGONG_LCA_ACCESS_TOKEN,
+        fetchImpl,
+      });
+      authenticationVerified = true;
+      return row(
+        "actor_authentication",
+        "passed",
+        "Current actor authenticated by the server; no business mutation performed",
+        { authenticationVerified: true },
+      );
+    },
+  );
+  await remoteCheck(
+    "publication_access",
+    profile === "publication",
+    async () => {
+      if (!authenticationVerified)
+        return row(
+          "publication_access",
+          "not_checked",
+          "Authenticate the user before checking Publication manager access",
+        );
+      const { createFinalResultPublication } =
+        await import("../../publication/adapters/final-result-publication.mjs");
+      const actor = (createPublicationActor ?? createFinalResultPublication)({
         endpoint: serviceOrigin(environment.TIANGONG_LCA_API_BASE_URL),
         publishableKey: environment.TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY,
         accessToken: environment.TIANGONG_LCA_ACCESS_TOKEN,
         timeoutMs: 10000,
       });
-      const result = await boundedJsonGet(
-        `${serviceOrigin(environment.TIANGONG_LCA_API_BASE_URL)}/auth/v1/user`,
-        {
-          apikey: environment.TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY,
-          Authorization: `Bearer ${environment.TIANGONG_LCA_ACCESS_TOKEN}`,
-        },
-        fetchImpl,
-      );
-      if (result.id !== actorTransport.actorId)
-        throw new Error("Invalid user response");
+      await actor.head();
+      publicationAccessVerified = true;
       return row(
-        "actor_authentication",
+        "publication_access",
         "passed",
-        "Current actor authenticated; command-specific manager authorization is checked at execution",
+        "Publication head read and current manager admission succeeded; no release run or selection was created",
+        { managerAccessVerified: true },
       );
     },
   );
@@ -653,7 +748,16 @@ export async function checkEnvironment(
         connectionString: environment.CONN,
       });
       try {
-        await preflightFinalResultStorage({ plan, registry });
+        const preflight = await preflightFinalResultStorage({ plan, registry });
+        if (
+          profile === "publication" &&
+          (!preflight.candidateRegistered ||
+            preflight.artifacts.some((a) => !a.sealed))
+        )
+          throw Object.assign(
+            new Error("Candidate storage registration is incomplete"),
+            { code: "final_environment_candidate_storage_pending" },
+          );
         return row(
           "candidate_storage_binding",
           "passed",
@@ -700,6 +804,23 @@ export async function checkEnvironment(
       blocked,
       warnings: checks.filter((c) => c.status === "warning").length,
       notChecked: checks.filter((c) => c.status === "not_checked").length,
+    },
+    session: {
+      available: sessionAvailable,
+      authenticationVerified,
+      acquisitionRequested: options["bootstrap-session"] === true,
+    },
+    operationPrerequisites: {
+      profile,
+      ready:
+        blocked === 0 &&
+        (!["publication", "readiness", "calculation"].includes(profile) ||
+          authenticationVerified) &&
+        (profile !== "publication" || publicationAccessVerified),
+      scope: options.candidate
+        ? "selected-environment-and-candidate-storage"
+        : "selected-environment-only",
+      businessExecutionAuthorized: false,
     },
     uploadAttempted: false,
     registryWriteAttempted: false,

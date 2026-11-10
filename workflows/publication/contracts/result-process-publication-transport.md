@@ -1,4 +1,6 @@
 ---
+lastReviewedAt: 2026-11-10
+lastReviewedCommit: 26d26485ca0ae10832418e06c6c6f4f43256fbe1
 title: Result Process Publication Transport (Release-side consumption notes)
 docType: contract
 scope: workflow

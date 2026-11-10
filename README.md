@@ -19,9 +19,9 @@ checkPaths:
   - docs/architecture.md
   - workflows/**
   - .docpact/config.yaml
-lastReviewedAt: 2026-11-08
-lastReviewedCommit: 32aef3cfc64140e5ec54476fd54d705b419c6772
-lastReviewedNote: "Release #135: reviewed explicit pnpm run doctor invocation against the pinned package manager, shared configuration ownership and unchanged diagnostic/business boundaries."
+lastReviewedAt: 2026-11-10
+lastReviewedCommit: 26d26485ca0ae10832418e06c6c6f4f43256fbe1
+lastReviewedNote: "Release #140: reviewed explicit shared user-session acquisition, Publication prerequisites and same-actor renewal; tokens remain memory-only and business confirmation/server authorization stay mandatory."
 related:
   - AGENTS.md
   - docs/architecture.md
@@ -74,3 +74,5 @@ Agent 从 [AGENTS.md](AGENTS.md) 进入，按路径读取 scoped contract。根 
 精确工具链以 `.node-version` 和根 `package.json` 为准；安装及验证入口见根 AGENTS。运行产物放在 ignored `.release/`。机密配置仅按 `.env.example` 和所属 Workflow 契约使用，不加入源码或运行证据。
 
 最终 Result 的查询投影与原生 HDF5 编码由 [Release Candidate](workflows/release-candidate/README.md) 拥有。它与计算解耦；本地编码证据不替代 7z 分发包、Candidate 或 Publication 门禁。
+
+最终发布前使用 `pnpm run doctor --for publication --remote --bootstrap-session` 核验用户会话、manager 权限和可选 Candidate 存储绑定，无需手工填写 JWT；该动作不创建发布计划、不批准或激活。

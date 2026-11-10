@@ -80,6 +80,7 @@ Process, LifecycleModel and support datasets keep the existing state 100 platfor
 A plan is therefore mixed-state, not a single global state.
 
 Common configuration: --config-env <path> (default: repository .env if present).
+result-publication/readiness: --bootstrap-session obtains an in-memory user JWT from existing user configuration; never writes a token or grants business confirmation.
 
 Commands:
   result-publication plan     Freeze exact Result selection and current-publication precondition
@@ -240,7 +241,8 @@ result-readiness inspect / verify:
   Inspect checks registered Candidate/selection/runtime plus one overview per artifact without
   storage writes or readiness registration; it is not numerical readiness or publication approval.
   Verify requires S3 read credentials and records readiness evidence. Neither command approves/activates.
-  Without --config-env or --bootstrap-session there is no file discovery or implicit login.
+  Configuration follows Environment's fixed repository .env; no implicit login.
+  --bootstrap-session is also supported by all final result-publication commands.
   See workflows/publication/README.md for setup, secret sources, expiry and recovery.
   Full GET and reader checks only: no missing-file repair, approval or activation.
   File evidence is flushed before registration. Failed attempts remain; use a new directory.
@@ -315,11 +317,12 @@ async function main() {
   }
   if (
     options["bootstrap-session"] &&
-    !commandName.startsWith("result-readiness ")
+    !commandName.startsWith("result-readiness ") &&
+    !commandName.startsWith("result-publication ")
   )
     throw coded(
       "invalid_arguments",
-      "--bootstrap-session is supported only by readiness",
+      "--bootstrap-session is supported by result-publication and result-readiness",
     );
   const payload = await handlers[commandName](options);
   payload.replyTemplate = replyTemplateFor(commandName, { ok: true });

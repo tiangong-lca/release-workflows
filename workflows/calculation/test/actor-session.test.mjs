@@ -3,7 +3,16 @@ import test from "node:test";
 
 import { resolveActorAccessToken } from "../runtime/actor-session.mjs";
 
-const jwt = "header.payload.signature";
+const jwt =
+  "header." +
+  Buffer.from(
+    JSON.stringify({
+      role: "authenticated",
+      sub: "00000000-0000-4000-8000-000000000140",
+      exp: Math.floor(Date.now() / 1000) + 600,
+    }),
+  ).toString("base64url") +
+  ".signature";
 const apiKey = Buffer.from(
   JSON.stringify({ email: "actor@example.com", password: "private-password" }),
 ).toString("base64");
