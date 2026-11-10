@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 Calculation 的入口、用户决定、远程能力或产物变化时
 checkPaths:
   - workflows/calculation/**
-lastReviewedAt: 2026-11-08
-lastReviewedCommit: df7d513a37111f16a1ea11afd4bbc6aebf80d6a3
-lastReviewedNote: "Release #135: reviewed Environment workflow ownership, shared scoped configuration, diagnostic/local setup boundaries and unchanged business artifact/authorization semantics."
+lastReviewedAt: 2026-11-10
+lastReviewedCommit: 26d26485ca0ae10832418e06c6c6f4f43256fbe1
+lastReviewedNote: "Release #140: reviewed explicit shared user-session acquisition, Publication prerequisites and same-actor renewal; tokens remain memory-only and business confirmation/server authorization stay mandatory."
 related:
   - AGENTS.md
   - ../../README.md
@@ -266,3 +266,5 @@ node workflows/calculation/query-artifact.mjs --artifact-dir /absolute/path/quer
 ## 环境与配置
 
 配置准备及核验由 [Environment](../environment/README.md) 拥有。CLI 默认读取固定仓库 `.env`，可用 `--config-env` 选择其他文件；按当前动作白名单加载并拒绝来源冲突。离线操作不消费数据库/用户凭据，环境通过不代替本 Workflow 的输入资格、确认或执行前检查。
+
+用户会话获取统一复用 Environment 的实现；Calculation 保留原用户 bootstrap 行为，登录结果仅保留当前进程，拒绝错误角色/过期 token、重定向和无界响应，不新增 session cache。

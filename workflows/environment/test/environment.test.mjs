@@ -493,7 +493,16 @@ test("gateway-only health stays a warning, TLS errors keep safe codes and servic
     ...storage,
     TIANGONG_LCA_API_BASE_URL: "https://api.example.test",
     TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY: "public-test",
-    TIANGONG_LCA_API_KEY: secret,
+    TIANGONG_LCA_ACCESS_TOKEN:
+      "header." +
+      Buffer.from(
+        JSON.stringify({
+          role: "authenticated",
+          sub: "00000000-0000-4000-8000-000000000135",
+          exp: Math.floor(Date.now() / 1000) + 600,
+        }),
+      ).toString("base64url") +
+      ".signature",
     RESULT_QUERY_ENDPOINT: "https://reader.example.test",
     RESULT_QUERY_SERVICE_SECRET_SSH_HOST: "host",
     RESULT_QUERY_SERVICE_SECRET_SSH_ENV_FILE: "/etc/reader.env",
@@ -510,8 +519,14 @@ test("gateway-only health stays a warning, TLS errors keep safe codes and servic
       checkConnection: async () => ({}),
       close: async () => {},
     }),
-    fetchImpl: async () =>
-      new Response(JSON.stringify({ status: "ok", timestamp: "observation" })),
+    fetchImpl: async (url) =>
+      new Response(
+        JSON.stringify(
+          url.endsWith("/user")
+            ? { id: "00000000-0000-4000-8000-000000000135" }
+            : { status: "ok", timestamp: "observation" },
+        ),
+      ),
   };
   const result = await checkEnvironment(
     { for: "readiness", remote: true, "output-dir": root },
@@ -529,7 +544,7 @@ test("gateway-only health stays a warning, TLS errors keep safe codes and servic
   );
   assert.equal(
     result.checks.find((c) => c.id === "actor_authentication").status,
-    "not_checked",
+    "passed",
   );
   const tls = await checkEnvironment(
     { for: "readiness", remote: true, "output-dir": root },
@@ -573,7 +588,7 @@ test("gateway-only health stays a warning, TLS errors keep safe codes and servic
     },
   );
   assert.equal(rejected.ok, false);
-  assert.deepEqual(urls, ["https://reader.example.test/health"]);
+  assert.deepEqual(urls, []);
   assert.doesNotMatch(JSON.stringify(rejected), new RegExp(secret));
 });
 

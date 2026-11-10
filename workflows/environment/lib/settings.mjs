@@ -54,6 +54,7 @@ export const PROFILES = Object.freeze({
   ],
   download: DATA_PLANE_SETTINGS,
   storage: [...DATA_PLANE_SETTINGS, ...TOOL_SETTINGS],
+  publication: [...ACTOR_SETTINGS, "TIANGONG_LCA_API_KEY"],
   readiness: [
     "TIANGONG_LCA_API_KEY",
     ...DATA_PLANE_SETTINGS,
@@ -100,7 +101,10 @@ export function settingsForCommand(workflow, argv) {
           ? ["TIANGONG_LCA_API_KEY"]
           : []),
       ];
-    return ACTOR_SETTINGS;
+    return [
+      ...ACTOR_SETTINGS,
+      ...(argv.includes("--bootstrap-session") ? ["TIANGONG_LCA_API_KEY"] : []),
+    ];
   }
   return [];
 }

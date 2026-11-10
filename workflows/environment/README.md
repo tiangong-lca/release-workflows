@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/environment/**
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: 64ec16f2ab2c8cc57edbcf92eac80d8bee1c192a
-lastReviewedNote: "Release #138: documented official tidas release binary acquisition and SHA-256 verification, doctor-first guidance, and in-repo build artifact boundary."
+lastReviewedCommit: 26d26485ca0ae10832418e06c6c6f4f43256fbe1
+lastReviewedNote: "Release #140: reviewed explicit shared user-session acquisition, Publication prerequisites and same-actor renewal; tokens remain memory-only and business confirmation/server authorization stay mandatory."
 related:
   - AGENTS.md
   - ../../.env.example
@@ -40,17 +40,18 @@ pnpm --silent run doctor --for storage --remote --json
 脚本标题混入 JSON。可从任意目录使用 workflow-local CLI 的绝对路径；CLI 返回的
 `nextActions[].argv/command` 均为可复制的绝对入口。
 
-| `--for`           | 本地核验                                                     | `--remote` 额外核验                                        |
-| ----------------- | ------------------------------------------------------------ | ---------------------------------------------------------- |
-| `local`           | Node/pnpm、输出目录可写性、磁盘及内存观察                    | 无                                                         |
-| `materialization` | 本地条件及 SDK 依赖安装版本                                  | 无                                                         |
-| `candidate`       | Toolkit Result-only/validation 能力、合格 7-Zip、HDF5 编码器 | 无                                                         |
-| `calculation`     | 用户/API 配置和凭据来源                                      | 已有 JWT 的当前用户 GET；仅有 bootstrap 时标未验证、不登录 |
-| `download`        | 数据库、CA/TLS、存储目标和凭据                               | 数据库只读连接、存储桶 HEAD                                |
-| `storage`         | 上传/登记所需的目标配置                                      | 同上；可附加精确 Candidate describe 预检                   |
-| `readiness`       | 存储、用户凭据来源和私有查询服务配置                         | 同上，以及已有用户 GET、reader GET /health                 |
+| `--for`           | 本地核验                                                     | `--remote` 额外核验                                                                        |
+| ----------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `local`           | Node/pnpm、输出目录可写性、磁盘及内存观察                    | 无                                                                                         |
+| `materialization` | 本地条件及 SDK 依赖安装版本                                  | 无                                                                                         |
+| `candidate`       | Toolkit Result-only/validation 能力、合格 7-Zip、HDF5 编码器 | 无                                                                                         |
+| `calculation`     | 用户/API 配置和凭据来源                                      | 已有 JWT 的当前用户 GET；仅有 bootstrap 时标未验证、不登录                                 |
+| `download`        | 数据库、CA/TLS、存储目标和凭据                               | 数据库只读连接、存储桶 HEAD                                                                |
+| `storage`         | 上传/登记所需的目标配置                                      | 同上；可附加精确 Candidate describe 预检                                                   |
+| `publication`     | 用户会话及发布控制面配置；缺少会话明确阻塞                   | 当前用户验证、manager-only Publication head，只观察、不创建 run；可附加 Candidate 存储绑定 |
+| `readiness`       | 存储、用户凭据来源和私有查询服务配置                         | 同上，以及已有用户 GET、reader GET /health                                                 |
 
-`check`、`guide` 默认不联网，不上传或登记。它们不启动业务计算、修改输入、批准或激活。
+`check`、`guide` 默认不联网，不上传或登记。`check --remote --bootstrap-session` 是显式登录例外：仅用既有用户配置获取进程内短期 JWT，再执行只读探测，不创建发布 run 或业务对象。它们不启动业务计算、修改输入、批准或激活。
 Toolkit 的 version/describe/help 与本机工具握手属于本地核验，不生成业务产物。
 
 ```bash
@@ -129,3 +130,31 @@ HDF5 数值或选中发布范围。用户认证也不替代具体命令的 manag
 
 这些未核验能力会明确列出。完整文件回读、reader 数值验证和发布批准仍使用 Publication
 自身入口，Environment 不调用这些写入或业务验证动作。
+
+## Publication 用户会话
+
+无需手工复制 JWT。现有 `TIANGONG_LCA_API_KEY` 是用户登录来源，`check` 默认只观察；
+进入发布前显式执行：
+
+```bash
+pnpm --silent run doctor --for publication --remote --bootstrap-session --json
+```
+
+可附加 `--config-env` 和 `--candidate`；后者只验证精确本地 Candidate 和已有存储登记，
+不会创建选择/计划/run。`credential_source` 只表示来源已配置；`actor_session` 表示当前
+进程有可用会话；`actor_authentication` 和 `publication_access` 分别由服务器验证当前用户
+及 manager 权限。仅有 API key、没有现成 JWT 且未显式登录时，Publication/readiness
+检查必须阻塞。离线有 JWT 也不表示服务器认证已通过，`operationPrerequisites.ready`
+明确区分这些情况，不把 `ok` 当作业务执行许可。
+
+Calculation、readiness、最终 Publication 命令共用 Environment 的用户会话实现。
+最终 `result-publication` 和 `result-readiness` 命令均支持 `--bootstrap-session`，每次按需
+换取会话，token 只留内存、不写 `.env`、日志、报告或 session cache，不保存 refresh token。
+已有显式有效 token 优先；过期/无效显式 token 会报错，需清除该旧进程值后重新显式登录，
+不会在错误身份间静默回退。配置引导不要求用户手动提取 JWT。
+
+登录只调用固定 Auth password endpoint；拒绝非 HTTPS/非 loopback、重定向、服务密钥
+和无界/超时响应。服务器认证与 manager 检查仍是权限权威；解码 claims 仅用于排除错误
+或过期凭据。登录成功不等于批准/激活，业务动作仍要求原来的精确确认。
+
+共享登录使用现有 [Supabase Auth password token 与 current-user API](https://github.com/supabase/auth#endpoints)，不新增 SDK 或服务器版本依赖；服务端仍验证真实用户及其业务权限。

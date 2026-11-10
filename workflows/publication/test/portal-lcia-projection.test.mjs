@@ -25,7 +25,13 @@ const BINDING_ID = "55555555-5555-4555-8555-555555555555";
 const IMPACT_ID = "66666666-6666-4666-8666-666666666666";
 const TOKEN = [
   Buffer.from(JSON.stringify({ alg: "none" })).toString("base64url"),
-  Buffer.from(JSON.stringify({ sub: ACTOR })).toString("base64url"),
+  Buffer.from(
+    JSON.stringify({
+      sub: ACTOR,
+      role: "authenticated",
+      exp: Math.floor(Date.now() / 1000) + 600,
+    }),
+  ).toString("base64url"),
   "signature",
 ].join(".");
 const ENV = {
@@ -489,7 +495,7 @@ test("Portal LCIA commands reject a service-role actor token before RPC access",
       env: { ...ENV, TIANGONG_LCA_ACCESS_TOKEN: serviceToken },
       fetchImpl: remote.fetch,
     }),
-    ({ code }) => code === "publication_service_role_forbidden",
+    ({ code }) => code === "auth_required",
   );
   assert.equal(remote.counts.packagePrepare, 0);
 });

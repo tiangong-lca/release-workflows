@@ -7,11 +7,22 @@ import test from "node:test";
 
 import { runCli } from "../cli.mjs";
 
+const jwt =
+  "header." +
+  Buffer.from(
+    JSON.stringify({
+      role: "authenticated",
+      sub: "123e4567-e89b-42d3-a456-426614174000",
+      exp: Math.floor(Date.now() / 1000) + 600,
+    }),
+  ).toString("base64url") +
+  ".signature";
+
 const env = {
   TIANGONG_LCA_DATA_PRODUCT_COMMAND_URL:
     "https://example.supabase.co/functions/v1/app_data_product_commands",
   TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_example",
-  TIANGONG_LCA_ACCESS_TOKEN: "header.payload.signature",
+  TIANGONG_LCA_ACCESS_TOKEN: jwt,
 };
 
 const externalResultSet = {

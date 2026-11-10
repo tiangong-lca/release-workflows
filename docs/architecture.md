@@ -17,9 +17,9 @@ checkPaths:
   - README.md
   - .docpact/config.yaml
   - workflows/**
-lastReviewedAt: 2026-11-08
-lastReviewedCommit: 32aef3cfc64140e5ec54476fd54d705b419c6772
-lastReviewedNote: "Release #135: reviewed explicit pnpm run doctor invocation against the pinned package manager, shared configuration ownership and unchanged diagnostic/business boundaries."
+lastReviewedAt: 2026-11-10
+lastReviewedCommit: 26d26485ca0ae10832418e06c6c6f4f43256fbe1
+lastReviewedNote: "Release #140: reviewed explicit shared user-session acquisition, Publication prerequisites and same-actor renewal; tokens remain memory-only and business confirmation/server authorization stay mandatory."
 related:
   - ../AGENTS.md
   - ../README.md

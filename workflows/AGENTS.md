@@ -12,9 +12,9 @@ whenToUpdate:
   - 当所有 Workflow 共享的证据、权限、恢复或文档规则变化时
 checkPaths:
   - workflows/**
-lastReviewedAt: 2026-11-08
-lastReviewedCommit: 32aef3cfc64140e5ec54476fd54d705b419c6772
-lastReviewedNote: "Release #135: reviewed explicit pnpm run doctor invocation against the pinned package manager, shared configuration ownership and unchanged diagnostic/business boundaries."
+lastReviewedAt: 2026-11-10
+lastReviewedCommit: 26d26485ca0ae10832418e06c6c6f4f43256fbe1
+lastReviewedNote: "Release #140: reviewed explicit shared user-session acquisition, Publication prerequisites and same-actor renewal; tokens remain memory-only and business confirmation/server authorization stay mandatory."
 related:
   - ../AGENTS.md
   - ../README.md
@@ -59,8 +59,8 @@ Candidate 成功冻结后不可原地修改。Publication 可规划引用完整�
 Environment 拥有配置加载、能力检查和配置引导。独立 CLI 默认读取固定仓库 `.env`，
 `--config-env` 可覆盖；纯加载器不修改输入，CLI 仅应用当前动作白名单到自身进程。
 非空进程值与文件冲突拒绝，配置路径随后继命令传递；不扫描其他目录或自动发现凭据。
-离线处理不消费数据库/用户配置；actor-only 不消费数据面配置。只读核验不运行登录、
-业务计算或发布动作，执行时的动态权限和输入检查继续由所属 Workflow 实施。
+离线处理不消费数据库/用户配置；actor-only 不消费数据面配置。默认只读核验不登录；显式 actor 核验可用 `--remote --bootstrap-session` 获取进程内用户会话，
+不会运行业务计算或发布动作，执行时的动态权限和输入检查继续由所属 Workflow 实施。
 
 ## 最终结果查询编码
 
@@ -78,5 +78,5 @@ Publication 的独立数据面 adapter；它只消费冻结 Candidate，不移�
 Publication 的 storage/readiness 复用 Environment 共享配置加载和数据库连接准备。storage 的
 `preflight` 只读检查数据库，`execute` 在上传/登记前自动执行同样预检；readiness
 继续由 `inspect` 只读观察、`verify` 登记完整文件与 reader 数值证据。
-默认配置和显式覆盖遵循 Environment；会话 bootstrap 仍仅由 readiness 显式启用，不扩展 actor
+默认配置和显式覆盖遵循 Environment；会话 bootstrap 由最终 Publication/readiness 显式启用，不扩展 actor
 批准/激活的凭据契约。通用运行代码纳入 Publication，`.release/` 只保留本机文件和证据。

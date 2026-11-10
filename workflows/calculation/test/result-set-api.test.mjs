@@ -6,10 +6,21 @@ import {
   ResultSetApiError,
 } from "../adapters/result-set-api.mjs";
 
+const jwt =
+  "header." +
+  Buffer.from(
+    JSON.stringify({
+      role: "authenticated",
+      sub: "123e4567-e89b-42d3-a456-426614174000",
+      exp: Math.floor(Date.now() / 1000) + 600,
+    }),
+  ).toString("base64url") +
+  ".signature";
+
 const env = {
   TIANGONG_LCA_API_BASE_URL: "https://example.supabase.co",
   TIANGONG_LCA_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_example",
-  TIANGONG_LCA_ACCESS_TOKEN: "header.payload.signature",
+  TIANGONG_LCA_ACCESS_TOKEN: jwt,
 };
 
 const externalResultSet = {
@@ -48,19 +59,13 @@ test("calls the actor-scoped ResultSet endpoint without exposing credentials in 
     captured.url,
     "https://example.supabase.co/functions/v1/app_data_product_commands",
   );
-  assert.equal(
-    captured.options.headers.Authorization,
-    "Bearer header.payload.signature",
-  );
+  assert.equal(captured.options.headers.Authorization, `Bearer ${jwt}`);
   assert.equal(captured.options.headers.apikey, "sb_publishable_example");
   assert.deepEqual(JSON.parse(captured.options.body), {
     action: "list_result_sets",
     limit: 20,
   });
-  assert.equal(
-    JSON.stringify(await api.list(20)).includes("header.payload.signature"),
-    false,
-  );
+  assert.equal(JSON.stringify(await api.list(20)).includes(jwt), false);
 });
 
 test("classifies an uncertain create transport failure without retrying", async () => {

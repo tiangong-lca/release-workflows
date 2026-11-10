@@ -23,10 +23,11 @@ Commands:
   sync   Copy missing data-plane settings from an explicit file; requires --source and --confirm-sync
 
 Options:
-  --for <local|materialization|candidate|calculation|download|storage|readiness> (default: local)
+  --for <local|materialization|candidate|calculation|download|storage|publication|readiness> (default: local)
   --config-env <path>  One configuration file; defaults to repository .env if present
-  --remote            Check read-only connections; does not create a user session
-  --candidate <path>  With --remote and --for storage/readiness: exact Candidate/registry preflight
+  --remote            Check read-only connections; no login unless --bootstrap-session
+  --bootstrap-session Explicitly acquire an in-memory user session; requires --remote and actor profile
+  --candidate <path>  With --remote and --for storage/publication/readiness: exact Candidate/registry preflight
   --output-dir <path> Check writable ancestor and available space without creating it
   --min-free-gib <n>   Explicit minimum free disk requirement; default reports available resources
   --report <new-file> Write a private diagnostic JSON report, never overwrite
@@ -43,7 +44,13 @@ Examples (from any directory):
 No check uploads objects, registers data, starts calculations or approves/activates publication.
 Remote success proves only the named reads; S3 writes/size limits, numeric parity and business authorization remain unverified.
 `;
-const FLAGS = new Set(["json", "remote", "confirm-init", "confirm-sync"]);
+const FLAGS = new Set([
+  "json",
+  "remote",
+  "bootstrap-session",
+  "confirm-init",
+  "confirm-sync",
+]);
 const VALUES = new Set([
   "for",
   "config-env",
@@ -78,8 +85,13 @@ function guidance(report) {
     .map((c) => ({
       check: c.id,
       ...(c.setting ? { setting: c.setting } : {}),
-      action:
-        c.id === "hdf5"
+      action: [
+        "actor_session",
+        "credential_source",
+        "actor_authentication",
+      ].includes(c.id)
+        ? "Use the existing user configuration and rerun check --remote --bootstrap-session; correct or remove an expired explicit token instead of copying a JWT manually"
+        : c.id === "hdf5"
           ? "Run pnpm run native:build, or set RELEASE_HDF5_BIN to an existing qualified executable"
           : c.id === "tidas"
             ? "Download an official tidas release binary for this platform, verify it against that release's SHA256SUMS, set TIDAS_BIN, then rerun check"
@@ -122,6 +134,7 @@ export async function runEnvironmentCli(
         "for",
         "config-env",
         "remote",
+        "bootstrap-session",
         "candidate",
         "output-dir",
         "min-free-gib",
@@ -204,6 +217,7 @@ export async function runEnvironmentCli(
             ? ["--config-env", result.configuration.file]
             : []),
           ...(options.remote ? ["--remote"] : []),
+          ...(options["bootstrap-session"] ? ["--bootstrap-session"] : []),
           ...(options.candidate
             ? ["--candidate", path.resolve(options.candidate)]
             : []),
@@ -216,9 +230,13 @@ export async function runEnvironmentCli(
           ? ["--config-env", result.configuration.file]
           : [];
         if (
-          ["calculation", "download", "storage", "readiness"].includes(
-            result.profile,
-          ) &&
+          [
+            "calculation",
+            "download",
+            "storage",
+            "readiness",
+            "publication",
+          ].includes(result.profile) &&
           !options.remote
         )
           result.nextActions = [
@@ -239,6 +257,7 @@ export async function runEnvironmentCli(
             download: "calculation",
             storage: "publication",
             readiness: "publication",
+            publication: "publication",
           }[result.profile];
           if (workflow) {
             const argv = [
@@ -258,6 +277,26 @@ export async function runEnvironmentCli(
             result.profile,
             ...(result.configuration?.file
               ? ["--config-env", result.configuration.file]
+              : []),
+            "--json",
+          ]),
+        ];
+      if (
+        ["publication", "readiness"].includes(result.profile) &&
+        !result.session.available
+      )
+        result.nextActions = [
+          next([
+            "check",
+            "--for",
+            result.profile,
+            ...(result.configuration?.file
+              ? ["--config-env", result.configuration.file]
+              : []),
+            "--remote",
+            "--bootstrap-session",
+            ...(options.candidate
+              ? ["--candidate", path.resolve(options.candidate)]
               : []),
             "--json",
           ]),

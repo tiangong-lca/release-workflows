@@ -12,9 +12,9 @@ whenToUpdate:
   - 当配置来源、能力检查、引导或本地写入边界变化时
 checkPaths:
   - workflows/environment/**
-lastReviewedAt: 2026-11-08
-lastReviewedCommit: 32aef3cfc64140e5ec54476fd54d705b419c6772
-lastReviewedNote: "Release #135: reviewed explicit pnpm run doctor invocation against the pinned package manager, shared configuration ownership and unchanged diagnostic/business boundaries."
+lastReviewedAt: 2026-11-10
+lastReviewedCommit: 26d26485ca0ae10832418e06c6c6f4f43256fbe1
+lastReviewedNote: "Release #140: reviewed explicit shared user-session acquisition, Publication prerequisites and same-actor renewal; tokens remain memory-only and business confirmation/server authorization stay mandatory."
 related:
   - README.md
   - ../AGENTS.md
@@ -28,7 +28,8 @@ Workflow 前使用；不创建统一业务 stage，不接管业务执行、输�
 ## 操作边界
 
 - 从本目录 README 和 CLI help 选择 `check`、`guide`、`init` 或 `sync`。
-- `check` / `guide` 不写配置、不安装工具、不交换用户会话、不执行 SSH 密钥提取。
+- `check` / `guide` 不写配置、不安装工具、不执行 SSH 密钥提取；默认不交换用户会话。
+  仅 `check --remote --bootstrap-session` 在 actor profile 下显式获取内存会话，然后执行只读诊断。
   `--report` 只可新建私有诊断文件，不覆盖历史。
 - `init --confirm-init` 只新建空值模板；已有文件拒绝覆盖。
 - `sync --source <file> --confirm-sync` 只复制缺失的数据面白名单配置，不复制 actor
@@ -41,7 +42,7 @@ Workflow 前使用；不创建统一业务 stage，不接管业务执行、输�
 - 加载函数返回独立 environment，不修改调用者。独立 CLI 只把当前动作白名单的有效值
   安装到自身进程供已有 adapter/工具使用，不改变父 shell；后续 Release 命令携带配置路径。
 - 离线动作不加载数据库/actor/reader 配置；actor-only 动作只加载用户配置。
-  Readiness session bootstrap 仍须其独立开关；核验本身不得登录。
+  最终 Publication/readiness session bootstrap 均须显式开关；默认核验不得登录。
 
 ## 验证边界
 
@@ -61,3 +62,16 @@ Workflow 前使用；不创建统一业务 stage，不接管业务执行、输�
 
 所选环境条件已逐项诊断，未验证能力明确，阻塞项具有可执行修复入口，用户可按原业务
 Workflow 继续。环境检查成功不授权执行计算、上传、登记或发布。
+
+## 用户会话与发布前置
+
+用户会话实现统一归 `lib/user-session.mjs`。Calculation 保留既有登录行为，最终
+Publication/readiness 使用显式 `--bootstrap-session`；不复制用户 session helper，不把
+API key 当成业务 Bearer。不持久化 JWT/refresh token、不引入会话缓存；已有 token
+优先，无效/过期时明确失败，不静默换身份。
+
+Publication profile 必须区分登录来源、会话可用、服务器认证和 manager 只读准入。
+没有当前会话也未显式换取时标阻塞，不能因 API key 已配置而通过。默认核验不登录；
+显式登录只创建 Auth 会话，不创建业务发布计划/run、选择、readiness seal 或批准/激活。
+可选 Candidate 仅做本地资格和已有登记回读；缺少存储登记阻塞 Publication 前置。
+原始凭据/令牌不进入输出、磁盘、错误或命令行，后继命令保留登录 opt-in，不携带 token。

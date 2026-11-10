@@ -13,7 +13,13 @@ const ACTOR = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const VERSION = "01.00.000";
 const TOKEN = [
   Buffer.from(JSON.stringify({ alg: "none" })).toString("base64url"),
-  Buffer.from(JSON.stringify({ sub: ACTOR })).toString("base64url"),
+  Buffer.from(
+    JSON.stringify({
+      sub: ACTOR,
+      role: "authenticated",
+      exp: Math.floor(Date.now() / 1000) + 600,
+    }),
+  ).toString("base64url"),
   "signature",
 ].join(".");
 const ENV = {
