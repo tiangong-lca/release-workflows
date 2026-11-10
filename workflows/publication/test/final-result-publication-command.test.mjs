@@ -68,6 +68,7 @@ async function fixture(t) {
       },
     });
   const actor = {
+    draft: async () => null,
     actorId: id,
     apiTargetHash: hash,
     async run() {
@@ -240,6 +241,80 @@ test("explicit user bootstrap supplies Publication actor and keeps the session o
   await assert.rejects(stat(path.join(f.root, "bad-login")), {
     code: "ENOENT",
   });
+});
+
+test("version conflict persists bounded metadata and returns explicit read-only replacement planning guidance", async (t) => {
+  const f = await fixture(t);
+  const state = {
+    releaseVersion: "2026.11.0",
+    occupant: {
+      releaseRunId: id,
+      publishPlanHash: hash,
+      format: "final-result-pair.v2",
+      status: "prepared",
+      candidateHash: hash,
+      targetHash: hash,
+      replacesReleaseRunId: null,
+      replaceable: true,
+    },
+  };
+  const out = path.join(f.root, "occupied-plan");
+  await assert.rejects(
+    run(
+      "plan",
+      {
+        candidate: f.candidate,
+        "target-hash": hash,
+        reason: "review synthetic replacement",
+        "out-dir": out,
+      },
+      {
+        ...f.deps,
+        build: async () => {
+          throw Object.assign(new Error("private-provider-body"), {
+            code: "final_result_release_version_conflict",
+            details: { versionState: state },
+          });
+        },
+      },
+    ),
+    (e) => {
+      assert.equal(e.code, "final_result_release_version_conflict");
+      assert.deepEqual(e.details.versionState, state);
+      assert.ok(e.nextActions[0].argv.includes("--replace-draft"));
+      assert.ok(!e.nextActions[0].argv.includes("prepare"));
+      assert.ok(!JSON.stringify(e).includes("private-provider-body"));
+      return true;
+    },
+  );
+  const failure = JSON.parse(await readFile(path.join(out, "failure.json")));
+  assert.equal(failure.code, "final_result_release_version_conflict");
+  assert.deepEqual(failure.versionState, state);
+  assert.deepEqual(f.calls, []);
+});
+
+test("definite SQL rejection is not reported as unknown and retains only safe SQL state", async (t) => {
+  const f = await fixture(t);
+  await assert.rejects(
+    run("prepare", f.options, {
+      ...f.deps,
+      prepare: async () => {
+        throw Object.assign(new Error("private-constraint-detail"), {
+          code: "final_actor_database_rejected",
+          details: { sqlState: "23505", message: "private-constraint-detail" },
+        });
+      },
+    }),
+    (e) =>
+      e.code === "final_actor_database_rejected" &&
+      e.details.sqlState === "23505" &&
+      !JSON.stringify(e).includes("private-constraint-detail"),
+  );
+  assert.equal(
+    JSON.parse(await readFile(path.join(f.options["out-dir"], "failure.json")))
+      .sqlState,
+    "23505",
+  );
 });
 test("wrong confirmation, actor drift and unknown options cannot reach remote writes", async (t) => {
   for (const mode of ["confirmation", "actor", "unknown"]) {

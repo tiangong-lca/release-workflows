@@ -26,8 +26,8 @@ checkPaths:
   - .node-version
   - .github/workflows/ci.yml
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: 26d26485ca0ae10832418e06c6c6f4f43256fbe1
-lastReviewedNote: "Release #140: reviewed explicit shared user-session acquisition, Publication prerequisites and same-actor renewal; tokens remain memory-only and business confirmation/server authorization stay mandatory."
+lastReviewedCommit: 7aa55cea89cef8a9f4692b57af79a32c69dc9b55
+lastReviewedNote: "Release #142: reviewed controlled unpublished draft replacement, version conflicts and generated contract proof; ownership, runtime and deployment boundaries remain unchanged."
 related:
   - README.md
   - .docpact/config.yaml

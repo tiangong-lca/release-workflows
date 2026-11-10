@@ -40,6 +40,7 @@ const VALUE_OPTIONS = new Set([
   "approval-id",
   "selection",
   "release-version",
+  "replace-draft",
   "rollback-of",
   "final-input",
   "run-id",
@@ -203,6 +204,10 @@ result-publication plan:
   --reason <text> --out-dir <new-directory>
   Optional --selection <JSON-array-of-uuid/version>, --release-version <YYYY.MM.N>,
   --rollback-of <terminal-publication-uuid>, --run-id <uuid>. Defaults to all Candidate Results.
+  Version occupancy is checked read-only. --replace-draft <exact-run-uuid> explicitly selects an
+  unpublished unapproved predecessor; its observed plan hash is frozen in local confirmation.
+  Prepare atomically retires that draft and creates the replacement, retaining all history.
+  Approved/published versions cannot be replaced; login never grants replacement confirmation.
 result-publication prepare:
   --plan-dir <frozen-plan-directory> --confirm <local-plan-content-sha256> --out-dir <new-directory>
 result-publication readback:

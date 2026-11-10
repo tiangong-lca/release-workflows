@@ -209,6 +209,14 @@ test(
           ],
           qry_final_result_publication_head_v2: [],
           qry_final_result_release_v2: ["p_release_run_id"],
+          qry_final_result_release_version_v2: ["p_release_version"],
+          qry_final_result_release_draft_v2: ["p_release_run_id"],
+          cmd_final_result_release_replace_v2: [
+            "p_plan_text",
+            "p_idempotency_key",
+            "p_replace_run_id",
+            "p_replace_plan_hash",
+          ],
           qry_final_result_release_approval_v2: [
             "p_release_run_id",
             "p_approval_id",

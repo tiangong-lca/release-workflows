@@ -18,8 +18,8 @@ checkPaths:
   - .docpact/config.yaml
   - workflows/**
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: 26d26485ca0ae10832418e06c6c6f4f43256fbe1
-lastReviewedNote: "Release #140: reviewed explicit shared user-session acquisition, Publication prerequisites and same-actor renewal; tokens remain memory-only and business confirmation/server authorization stay mandatory."
+lastReviewedCommit: 7aa55cea89cef8a9f4692b57af79a32c69dc9b55
+lastReviewedNote: "Release #142: reviewed controlled unpublished draft replacement, version conflicts and generated contract proof; ownership, runtime and deployment boundaries remain unchanged."
 related:
   - ../AGENTS.md
   - ../README.md
@@ -44,7 +44,7 @@ Environment 是并列的本机准备 Workflow，拥有共享配置、能力诊�
 
 Calculation 内部包含完整性验证；Result/Model 是 Materialization recipe；packaging/qualification 属于 Candidate。它们不是新增顶层 Workflow。Publication 内的 Portal LCIA recipe 从 ready V3 package / prepared projection 开始，与 Candidate dataset recipe 独立。
 
-Transformation handoff 表达目标：Unit 返回计算，Result 返回物化，最终形成新 Candidate。Materialization 通过 `materialize derived` 验证加工后字节；Candidate 的 `result` 命令族接通 Result-only Intake、结构化父血缘、离线冻结和 v3 两包/HDF5 配对。本地文件构建只消费冻结输入。Publication 的 `result-storage inspect/preflight/execute` 接通 v3 的存储 adapter：共享 Publication 配置和数据库连接准备、本地精确计划、上传前只读预检、条件创建非公开对象、完整 GET、精确行/包登记及丢失回执恢复；`result-readiness inspect/verify` 拥有显式本机配置与只读连接预检，并以独立用户准入、完整 GET、实测 reader 和不可变磁盘证据连接 Database seal，仍不取得 actor 发布权限；`result-publication plan/prepare/status` 提供版本化选择与状态观察，批准/激活 CLI 分别确认精确意图并独立回读数据库状态，公开查询的发布后验证待接通。不得把 producer 输出、接口字段或设计箭头当作消费者实现证据。补齐路线需要各 owner 的明确契约与真实跨节点验证。
+Transformation handoff 表达目标：Unit 返回计算，Result 返回物化，最终形成新 Candidate。Materialization 通过 `materialize derived` 验证加工后字节；Candidate 的 `result` 命令族接通 Result-only Intake、结构化父血缘、离线冻结和 v3 两包/HDF5 配对。本地文件构建只消费冻结输入。Publication 的 `result-storage inspect/preflight/execute` 接通 v3 的存储 adapter：共享 Publication 配置和数据库连接准备、本地精确计划、上传前只读预检、条件创建非公开对象、完整 GET、精确行/包登记及丢失回执恢复；`result-readiness inspect/verify` 拥有显式本机配置与只读连接预检，并以独立用户准入、完整 GET、实测 reader 和不可变磁盘证据连接 Database seal，仍不取得 actor 发布权限；`result-publication plan/prepare/status` 提供版本占用预检、显式未批准草稿替换、版本化选择与状态观察，批准/激活 CLI 分别确认精确意图并独立回读数据库状态，`result-publication readback` 已接通公开数值与分发包的独立发布后验证。不得把 producer 输出、接口字段或设计箭头当作消费者实现证据。补齐路线需要各 owner 的明确契约与真实跨节点验证。
 
 ## 权威来源
 

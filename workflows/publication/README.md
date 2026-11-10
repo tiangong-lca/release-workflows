@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: 26d26485ca0ae10832418e06c6c6f4f43256fbe1
-lastReviewedNote: "Release #140: reviewed explicit shared user-session acquisition, Publication prerequisites and same-actor renewal; tokens remain memory-only and business confirmation/server authorization stay mandatory."
+lastReviewedCommit: 7aa55cea89cef8a9f4692b57af79a32c69dc9b55
+lastReviewedNote: "Release #142: reviewed read-only version conflicts, explicit confirmed draft replacement, immutable predecessor history and definite SQL failure diagnostics; user sessions and approval/activation authority remain unchanged."
 related:
   - AGENTS.md
   - ../release-candidate/README.md
@@ -793,6 +793,42 @@ prepare 先持久化意图，再登记 run、按每批 500 条登记选择、封
 或发布。失败保留证据并提供精确 status 命令。三条命令都 `publicationAuthorized=false`。
 status 分别显示 run 状态、publicationStatus 和 isCurrent，不能仅凭 run 曾 published
 就称其仍为当前发布；完整观察保存在本地文件中。
+
+发布版本业务预检在 `plan` 中执行。`doctor` 通过只表示环境、身份/权限和选定的
+存储前置通过；当前 publication 为空是合法的首次发布，不代表版本尚未被草稿占用。
+占用时返回 `final_result_release_version_conflict`、旧 run/hash/status 和 replaceable。
+只有核对后显式选择旧草稿，才能生成替换计划：
+
+```bash
+node workflows/publication/cli.mjs result-publication plan \
+  --candidate /absolute/path/to/new-candidate \
+  --target-hash <registered-storage-target-sha256> \
+  --replace-draft <exact-occupied-draft-run-uuid> --reason '替换未发布草稿的原因' \
+  --bootstrap-session --out-dir /absolute/path/to/new-replacement-plan --json
+```
+
+这一步只读，不退役或创建远端 run。检查生成的 `replacement`、Candidate/target/选择后，
+仍按上面的 `prepare --confirm <localPlanHash>` 执行。local-plan.v2 额外绑定旧 run/hash；
+普通 v1 计划保持原语义。Database 在一个事务内核对旧身份及当前权限、退役旧草稿并
+创建同版本新草稿；任一步失败整体回滚。并发替换或旧 hash 漂移会明确拒绝，不能自动
+换另一个旧 run。新 run 和 predecessor/hash 都要独立回读，丢失响应不导致第二次替换。
+
+只有未持有任何批准/发布历史的 prepared/ready_for_approval/failed Final Result 草稿
+可被替换。旧 run 标记 abandoned 并留下不可重写的 successor，原内容、成员、seal、
+审计都保留；普通 abandoned/failed 仍保留版本。`status` 的 `draftHistory` 展示精确
+predecessor/hash 和 successor，可按 run ID 逐条查看。已退役 run 不可恢复，已批准或
+发布过的版本继续占用；需要新正式发布时选择新发布版本，不改 Result 内容版本。
+
+错误区分明确业务拒绝、白名单 SQLSTATE 回滚拒绝、缺少 Database 能力，以及需要精确
+回读的真正未知结果；报告不复制 provider 原文或凭据。本能力要求先交付
+[Database #961](https://github.com/tiangong-lca/database/issues/961)，不会通过降级或
+直接 SQL 绕过旧服务。批准/激活确认和当前发布切换保持独立。
+
+小样本真实 HTTP 资格使用 `test/final-result-draft-database.test.mjs` 显式 opt-in：
+仅允许有独立 ownership 的本机 draft961/61061/61062 实例，协调器把该本机 CLI status
+返回的测试 anon/JWT secret 仅注入测试进程，并提供已核验的 `RELEASE_PAIR_TIDAS_BIN`。
+它从真实小型 Candidate/HDF5/7z、loopback 存储到本机 PostgREST 验证冲突、受控替换、
+丢失响应和历史保留，不加载用户登录凭据，不批准/激活，也不证明正式发布就绪。
 
 `adapters/final-result-publication.mjs` 提供固定 manager RPC 的传输与响应校验，
 包含 prepare/members/seal、独立 run/head/approval 观察及 approve/activate 原语。

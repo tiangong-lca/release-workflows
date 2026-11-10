@@ -14,8 +14,8 @@ whenToUpdate:
 checkPaths:
   - workflows/publication/**
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: 26d26485ca0ae10832418e06c6c6f4f43256fbe1
-lastReviewedNote: "Release #140: reviewed explicit shared user-session acquisition, Publication prerequisites and same-actor renewal; tokens remain memory-only and business confirmation/server authorization stay mandatory."
+lastReviewedCommit: 7aa55cea89cef8a9f4692b57af79a32c69dc9b55
+lastReviewedNote: "Release #142: reviewed read-only version conflicts, explicit confirmed draft replacement, immutable predecessor history and definite SQL failure diagnostics; user sessions and approval/activation authority remain unchanged."
 related:
   - README.md
   - ../AGENTS.md
@@ -223,6 +223,27 @@ Portal LCIA projection recipe 只有在 exact Package Publication Plan 已确认
 - approve/activate 传输原语不构成用户授权，也不绕过上层 intent 的精确确认；
   它们不接受 client-supplied actor。真正批准/激活仍由 Database 原子检查，
   确认入口按下节执行，独立公开查询由 `result-publication readback` 执行。
+
+## 发布版本与未发布草稿
+
+- Environment doctor 只核验环境及可选 Candidate 存储绑定，不证明发布版本可用。
+  `result-publication plan` 必须调用 manager-only version read，再冻结本地计划；
+  首次 current publication 为空合法，不能用环境通过代替业务版本预检。
+- 普通版本占用明确报 `final_result_release_version_conflict` 并返回有界旧 run 状态。
+  只有显式 `--replace-draft <run-id>` 才选择替换；只读 plan 冻结当次观察的旧 run/hash。
+  替换计划使用 local-plan.v2，旧 normal local-plan.v1 仍可读；现有 localPlanHash 确认
+  同时绑定旧草稿、新 Candidate、actor/target 和选择，不能手改冻结产物或自动续选其他 run。
+- prepare 调用独立 replacement RPC，Database 原子核对旧身份/hash、当前经理权限及
+  未批准/未发布条件，退役旧 run 并创建同版本新 run。旧 run/成员/seal/审计保留。
+  新 run 及 predecessor/hash 必须独立回读后才继续成员/封存；响应丢失不重复替换。
+  已退役草稿不能恢复；status 通过 bounded draft read 展示前后历史链接。
+- 已批准或有任何批准/发布历史的版本不替换。普通失败/放弃不释放版本，只有成功的
+  显式替换释放旧保留；正式 publication 版本唯一和已有批准/激活规则不变。
+- 仅受控业务码及白名单 SQLSTATE 可进入错误证据，不保留 provider message/detail/hint。
+  完整 SQL 异常响应是明确回滚拒绝；缺失 RPC 明示需要匹配的 Database 契约；断线、
+  超时或成功响应校验失败仍保持 outcome_unknown，并要求精确回读。
+- 本能力依赖 Database #961 的三条 manager RPC 与 reservation migration；先部署该
+  Database 契约再采用 Release。测试只使用隔离合成数据，不授权替换正式草稿。
 
 ## 最终 Result 批准与激活意图
 

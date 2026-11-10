@@ -25,6 +25,10 @@ import {
 } from "./final-result-publication-plan.mjs";
 import { createFinalResultPublicReader } from "../adapters/final-result-public-reader.mjs";
 import { verifyFinalResultPublicReadback } from "./final-result-public-readback.mjs";
+import {
+  VERSION_ERRORS,
+  validateFinalResultVersionState,
+} from "./final-result-version.mjs";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const CLI = fileURLToPath(new URL("../cli.mjs", import.meta.url));
 const quote = (v) => `'${String(v).replaceAll("'", `'"'"'`)}'`;
@@ -45,6 +49,7 @@ const allowed = {
     "release-version",
     "rollback-of",
     "run-id",
+    "replace-draft",
   ],
   prepare: ["plan-dir", "confirm"],
   "approval-plan": [
@@ -246,6 +251,7 @@ export async function runFinalResultPublicationCommand(
           : null,
         ...(options["run-id"] ? { releaseRunId: options["run-id"] } : {}),
         releaseVersion: options["release-version"],
+        replaceDraftRunId: options["replace-draft"] ?? null,
         rollbackOfPublicationId: options["rollback-of"] ?? null,
         reason: options.reason,
       });
@@ -261,6 +267,9 @@ export async function runFinalResultPublicationCommand(
         publishPlanHash: result.local.publishPlanHash,
         releaseRunId: checked.plan.releaseRunId,
         selectionCount: checked.plan.selectionCount,
+        ...(result.local.replacement
+          ? { replacement: result.local.replacement }
+          : {}),
         expectedCurrentPublicationId: checked.plan.expectedCurrentPublicationId,
         publicationAuthorized: false,
         artifacts: { plan: path.join(outDir, "publication-plan.json") },
@@ -475,7 +484,9 @@ export async function runFinalResultPublicationCommand(
       };
     }
     const snapshot = await actor.run(options["run-id"]);
+    const draftHistory = snapshot ? await actor.draft(options["run-id"]) : null;
     await write("release-status.json", {
+      draftHistory,
       schemaVersion: "tiangong.final-result-release-observation.v1",
       actorId: actor.actorId,
       apiTargetHash: actor.apiTargetHash,
@@ -484,6 +495,7 @@ export async function runFinalResultPublicationCommand(
       snapshot,
       publicationAuthorized: false,
     });
+
     return {
       ok: true,
       command: "result-publication status",
@@ -493,6 +505,7 @@ export async function runFinalResultPublicationCommand(
       completeness: "observation_only",
       releaseRunId: options["run-id"],
       status: snapshot?.status ?? null,
+      draftHistory,
       selectionSealed: snapshot?.selectionSealed ?? false,
       publicationStatus: snapshot?.publication?.status ?? null,
       isCurrent: snapshot?.publication?.isCurrent ?? false,
@@ -507,11 +520,27 @@ export async function runFinalResultPublicationCommand(
     const versionConflict =
       error.code === "final_actor_request_denied" &&
       error.details?.semanticCode === "final_result_dataset_version_conflict";
-    const reportedCode = versionConflict
-      ? "final_result_dataset_version_conflict"
-      : error?.name === "ActorSessionError"
-        ? "final_publication_session_unavailable"
-        : error.code;
+    const semantic = error.details?.semanticCode;
+    const knownVersionCode = VERSION_ERRORS.has(semantic)
+      ? semantic
+      : VERSION_ERRORS.has(error.code)
+        ? error.code
+        : null;
+    let versionState;
+    try {
+      const state = error.details?.versionState;
+      if (knownVersionCode && state)
+        versionState = validateFinalResultVersionState(state);
+    } catch {
+      /* Never copy unvalidated provider fields into evidence. */
+    }
+    const reportedCode =
+      knownVersionCode ??
+      (versionConflict
+        ? "final_result_dataset_version_conflict"
+        : error?.name === "ActorSessionError"
+          ? "final_publication_session_unavailable"
+          : error.code);
     const code =
       typeof reportedCode === "string" &&
       /^(?:final_[a-z0-9_]+|output_exists|invalid_arguments)$/u.test(
@@ -525,18 +554,40 @@ export async function runFinalResultPublicationCommand(
         action,
         code,
         failedAt: new Date().toISOString(),
+        ...(versionState ? { versionState } : {}),
+        ...(error.code === "final_actor_database_rejected" &&
+        /^[0-9A-Z]{5}$/u.test(error.details?.sqlState ?? "")
+          ? { sqlState: error.details.sqlState }
+          : {}),
         publicationAuthorized: false,
       }).catch(() => {});
     const safe = new Error(
-      code === "final_publication_session_unavailable"
-        ? "User session unavailable; use --bootstrap-session with the existing user configuration; no manual JWT copying is required"
-        : versionConflict
-          ? "A published Result already uses this dataset version for different content. Version the Result upstream and rebuild the paired Candidate."
-          : "Final Result publication command did not complete; preserve evidence and inspect the exact run before another attempt",
+      knownVersionCode
+        ? knownVersionCode === "final_result_release_version_conflict"
+          ? "Publication version is occupied. Use the reported run identity to explicitly plan --replace-draft only if replaceable; otherwise select a new release version."
+          : knownVersionCode === "final_result_draft_not_replaceable"
+            ? "The occupied release has approval or publication history and cannot be replaced. Select a new release version."
+            : "The selected predecessor changed. Inspect the occupied version and create a new confirmed plan; no automatic replacement was attempted."
+        : code === "final_actor_database_rejected"
+          ? "Database explicitly rejected and rolled back the command. Inspect the safe SQL state and refresh the publication plan; this is not an unknown write outcome."
+          : code === "final_actor_capability_unavailable"
+            ? "Publication database capability is unavailable. Deploy the matching Database contract before preparing or replacing a draft."
+            : code === "final_publication_draft_retired"
+              ? "This draft is retired. Inspect the current version occupant and use its exact confirmed plan; history cannot be resumed."
+              : code === "final_publication_session_unavailable"
+                ? "User session unavailable; use --bootstrap-session with the existing user configuration; no manual JWT copying is required"
+                : versionConflict
+                  ? "A published Result already uses this dataset version for different content. Version the Result upstream and rebuild the paired Candidate."
+                  : "Final Result publication command did not complete; preserve evidence and inspect the exact run before another attempt",
     );
     safe.code = code;
     safe.details = {
       attemptCreated: created,
+      ...(versionState ? { versionState } : {}),
+      ...(error.code === "final_actor_database_rejected" &&
+      /^[0-9A-Z]{5}$/u.test(error.details?.sqlState ?? "")
+        ? { sqlState: error.details.sqlState }
+        : {}),
       ...(created ? { attemptDirectory: outDir } : {}),
       ...(context
         ? {
@@ -556,6 +607,42 @@ export async function runFinalResultPublicationCommand(
           ]),
         ]
       : [];
+    if (knownVersionCode && action !== "plan" && versionState?.occupant)
+      safe.nextActions = [
+        next("inspect_occupied_release_version", "status", [
+          "--run-id",
+          versionState.occupant.releaseRunId,
+          "--out-dir",
+          `${outDir}-occupied-version-status`,
+        ]),
+      ];
+    if (
+      knownVersionCode &&
+      action === "plan" &&
+      versionState?.occupant?.replaceable
+    )
+      safe.nextActions = [
+        next("review_draft_replacement_plan", "plan", [
+          "--candidate",
+          path.resolve(options.candidate),
+          "--target-hash",
+          options["target-hash"],
+          "--reason",
+          options.reason,
+          "--release-version",
+          versionState.releaseVersion,
+          "--replace-draft",
+          versionState.occupant.releaseRunId,
+          ...(options.selection
+            ? ["--selection", path.resolve(options.selection)]
+            : []),
+          ...(options["rollback-of"]
+            ? ["--rollback-of", options["rollback-of"]]
+            : []),
+          "--out-dir",
+          `${outDir}-replacement-plan`,
+        ]),
+      ];
     throw safe;
   }
 }
