@@ -12,9 +12,9 @@ whenToUpdate:
   - 当配置加载、核验入口、检查范围或修复步骤变化时
 checkPaths:
   - workflows/environment/**
-lastReviewedAt: 2026-11-08
-lastReviewedCommit: 32aef3cfc64140e5ec54476fd54d705b419c6772
-lastReviewedNote: "Release #135: reviewed explicit pnpm run doctor invocation against the pinned package manager, shared configuration ownership and unchanged diagnostic/business boundaries."
+lastReviewedAt: 2026-11-10
+lastReviewedCommit: 64ec16f2ab2c8cc57edbcf92eac80d8bee1c192a
+lastReviewedNote: "Release #138: documented official tidas release binary acquisition and SHA-256 verification, doctor-first guidance, and in-repo build artifact boundary."
 related:
   - AGENTS.md
   - ../../.env.example
@@ -84,6 +84,20 @@ CA、TLS 文件和带路径的可执行文件相对选中的配置文件目录�
 
 设置说明及空值示例以根 `.env.example` 为准。业务 Workflow 继续在执行时检查目标、权限
 和输入；环境报告只表示观察当时、所选范围的诊断结果。
+
+## Toolkit 二进制准备
+
+`candidate`、`storage`、`readiness` 等需要 Toolkit 的核验与构建使用 `TIDAS_BIN`（其次
+`TIANGONG_TIDAS_EXECUTABLE`，最后 PATH 中的 `tidas`）。请使用官方发布的预编译二进制：
+
+1. 从 `https://github.com/tiangong-lca/tidas-toolkit/releases` 下载与当前平台匹配的归档；
+2. 使用同一 release 的 `SHA256SUMS` 校验归档，再解压；
+3. 将 `TIDAS_BIN` 设为解压后 `bin/tidas` 的绝对路径；
+4. 先执行 `pnpm run doctor --for candidate`，确认 `tidas: passed` 后再执行业务构建。
+
+仓库 checkout 内的 `target/` 构建产物只用于当前源码的开发验证，版本可能落后于官方
+release，不应作为 Candidate 构建来源。`TIANGONG_TIDAS_TOOLS_EXECUTABLE` 等历史键不在
+配置白名单内，不会生效。能力握手只验证协议/能力，不绑定精确版本号。
 
 ## 配置引导和本地准备
 

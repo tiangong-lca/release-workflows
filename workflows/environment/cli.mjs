@@ -82,7 +82,7 @@ function guidance(report) {
         c.id === "hdf5"
           ? "Run pnpm run native:build, or set RELEASE_HDF5_BIN to an existing qualified executable"
           : c.id === "tidas"
-            ? "Install a Toolkit with Result-only packaging/validation capabilities and set TIDAS_BIN"
+            ? "Download an official tidas release binary for this platform, verify it against that release's SHA256SUMS, set TIDAS_BIN, then rerun check"
             : c.id === "seven_zip"
               ? "Install qualified 7-Zip 26.05 and set RELEASE_7ZIP_BIN"
               : c.id === "dependencies"
