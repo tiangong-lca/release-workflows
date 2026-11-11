@@ -1,4 +1,5 @@
 import test from "node:test";
+import { createHash } from "node:crypto";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { createFinalResultPublication } from "../adapters/final-result-publication.mjs";
@@ -244,4 +245,95 @@ test("session audit fingerprints change on token renewal without storing or expo
   );
   assert.ok(!JSON.stringify(f.actor).includes(token));
   assert.ok(!JSON.stringify(other).includes(renewed));
+});
+
+test("version inspection and explicit replacement use fixed separate routes with exact predecessor binding", async (t) => {
+  const state = {
+    releaseVersion: "2026.11.0",
+    occupant: {
+      releaseRunId: id(7),
+      publishPlanHash: hash,
+      format: "final-result-pair.v2",
+      status: "prepared",
+      candidateHash: hash,
+      targetHash: hash,
+      replacesReleaseRunId: null,
+      replaceable: true,
+    },
+  };
+  const f = await fixture(t, (req, res, body) =>
+    send(
+      res,
+      req.url.includes("qry_final_result_release_version")
+        ? state
+        : {
+            releaseRunId: run,
+            publishPlanHash: createHash("sha256")
+              .update(body.p_plan_text)
+              .digest("hex"),
+            status: "prepared",
+            publicationAuthorized: false,
+          },
+    ),
+  );
+  assert.deepEqual(await f.actor.version("2026.11.0"), state);
+  await f.actor.prepare({
+    planText: JSON.stringify({ releaseRunId: run }),
+    idempotencyKey: "synthetic-replacement",
+    replacement: { releaseRunId: id(7), publishPlanHash: hash },
+  });
+  assert.deepEqual(
+    f.calls.map((x) => x.url),
+    [
+      "/rest/v1/rpc/qry_final_result_release_version_v2",
+      "/rest/v1/rpc/cmd_final_result_release_replace_v2",
+    ],
+  );
+  assert.equal(f.calls[1].body.p_replace_run_id, id(7));
+  assert.equal(f.calls[1].body.p_replace_plan_hash, hash);
+});
+
+test("known SQL rejection and missing RPC remain definite, sanitized failures; typed version conflict retains only bounded metadata", async (t) => {
+  for (const [payload, status, code] of [
+    [
+      {
+        code: "23505",
+        message: "private-provider-message",
+        details: "private-row",
+      },
+      409,
+      "final_actor_database_rejected",
+    ],
+    [
+      { code: "PGRST202", message: "private-provider-message" },
+      404,
+      "final_actor_capability_unavailable",
+    ],
+    [
+      {
+        ok: false,
+        code: "final_result_release_version_conflict",
+        message: "private-provider-message",
+        details: { releaseVersion: "2026.11.0", occupant: null },
+      },
+      200,
+      "final_actor_request_denied",
+    ],
+  ]) {
+    const f = await fixture(t, (_, res) => {
+      res.writeHead(status, { "content-type": "application/json" });
+      res.end(JSON.stringify(payload));
+    });
+    await assert.rejects(
+      f.actor.prepare({
+        planText: JSON.stringify({ releaseRunId: run }),
+        idempotencyKey: "definite-rejection",
+      }),
+      (e) =>
+        e.code === code &&
+        !JSON.stringify(e).includes("private-provider") &&
+        !JSON.stringify(e).includes("private-row"),
+    );
+    assert.equal(f.calls.length, 1);
+  }
 });

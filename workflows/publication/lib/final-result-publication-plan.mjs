@@ -4,6 +4,7 @@ import path from "node:path";
 import { fail, canonicalJson, hashJson, sha256Bytes } from "./common.mjs";
 import { loadFinalResultCandidate } from "../../release-candidate/lib/final-result-candidate.mjs";
 import { safeFile } from "../../release-candidate/lib/final-result-files.mjs";
+import { validateFinalResultVersionState } from "./final-result-version.mjs";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const HASH = /^[0-9a-f]{64}$/u,
   VERSION = /^\d{2}\.\d{2}\.\d{3}$/u;
@@ -64,7 +65,10 @@ export function finalResultSelection(members) {
   };
 }
 export function validateFinalResultPublicationPlan(local) {
+  const replacing =
+    local?.schemaVersion === "tiangong.final-result-publication-local-plan.v2";
   exact(local, [
+    ...(replacing ? ["replacement"] : []),
     "schemaVersion",
     "actorId",
     "apiTargetHash",
@@ -79,7 +83,9 @@ export function validateFinalResultPublicationPlan(local) {
       path.isAbsolute(local.candidateDir),
   );
   required(
-    local.schemaVersion === "tiangong.final-result-publication-local-plan.v1" &&
+    (replacing ||
+      local.schemaVersion ===
+        "tiangong.final-result-publication-local-plan.v1") &&
       uuid(local.actorId) &&
       hash(local.apiTargetHash) &&
       local.publicationAuthorized === false &&
@@ -87,6 +93,13 @@ export function validateFinalResultPublicationPlan(local) {
       Buffer.byteLength(local.planText) <= 16384 &&
       hash(local.publishPlanHash),
   );
+  if (replacing) {
+    exact(local.replacement, ["releaseRunId", "publishPlanHash"]);
+    required(
+      uuid(local.replacement.releaseRunId) &&
+        hash(local.replacement.publishPlanHash),
+    );
+  }
   let plan;
   try {
     plan = JSON.parse(local.planText);
@@ -122,6 +135,7 @@ export function validateFinalResultPublicationPlan(local) {
     canonicalJson(plan) === local.planText &&
       sha256Bytes(Buffer.from(local.planText)) === local.publishPlanHash,
   );
+  if (replacing) required(local.replacement.releaseRunId !== plan.releaseRunId);
   const selection = finalResultSelection(local.members);
   required(
     hashJson(local.members) === hashJson(selection.members) &&
@@ -130,6 +144,46 @@ export function validateFinalResultPublicationPlan(local) {
   );
   return { plan, localPlanHash: hashJson(local) };
 }
+export async function preflightFinalResultVersion({
+  releaseVersion,
+  replaceDraftRunId = null,
+  actor,
+}) {
+  required(nullableUuid(replaceDraftRunId));
+  // Inspect version occupancy before freezing a plan; Database rechecks under lock.
+  const versionState = validateFinalResultVersionState(
+    await actor.version(releaseVersion),
+  );
+  required(versionState.releaseVersion === releaseVersion);
+  const occupied = versionState.occupant;
+  if (!replaceDraftRunId && occupied)
+    fail(
+      "final_result_release_version_conflict",
+      "Publication version is already occupied; explicitly select a replaceable draft or choose a new version",
+      { versionState },
+    );
+  if (
+    replaceDraftRunId &&
+    (!occupied || occupied.releaseRunId !== replaceDraftRunId)
+  )
+    fail(
+      "final_result_draft_replacement_conflict",
+      "The selected draft is no longer the current version occupant; inspect and create a new plan",
+      { versionState },
+    );
+  if (replaceDraftRunId && !occupied.replaceable)
+    fail(
+      "final_result_draft_not_replaceable",
+      "Approved or published release history cannot be replaced",
+      { versionState },
+    );
+  return replaceDraftRunId
+    ? {
+        releaseRunId: occupied.releaseRunId,
+        publishPlanHash: occupied.publishPlanHash,
+      }
+    : null;
+}
 export async function buildFinalResultPublicationPlan({
   candidateDir,
   targetHash,
@@ -137,6 +191,7 @@ export async function buildFinalResultPublicationPlan({
   members = null,
   releaseRunId = randomUUID(),
   releaseVersion,
+  replaceDraftRunId = null,
   rollbackOfPublicationId = null,
   reason,
 }) {
@@ -175,9 +230,21 @@ export async function buildFinalResultPublicationPlan({
     rollbackOfPublicationId,
     reason,
   };
+  const replacement = await preflightFinalResultVersion({
+    releaseVersion: plan.releaseVersion,
+    replaceDraftRunId,
+    actor,
+  });
   const planText = canonicalJson(plan);
   const local = {
-    schemaVersion: "tiangong.final-result-publication-local-plan.v1",
+    schemaVersion: replaceDraftRunId
+      ? "tiangong.final-result-publication-local-plan.v2"
+      : "tiangong.final-result-publication-local-plan.v1",
+    ...(replaceDraftRunId
+      ? {
+          replacement,
+        }
+      : {}),
     actorId: actor.actorId,
     apiTargetHash: actor.apiTargetHash,
     candidateDir: loaded.root,
@@ -240,6 +307,7 @@ export async function prepareFinalResultPublication({
     ...args,
     actorId: actor.actorId,
     apiTargetHash: actor.apiTargetHash,
+    ...(local.replacement ? { replacement: local.replacement } : {}),
     publicationAuthorized: false,
   });
   let snapshot = await actor.run(plan.releaseRunId);
@@ -248,6 +316,7 @@ export async function prepareFinalResultPublication({
       await actor.prepare({
         planText: local.planText,
         idempotencyKey: `final-result:${plan.releaseRunId}`,
+        ...(local.replacement ? { replacement: local.replacement } : {}),
       });
     } catch (e) {
       if (e.code !== "final_publication_outcome_unknown") throw e;
@@ -256,6 +325,21 @@ export async function prepareFinalResultPublication({
     required(snapshot, "final_publication_outcome_unknown");
   }
   assertFinalResultPublicationSnapshot(snapshot, plan, local);
+  required(
+    !["abandoned", "failed"].includes(snapshot.status),
+    "final_publication_draft_retired",
+  );
+  if (local.replacement) {
+    const history = await actor.draft(plan.releaseRunId);
+    required(
+      history?.releaseRunId === plan.releaseRunId &&
+        history.publishPlanHash === local.publishPlanHash &&
+        history.replacesReleaseRunId === local.replacement.releaseRunId &&
+        history.replacesPublishPlanHash === local.replacement.publishPlanHash &&
+        history.replacedByReleaseRunId === null,
+      "final_result_draft_replacement_conflict",
+    );
+  }
   if (!snapshot.selectionSealed) {
     required(
       snapshot.status === "prepared",
@@ -288,7 +372,8 @@ export async function prepareFinalResultPublication({
     assertFinalResultPublicationSnapshot(snapshot, plan, local);
   }
   required(
-    snapshot.selectionSealed &&
+    !["abandoned", "failed"].includes(snapshot.status) &&
+      snapshot.selectionSealed &&
       snapshot.registeredResultCount === plan.selectionCount,
     "final_publication_selection_not_sealed",
   );
@@ -298,6 +383,7 @@ export async function prepareFinalResultPublication({
     ...args,
     selectionHash: plan.selectionHash,
     selectionCount: plan.selectionCount,
+    ...(local.replacement ? { replacement: local.replacement } : {}),
     observedAt: new Date().toISOString(),
     status: snapshot.status,
     publicationAuthorized: false,

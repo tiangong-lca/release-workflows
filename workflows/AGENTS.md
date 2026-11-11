@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/**
 lastReviewedAt: 2026-11-10
-lastReviewedCommit: 26d26485ca0ae10832418e06c6c6f4f43256fbe1
-lastReviewedNote: "Release #140: reviewed explicit shared user-session acquisition, Publication prerequisites and same-actor renewal; tokens remain memory-only and business confirmation/server authorization stay mandatory."
+lastReviewedCommit: 7aa55cea89cef8a9f4692b57af79a32c69dc9b55
+lastReviewedNote: "Release #142: reviewed read-only version conflicts, explicit confirmed draft replacement, immutable predecessor history and definite SQL failure diagnostics; user sessions and approval/activation authority remain unchanged."
 related:
   - ../AGENTS.md
   - ../README.md

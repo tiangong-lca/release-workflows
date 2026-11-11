@@ -1,5 +1,6 @@
 import { fail, sha256Bytes } from "../lib/common.mjs";
 import { createFinalResultActorTransport } from "./final-result-actor-transport.mjs";
+import { validateFinalResultVersionState } from "../lib/final-result-version.mjs";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const HASH = /^[0-9a-f]{64}$/u;
 const VERSION = /^\d{2}\.\d{2}\.\d{3}$/u;
@@ -54,7 +55,9 @@ export function createFinalResultPublication(config) {
       // orchestrator must query the exact existing identity before retrying.
       if (
         e.code === "final_actor_session_expired" ||
-        e.code === "final_actor_contract_invalid"
+        e.code === "final_actor_contract_invalid" ||
+        e.code === "final_actor_database_rejected" ||
+        e.code === "final_actor_capability_unavailable"
       )
         throw e;
       if (e.code === "final_actor_request_denied" && e.details?.semanticCode)
@@ -69,6 +72,54 @@ export function createFinalResultPublication(config) {
     actorId: transport.actorId,
     credentialFingerprint: transport.credentialFingerprint,
     apiTargetHash: transport.apiTargetHash,
+    draft(releaseRunId, options) {
+      required(uuid(releaseRunId));
+      return read(
+        "qry_final_result_release_draft_v2",
+        { p_release_run_id: releaseRunId },
+        (d) => {
+          exact(d, [
+            "releaseRunId",
+            "releaseVersion",
+            "publishPlanHash",
+            "status",
+            "replacesReleaseRunId",
+            "replacesPublishPlanHash",
+            "replacedByReleaseRunId",
+          ]);
+          required(
+            d.releaseRunId === releaseRunId &&
+              typeof d.releaseVersion === "string" &&
+              hash(d.publishPlanHash) &&
+              typeof d.status === "string" &&
+              nullableUuid(d.replacesReleaseRunId) &&
+              nullableUuid(d.replacedByReleaseRunId) &&
+              (d.replacesReleaseRunId === null
+                ? d.replacesPublishPlanHash === null
+                : hash(d.replacesPublishPlanHash)),
+          );
+        },
+        options,
+      );
+    },
+    async version(releaseVersion, options) {
+      required(
+        typeof releaseVersion === "string" &&
+          releaseVersion.length <= 64 &&
+          /^\d{4}\.\d{2}\.\d+$/u.test(releaseVersion),
+      );
+      const result = await read(
+        "qry_final_result_release_version_v2",
+        { p_release_version: releaseVersion },
+        (d) => {
+          validateFinalResultVersionState(d);
+          required(d.releaseVersion === releaseVersion);
+        },
+        options,
+      );
+      required(result !== null);
+      return result;
+    },
     head(options) {
       return read(
         "qry_final_result_publication_head_v2",
@@ -261,7 +312,19 @@ export function createFinalResultPublication(config) {
       );
     },
     prepare(a, options) {
-      exact(a, ["planText", "idempotencyKey"]);
+      const replacing = Object.hasOwn(a, "replacement");
+      exact(a, [
+        "planText",
+        "idempotencyKey",
+        ...(replacing ? ["replacement"] : []),
+      ]);
+      if (replacing) {
+        exact(a.replacement, ["releaseRunId", "publishPlanHash"]);
+        required(
+          uuid(a.replacement.releaseRunId) &&
+            hash(a.replacement.publishPlanHash),
+        );
+      }
       required(
         typeof a.planText === "string" &&
           Buffer.byteLength(a.planText) <= 16384 &&
@@ -276,8 +339,19 @@ export function createFinalResultPublication(config) {
       required(uuid(p?.releaseRunId));
       const planHash = sha256Bytes(Buffer.from(a.planText));
       return write(
-        "cmd_final_result_release_prepare_v2",
-        { p_plan_text: a.planText, p_idempotency_key: a.idempotencyKey },
+        replacing
+          ? "cmd_final_result_release_replace_v2"
+          : "cmd_final_result_release_prepare_v2",
+        {
+          p_plan_text: a.planText,
+          p_idempotency_key: a.idempotencyKey,
+          ...(replacing
+            ? {
+                p_replace_run_id: a.replacement.releaseRunId,
+                p_replace_plan_hash: a.replacement.publishPlanHash,
+              }
+            : {}),
+        },
         (d) => {
           exact(d, [
             "releaseRunId",

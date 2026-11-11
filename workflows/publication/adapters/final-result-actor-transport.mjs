@@ -1,8 +1,28 @@
 import { fail, hashJson, sha256Bytes } from "../lib/common.mjs";
 
+import {
+  VERSION_ERRORS,
+  validateFinalResultVersionState,
+} from "../lib/final-result-version.mjs";
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const MAX_RESPONSE = 2 * 1024 ** 2;
+const SQL_REJECTIONS = new Set([
+  "22023",
+  "23502",
+  "23503",
+  "23505",
+  "23514",
+  "42501",
+  "55000",
+  "57014",
+  "40001",
+  "40P01",
+]);
 const DENIALS = new Set([
+  ...VERSION_ERRORS,
+  "final_result_prepare_identity_conflict",
+  "final_result_prepare_invalid",
   "auth_required",
   "not_data_product_manager",
   "final_result_release_not_found",
@@ -54,6 +74,9 @@ const ROUTINES = new Set([
   "qry_final_result_release_v2",
   "qry_final_result_release_approval_v2",
   "cmd_final_result_release_prepare_v2",
+  "cmd_final_result_release_replace_v2",
+  "qry_final_result_release_version_v2",
+  "qry_final_result_release_draft_v2",
   "cmd_final_result_release_members_v2",
   "cmd_final_result_release_seal_v2",
   "cmd_final_result_release_approve_v2",
@@ -154,9 +177,26 @@ export function createFinalResultActorTransport({
         required(false, "final_actor_response_invalid");
       }
       if (!response.ok || payload?.ok !== true) {
+        if (!response.ok && SQL_REJECTIONS.has(payload?.code))
+          fail(
+            "final_actor_database_rejected",
+            "Database rejected and rolled back the request; inspect the safe SQL state",
+            {
+              httpStatus: response.status,
+              sqlState: payload.code,
+            },
+          );
+        if (!response.ok && ["PGRST202", "PGRST203"].includes(payload?.code))
+          fail(
+            "final_actor_capability_unavailable",
+            "Required Publication database RPC is unavailable; deploy the matching Database contract before continuing",
+          );
         fail("final_actor_request_denied", "Actor admission did not succeed", {
           httpStatus: response.status,
           semanticCode: DENIALS.has(payload?.code) ? payload.code : null,
+          ...(VERSION_ERRORS.has(payload?.code) && payload.details
+            ? { versionState: validateFinalResultVersionState(payload.details) }
+            : {}),
         });
       }
       required(
