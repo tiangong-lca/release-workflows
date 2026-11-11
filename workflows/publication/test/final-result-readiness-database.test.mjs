@@ -10,7 +10,10 @@ import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { candidate, worker, id } from "./fixtures/final-reader.mjs";
-import { fixture as storageFixture } from "./fixtures/final-storage.mjs";
+import {
+  fixture as storageFixture,
+  target as fixtureStorageTarget,
+} from "./fixtures/final-storage.mjs";
 import { createFinalResultRegistry } from "../adapters/final-result-registry.mjs";
 import { createFinalResultPublication } from "../adapters/final-result-publication.mjs";
 import {
@@ -41,6 +44,7 @@ test(
       65422: "result-7z-926",
       65522: "result-dependencies-919",
       65322: "compact-results-922",
+      61072: "result-download-964",
     }[url.port];
     assert.ok(project, "only explicitly owned synthetic projects are allowed");
     assert.equal(url.username, "postgres");
@@ -192,7 +196,7 @@ test(
             "p_limit",
             "p_publication_id",
           ],
-          qry_final_result_download_v2: ["p_publication_id", "p_format"],
+          qry_final_result_download: ["p_publication_id", "p_format"],
           qry_final_result_release_probe_page_v2: [
             "p_release_run_id",
             "p_publish_plan_hash",
@@ -626,6 +630,8 @@ test(
     if (process.env.RELEASE_QUERY_EDGE_ROOT) {
       const edgeRoot = path.resolve(process.env.RELEASE_QUERY_EDGE_ROOT);
       const edgeInput = path.join(f.input.root, "synthetic-edge-input.json");
+      const emptyAwsProfile = path.join(f.input.root, "synthetic-aws.ini");
+      await writeFile(emptyAwsProfile, "", { mode: 0o600 });
       const runEdge = async (requests) => {
         await writeFile(
           edgeInput,
@@ -635,6 +641,11 @@ test(
             token,
             readerEndpoint: runtime.endpoint,
             readerSecret: runtime.secret,
+            archiveTarget: {
+              ...fixtureStorageTarget,
+              databaseTargetHash: registry.databaseTargetHash,
+              endpoint: storage.endpoint,
+            },
             requests,
           }),
           { mode: 0o600 },
@@ -648,12 +659,17 @@ test(
             "--allow-env",
             "--allow-read",
             "--allow-net=127.0.0.1",
+            "--allow-sys=uid,homedir",
             path.join(edgeRoot, "test/fixtures/final-result-gateway.ts"),
             edgeInput,
           ],
           {
             cwd: edgeRoot,
-            env: { PATH: process.env.PATH },
+            env: {
+              PATH: process.env.PATH,
+              AWS_CONFIG_FILE: emptyAwsProfile,
+              AWS_SHARED_CREDENTIALS_FILE: emptyAwsProfile,
+            },
             timeout: 60000,
             maxBuffer: 2 * 1024 * 1024,
           },
@@ -724,18 +740,12 @@ test(
           sourceId: id(999),
           sourceVersion: "01.00.000",
         },
-        {
-          mode: "final_download",
-          publicationId: activated.publicationId,
-          format: "tidas",
-        },
       ]);
       assert.deepEqual(
         denied.map((r) => r.status),
-        [409, 404, 404],
+        [409, 404],
       );
       assert.equal(denied[1].body.code, "SOURCE_NOT_AVAILABLE");
-      assert.equal(denied[2].body.code, "RESULT_PACKAGE_NOT_AVAILABLE");
       const exactEdge = publicEdge;
       publicEdge = async (body) => {
         const reply = await exactEdge(body);
@@ -774,10 +784,15 @@ test(
       const verifiedRun = await publication.run(runId);
       assert.equal(verifiedRun.status, "readback_verified");
       assert.equal(verifiedRun.readbackReceipt.observation.resultCount, 3);
-      assert.deepEqual(verifiedRun.readbackReceipt.observation.downloads, {
-        tidas: { status: "unavailable" },
-        ilcd: { status: "unavailable" },
-      });
+      for (const { format, sha256, byteSize } of f.loaded.candidate.packages) {
+        assert.deepEqual(
+          verifiedRun.readbackReceipt.observation.downloads[format],
+          {
+            status: "verified",
+            file: { name: `result.${format}.7z`, sha256, byteSize },
+          },
+        );
+      }
       const saved = JSON.parse(
         await readFile(
           path.join(
@@ -795,42 +810,10 @@ test(
         }),
         verifiedRun.readbackReceipt,
       );
-      // Seed only synthetic supporting datasets after the missing-support denial.
-      // Suppress unrelated asynchronous triggers for these fixture inserts.
-      const tables = {
-        process: "processes",
-        contact: "contacts",
-        flow: "flows",
-        flowproperty: "flowproperties",
-        lciamethod: "lciamethods",
-        source: "sources",
-        unitgroup: "unitgroups",
-      };
-      await owner.query("begin");
-      try {
-        await owner.query("set local session_replication_role=replica");
-        for (const entry of f.loaded.index.datasets) {
-          if (entry.role === "result_process") continue;
-          const table = tables[entry.datasetType];
-          assert.ok(table);
-          const bytes = await readFile(
-            path.join(f.input.outDir, "canonical", entry.path),
-          );
-          assert.equal(sha(bytes), entry.sha256);
-          await owner.query(
-            `insert into public.${table}(id,version,json,user_id,state_code) values($1,$2,$3,$4,100)`,
-            [entry.uuid, entry.version, bytes.toString("utf8"), actorId],
-          );
-        }
-        await owner.query("commit");
-      } catch (error) {
-        await owner.query("rollback");
-        throw error;
-      }
       async function verifyDownloads(publicationId, candidateHash) {
         for (const format of ["tidas", "ilcd"]) {
           const request = await fetch(
-            `http://127.0.0.1:${server.address().port}/rest/v1/rpc/qry_final_result_download_v2`,
+            `http://127.0.0.1:${server.address().port}/rest/v1/rpc/qry_final_result_download`,
             {
               method: "POST",
               headers: {
@@ -856,7 +839,7 @@ test(
           const bytes = Buffer.from(await zip.arrayBuffer());
           assert.equal(bytes.length, data.file.byteSize);
           assert.equal(sha(bytes), data.file.sha256);
-          assert.equal(bytes.subarray(0, 2).toString(), "PK");
+          assert.equal(bytes.subarray(0, 6).toString("hex"), "377abcaf271c");
         }
       }
       await verifyDownloads(

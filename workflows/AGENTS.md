@@ -12,9 +12,9 @@ whenToUpdate:
   - 当所有 Workflow 共享的证据、权限、恢复或文档规则变化时
 checkPaths:
   - workflows/**
-lastReviewedAt: 2026-11-10
-lastReviewedCommit: 7aa55cea89cef8a9f4692b57af79a32c69dc9b55
-lastReviewedNote: "Release #142: reviewed read-only version conflicts, explicit confirmed draft replacement, immutable predecessor history and definite SQL failure diagnostics; user sessions and approval/activation authority remain unchanged."
+lastReviewedAt: 2026-11-11
+lastReviewedCommit: 7a80f18677283d8880dea570e7117caed1a52459
+lastReviewedNote: "Release #144 reviewed stable archive download RPC coverage, both 7z byte/hash readbacks and the isolated fixture."
 related:
   - ../AGENTS.md
   - ../README.md
