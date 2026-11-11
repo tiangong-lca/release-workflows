@@ -13,9 +13,9 @@ whenToUpdate:
   - 当发布选择、目标差异、状态转换、写入、审批、恢复或回读规则变化时
 checkPaths:
   - workflows/publication/**
-lastReviewedAt: 2026-11-10
-lastReviewedCommit: 7aa55cea89cef8a9f4692b57af79a32c69dc9b55
-lastReviewedNote: "Release #142: reviewed read-only version conflicts, explicit confirmed draft replacement, immutable predecessor history and definite SQL failure diagnostics; user sessions and approval/activation authority remain unchanged."
+lastReviewedAt: 2026-11-11
+lastReviewedCommit: 7a80f18677283d8880dea570e7117caed1a52459
+lastReviewedNote: "Release #144 reviewed stable archive download RPC coverage, both 7z byte/hash readbacks and the isolated fixture."
 related:
   - AGENTS.md
   - ../release-candidate/README.md
@@ -616,7 +616,7 @@ probe API，不接受服务凭据、不调用批准/激活。每次由数据库�
 
 除上述真实文件/Worker 验证外，可在 owner-reset 的任务专用合成数据库使用
 `RELEASE_READINESS_TEST_CONN` 运行 `final-result-readiness-database.test.mjs`。
-该测试只接受本地 `127.0.0.1:65422/postgres` / `offline-final-result-916` 或 `127.0.0.1:65522/postgres` / `result-dependencies-919` 的精确端口与 owner 标签配对。样本包含保留在 7z 的 Unit Process 依赖，验证真实
+该测试只接受源码白名单内的 loopback 端口和任务专用容器标签配对。样本包含保留在 7z 的 Unit Process 依赖，验证真实
 SQL 登记与 lost-ACK 恢复，保留不可变合成审计供 owner reset。它的 HTTP 用户认证是
 固定 token 测试 facade，不替代 hosted PostgREST/Edge/Platform 验证。不要对共享或
 业务数据库运行该测试，也不要用合成回执执行真实发布。
@@ -624,7 +624,7 @@ SQL 登记与 lost-ACK 恢复，保留不可变合成审计供 owner reset。它
 增加 `RELEASE_QUERY_EDGE_ROOT`（明确的 Edge checkout）和可选 `RELEASE_QUERY_DENO_BIN`
 可同时运行 Edge 的 `test/fixtures/final-result-gateway.ts`：真实 handler 和 Supabase SDK
 通过上述 SQL facade 查询已激活的合成结果，并由真实 Worker 从 Release HDF5 读取全部
-LCI 分页和 LCIA。测试还验证 runtime pin、源数据及 7z 权限拒绝；临时输入只有合成 token，
+LCI 分页和 LCIA。测试还验证 runtime pin、源数据和当前完整发行包的两份 7z 下载；临时输入只有合成 token，
 随 fixture 删除。该资格证明跨仓库数值/协议与数据库鉴权，不证明 hosted JWT 或生产发布。
 
 ### 整体就绪验证命令

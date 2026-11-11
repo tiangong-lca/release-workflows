@@ -12,9 +12,9 @@ whenToUpdate:
   - 当顶层 Workflow 新增、删除、重命名或重新划分时
 checkPaths:
   - workflows/**
-lastReviewedAt: 2026-11-10
-lastReviewedCommit: 7aa55cea89cef8a9f4692b57af79a32c69dc9b55
-lastReviewedNote: "Release #142: reviewed controlled unpublished draft replacement, version conflicts and generated contract proof; ownership, runtime and deployment boundaries remain unchanged."
+lastReviewedAt: 2026-11-11
+lastReviewedCommit: 7a80f18677283d8880dea570e7117caed1a52459
+lastReviewedNote: "Release #144 reviewed stable archive download RPC coverage, both 7z byte/hash readbacks and the isolated fixture."
 related:
   - ../README.md
   - AGENTS.md
