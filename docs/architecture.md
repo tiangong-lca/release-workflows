@@ -17,9 +17,9 @@ checkPaths:
   - README.md
   - .docpact/config.yaml
   - workflows/**
-lastReviewedAt: 2026-11-11
-lastReviewedCommit: 7a80f18677283d8880dea570e7117caed1a52459
-lastReviewedNote: "Release #144 reviewed stable archive download RPC coverage, both 7z byte/hash readbacks and the isolated fixture."
+lastReviewedAt: 2026-11-19
+lastReviewedCommit: 50588040d43bd521980cc9029881a158b2df4b04
+lastReviewedNote: "Release #146: reviewed pnpm/setup 3.1.2 executable and both exact workflow invocations; Node 24.22.0, pnpm 11.24.0, full native/workflow gates, cache inputs and publication boundaries remain unchanged."
 related:
   - ../AGENTS.md
   - ../README.md
