@@ -97,9 +97,11 @@ test("active package commands and automation are pnpm-only", () => {
     ci,
     /actions\/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7\.0\.1/,
   );
-  assert.match(
-    ci,
-    /pnpm\/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3\.1\.1/,
+  assert.deepEqual(
+    [...ci.matchAll(/^\s*uses: (pnpm\/setup@.*)$/gm)].map((match) => match[1]),
+    Array(2).fill(
+      "pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2",
+    ),
   );
   assert.match(ci, /version:\s*11\.24\.0/);
   assert.match(ci, /runtime:\s*node@24\.22\.0/);
