@@ -19,9 +19,9 @@ checkPaths:
   - docs/architecture.md
   - workflows/**
   - .docpact/config.yaml
-lastReviewedAt: 2026-11-11
-lastReviewedCommit: 7a80f18677283d8880dea570e7117caed1a52459
-lastReviewedNote: "Release #144 reviewed stable archive download RPC coverage, both 7z byte/hash readbacks and the isolated fixture."
+lastReviewedAt: 2026-11-19
+lastReviewedCommit: 50588040d43bd521980cc9029881a158b2df4b04
+lastReviewedNote: "Release #146: reviewed the unchanged workflow navigation and operational boundaries for the pnpm/setup 3.1.2 CI qualification; full native/workflow validation and publication authority are unchanged."
 related:
   - AGENTS.md
   - docs/architecture.md
