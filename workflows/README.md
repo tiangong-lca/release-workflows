@@ -13,8 +13,8 @@ whenToUpdate:
 checkPaths:
   - workflows/**
 lastReviewedAt: 2026-11-19
-lastReviewedCommit: 50588040d43bd521980cc9029881a158b2df4b04
-lastReviewedNote: "Release #146: reviewed the unchanged workflow navigation and operational boundaries for the pnpm/setup 3.1.2 CI qualification; full native/workflow validation and publication authority are unchanged."
+lastReviewedCommit: da0813a6bbde0ccf996392f577b937974edc0d20
+lastReviewedNote: "Release #147: reviewed pg 8.23.1 and pg-query-stream 4.17.1 adoption, complete lock graph and formatting equivalence; exact toolchain, full validation, scoped database access, immutable candidates and publication authority remain unchanged."
 related:
   - ../README.md
   - AGENTS.md
