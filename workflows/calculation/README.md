@@ -12,9 +12,9 @@ whenToUpdate:
   - 当 Calculation 的入口、用户决定、远程能力或产物变化时
 checkPaths:
   - workflows/calculation/**
-lastReviewedAt: 2026-11-10
-lastReviewedCommit: 26d26485ca0ae10832418e06c6c6f4f43256fbe1
-lastReviewedNote: "Release #140: reviewed explicit shared user-session acquisition, Publication prerequisites and same-actor renewal; tokens remain memory-only and business confirmation/server authorization stay mandatory."
+lastReviewedAt: 2026-11-19
+lastReviewedCommit: da0813a6bbde0ccf996392f577b937974edc0d20
+lastReviewedNote: "Release #147: reviewed pg 8.23.1 and pg-query-stream 4.17.1 adoption, complete lock graph and formatting equivalence; exact toolchain, full validation, scoped database access, immutable candidates and publication authority remain unchanged."
 related:
   - AGENTS.md
   - ../../README.md
