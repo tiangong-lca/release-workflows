@@ -17,8 +17,8 @@ checkPaths:
   - README.md
   - .docpact/config.yaml
   - workflows/**
-lastReviewedAt: 2026-11-19
-lastReviewedCommit: da0813a6bbde0ccf996392f577b937974edc0d20
+lastReviewedAt: 2026-11-21
+lastReviewedCommit: 5233d8bd828bcbf4e1ed94b2bf7d493058212712
 lastReviewedNote: "Release #147: reviewed pg 8.23.1 and pg-query-stream 4.17.1 adoption, complete lock graph and formatting equivalence; exact toolchain, full validation, scoped database access, immutable candidates and publication authority remain unchanged."
 related:
   - ../AGENTS.md
@@ -100,6 +100,8 @@ Release 自己拥有 cache 格式、只读远端导出编排、临时传输校�
 确定性实现生成数值、hash、验证和 package；Agent 不模拟这些结果。provider payload 在 adapter 边界解析，不让外部非破坏性字段影响内部路线。共享代码只提取多个 Workflow 已实际复用的机制。
 
 JavaScript/MJS 与禁止生产 TypeScript/compiler/codegen 的约束由依赖图测试守护；Candidate 数值编码使用独立锁定的 Rust/HDF5 工具，按流式数值协议与 MJS 编排隔离；精确工具链、workspace 有效配置、单一 pnpm lockfile 和 CI 行为由根工具链测试验证。文档不重复这些配置值。业务协议、授权与 numerical invariants 的测试留在各 Workflow。
+
+质量门先检查格式并运行根目录的 workspace 契约测试，再执行原生格式检查、Clippy 和构建。六个 Workflow 的测试在原生工具可用后运行。
 
 ## 查询产物存储边界
 
