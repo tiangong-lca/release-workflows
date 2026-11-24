@@ -12,8 +12,8 @@ whenToUpdate:
   - 当所有 Workflow 共享的证据、权限、恢复或文档规则变化时
 checkPaths:
   - workflows/**
-lastReviewedAt: 2026-11-21
-lastReviewedCommit: 5233d8bd828bcbf4e1ed94b2bf7d493058212712
+lastReviewedAt: 2026-11-24
+lastReviewedCommit: e1310d16cec815a20386f2eaa9eb005e1040d82d
 lastReviewedNote: "Release #147: reviewed pg 8.23.1 and pg-query-stream 4.17.1 adoption, complete lock graph and formatting equivalence; exact toolchain, full validation, scoped database access, immutable candidates and publication authority remain unchanged."
 related:
   - ../AGENTS.md

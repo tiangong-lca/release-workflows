@@ -25,8 +25,8 @@ checkPaths:
   - pnpm-lock.yaml
   - .node-version
   - .github/workflows/ci.yml
-lastReviewedAt: 2026-11-21
-lastReviewedCommit: 5233d8bd828bcbf4e1ed94b2bf7d493058212712
+lastReviewedAt: 2026-11-24
+lastReviewedCommit: 2cc82c15516baaa788538c9f0a04a8f0cfaee0bd
 lastReviewedNote: "Release #147: reviewed pg 8.23.1 and pg-query-stream 4.17.1 adoption, complete lock graph and formatting equivalence; exact toolchain, full validation, scoped database access, immutable candidates and publication authority remain unchanged."
 related:
   - README.md
