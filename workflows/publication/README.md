@@ -13,8 +13,8 @@ whenToUpdate:
   - 当发布选择、目标差异、状态转换、写入、审批、恢复或回读规则变化时
 checkPaths:
   - workflows/publication/**
-lastReviewedAt: 2026-11-11
-lastReviewedCommit: 7a80f18677283d8880dea570e7117caed1a52459
+lastReviewedAt: 2026-11-25
+lastReviewedCommit: 614fc9316adb4b4d51f5d7dce34d2ee2b5906a04
 lastReviewedNote: "Release #144 reviewed stable archive download RPC coverage, both 7z byte/hash readbacks and the isolated fixture."
 related:
   - AGENTS.md
