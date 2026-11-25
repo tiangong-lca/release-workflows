@@ -15,8 +15,8 @@ checkPaths:
   - .github/dependabot.yml
   - docs/dependency-updates.md
   - pnpm-lock.yaml
-lastReviewedAt: 2026-11-03
-lastReviewedCommit: 7085dd38e54ea8de031eb4e34aa16c19f1076cf6
+lastReviewedAt: 2026-11-25
+lastReviewedCommit: eac166762de39b47b9d9224748972d1aa4cfdbb7
 lastReviewedNote: "Release #103: reviewed SDK 0.6.0 adoption and nonblocking dependency engines policy on unchanged Node 24.22.0; complete native/workflow checks pass, and calculation/publication authority is unchanged."
 related:
   - ../AGENTS.md
