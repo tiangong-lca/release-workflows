@@ -15,8 +15,8 @@ checkPaths:
   - .github/dependabot.yml
   - docs/dependency-updates.md
   - pnpm-lock.yaml
-lastReviewedAt: 2026-11-03
-lastReviewedCommit: 7085dd38e54ea8de031eb4e34aa16c19f1076cf6
+lastReviewedAt: 2026-11-25
+lastReviewedCommit: eac166762de39b47b9d9224748972d1aa4cfdbb7
 lastReviewedNote: "Release #103: reviewed SDK 0.6.0 adoption and nonblocking dependency engines policy on unchanged Node 24.22.0; complete native/workflow checks pass, and calculation/publication authority is unchanged."
 related:
   - ../AGENTS.md
@@ -42,6 +42,8 @@ pnpm run prepush:gate
 依赖包的 `engines` 声明与仓库实际运行版本不一致时保留安装提示，不阻断安装，也不因此降级 Node。`engineStrict: false` 不替代兼容性验证：仍需在仓库锁定的 Node 上完成 frozen install 和完整 `prepush:gate`。
 
 仅有 lock resolution 变化时，Docpact 要求根契约与本指南存在，不强制制造文档 review metadata diff；仍须人工检查解析变化并运行既有测试。manifest、workspace 策略、运行时、源码及 Workflow 的既有 review 义务保持有效；包含这些路径的混合变更继续触发它们，不能借 lockfile 规则豁免。
+
+针对 #88（`brace-expansion` 安全更新遇 pnpm 对非直接依赖升级到 `2.1.8` 的 `dependency_file_not_resolvable` 报错）及 `fast-uri` 告警，已在不修改 `package.json`、不新增盲目 major override、不放宽 `minimumReleaseAge: 1440` 的前提下，通过 `pnpm up -r --depth 99 brace-expansion fast-uri --lockfile-only` 并用 `prettier --write pnpm-lock.yaml` 对齐格式，分别把 `minimatch@3.1.5 -> brace-expansion` 更新到 `1.1.22`、`minimatch@5.1.9 -> brace-expansion` 更新到 `2.1.8`、`ajv@8.20.0 -> fast-uri` 更新到 `3.1.9`。
 
 配置从 `main` 生效；合并配置和本地测试通过不等于 GitHub updater 已运行或完成首次 lockfile 更新。另行检查仓库安全设置、首次实际更新日志与 PR。依赖监控不授予数据库、S3、计算任务或 Publication 操作权限；远程发布仍须按所属契约绑定精确输入、审批和独立回读。
 
