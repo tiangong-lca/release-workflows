@@ -12,8 +12,8 @@ whenToUpdate:
   - 当顶层 Workflow 新增、删除、重命名或重新划分时
 checkPaths:
   - workflows/**
-lastReviewedAt: 2026-11-24
-lastReviewedCommit: e1310d16cec815a20386f2eaa9eb005e1040d82d
+lastReviewedAt: 2026-11-25
+lastReviewedCommit: 614fc9316adb4b4d51f5d7dce34d2ee2b5906a04
 lastReviewedNote: "Release #147: reviewed pg 8.23.1 and pg-query-stream 4.17.1 adoption, complete lock graph and formatting equivalence; exact toolchain, full validation, scoped database access, immutable candidates and publication authority remain unchanged."
 related:
   - ../README.md
