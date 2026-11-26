@@ -19,8 +19,8 @@ checkPaths:
   - docs/architecture.md
   - workflows/**
   - .docpact/config.yaml
-lastReviewedAt: 2026-11-25
-lastReviewedCommit: 614fc9316adb4b4d51f5d7dce34d2ee2b5906a04
+lastReviewedAt: 2026-11-26
+lastReviewedCommit: cf807e666dad49aee08b57f1297973a0dbfeb729
 lastReviewedNote: "Release #147: reviewed pg 8.23.1 and pg-query-stream 4.17.1 adoption, complete lock graph and formatting equivalence; exact toolchain, full validation, scoped database access, immutable candidates and publication authority remain unchanged."
 related:
   - AGENTS.md
