@@ -100,7 +100,7 @@ test("active package commands and automation are pnpm-only", () => {
   assert.deepEqual(
     [...ci.matchAll(/^\s*uses: (pnpm\/setup@.*)$/gm)].map((match) => match[1]),
     Array(2).fill(
-      "pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2",
+      "pnpm/setup@731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1 # v3.2.0",
     ),
   );
   assert.match(ci, /version:\s*11\.24\.0/);
