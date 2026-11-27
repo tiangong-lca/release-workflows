@@ -15,6 +15,64 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.classify.outputs.mode }}
+      native_os: ${{ steps.classify.outputs.native_os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Classify CI lane (fail-closed)
+        id: classify
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HAS_FULL_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'ci:full') }}
+        run: |
+          set -euo pipefail
+          full_matrix='["ubuntu-latest","windows-latest","macos-15"]'
+          fast_matrix='["ubuntu-latest"]'
+          if [ "$EVENT_NAME" != "pull_request" ] || [ "$HAS_FULL_LABEL" = "true" ]; then
+            echo "mode=full" >> "$GITHUB_OUTPUT"
+            echo "native_os=${full_matrix}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -z "$BASE_SHA" ] || ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            echo "mode=full" >> "$GITHUB_OUTPUT"
+            echo "native_os=${full_matrix}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          docs_only="true"
+          needs_full="false"
+          file_count=0
+          while IFS= read -r file; do
+            [ -n "$file" ] || continue
+            file_count=$((file_count + 1))
+            case "$file" in
+              AGENTS.md|README.md|docs/*|.docpact/*) ;;
+              *) docs_only="false" ;;
+            esac
+            case "$file" in
+              native/*|workflows/release-candidate/*|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|.node-version|.github/workflows/*|test/toolchain-workspace.test.mjs)
+                needs_full="true"
+                ;;
+            esac
+          done < <(git diff --name-only "$BASE_SHA" HEAD)
+          if [ "$file_count" -gt 0 ] && [ "$docs_only" = "true" ]; then
+            echo "mode=docs-only" >> "$GITHUB_OUTPUT"
+            echo "native_os=${fast_matrix}" >> "$GITHUB_OUTPUT"
+          elif [ "$file_count" -gt 0 ] && [ "$needs_full" = "false" ]; then
+            echo "mode=pr-fast" >> "$GITHUB_OUTPUT"
+            echo "native_os=${fast_matrix}" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=full" >> "$GITHUB_OUTPUT"
+            echo "native_os=${full_matrix}" >> "$GITHUB_OUTPUT"
+          fi
+
   quality-gate:
     runs-on: ubuntu-latest
 
@@ -33,22 +91,33 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Restore qualified Result archive tool cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/result-7zip
+          key: result-7zip-26.05-linux-x64-22cf82fc
+
       - name: Install qualified Result archive tool
         run: |
-          mkdir -p "$RUNNER_TEMP/result-7zip"
-          curl --fail --location --retry 3 https://github.com/ip7z/7zip/releases/download/26.05/7z2605-linux-x64.tar.xz -o "$RUNNER_TEMP/result-7zip/tool.tar.xz"
-          echo "22cf82fcc6eb7474f1d5bb4f02c0f8ebd573a718089d6833dc30f8350a3b232e  $RUNNER_TEMP/result-7zip/tool.tar.xz" | sha256sum --check
-          tar -xJf "$RUNNER_TEMP/result-7zip/tool.tar.xz" -C "$RUNNER_TEMP/result-7zip"
+          mkdir -p "$HOME/.cache/result-7zip" "$RUNNER_TEMP/result-7zip"
+          archive="$HOME/.cache/result-7zip/7z2605-linux-x64.tar.xz"
+          if [ ! -f "$archive" ]; then
+            curl --fail --location --retry 3 https://github.com/ip7z/7zip/releases/download/26.05/7z2605-linux-x64.tar.xz -o "$archive"
+          fi
+          echo "22cf82fcc6eb7474f1d5bb4f02c0f8ebd573a718089d6833dc30f8350a3b232e  $archive" | sha256sum --check
+          tar -xJf "$archive" -C "$RUNNER_TEMP/result-7zip"
           echo "RELEASE_7ZIP_BIN=$RUNNER_TEMP/result-7zip/7zz" >> "$GITHUB_ENV"
 
       - name: Validate workflow documentation baseline
         run: pnpm run prepush:gate
 
   native-artifact:
+    needs: plan
+    if: needs.plan.outputs.mode != 'docs-only'
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-15]
+        os: ${{ fromJson(needs.plan.outputs.native_os) }}
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
@@ -58,6 +127,7 @@ jobs:
         with:
           version: 11.24.0
           runtime: node@24.22.0
+          cache: true
           install: false
       - name: Install frozen dependencies
         run: pnpm install --frozen-lockfile
