@@ -15,7 +15,7 @@
   "dependencies": {
     "@tiangong-lca/tidas-sdk": "0.6.0",
     "canonicalize": "4.0.0",
-    "uuid": "14.0.2",
+    "uuid": "14.0.3",
     "yauzl": "3.4.0"
   }
 }
